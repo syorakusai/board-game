@@ -36,4 +36,12 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .button-secondary { margin-top: 10px; }
 #parent-word { margin-bottom: 12px; }
 #quit-button, #public-quit, #score-quit { width: 100%; }
+.vote-list { display: grid; gap: 12px; margin: 18px 0 24px; }
+.vote-card { padding: 10px; border: 1px solid #dfd3c5; border-radius: 14px; background: #fff; }
+.vote-card.parent-answer { border: 4px solid #a05b37; box-shadow: 0 0 0 2px #f1c6a9; }
+.vote-card .word { border: 0; background: #f5efe8; }
+.vote-count { margin-top: 8px; color: #a05b37; font-weight: 800; text-align: center; }
+.voters { padding: 6px 8px; color: #70685f; text-align: center; }
+section[data-screen="title"] { text-align: center; }
+section[data-screen="title"] .button, section[data-screen="howto"] .button { width: 100%; }
 @media (max-width: 360px) { .button-row { flex-direction: column-reverse; } }
