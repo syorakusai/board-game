@@ -6,6 +6,7 @@ body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding
 .is-hidden { display: none; }
 .eyebrow { margin: 0 0 10px; color: #a05b37; font-size: .75rem; font-weight: 800; letter-spacing: .16em; }
 h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
+.screen-subtitle { margin: 10px 0 0; color: #a05b37; font-size: 1rem; font-weight: 800; }
 .description { margin: 12px 0 26px; color: #70685f; line-height: 1.7; }
 .count-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .count-button { min-height: 64px; border: 1px solid #dfd3c5; border-radius: 16px; background: #fff; color: #382c23; font-size: 1.25rem; font-weight: 700; cursor: pointer; }
