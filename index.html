@@ -1,35 +1,36 @@
 <!doctype html>
 <html lang="ja">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ã¯ã¼ãã«ã¼ãã²ã¼ã </title>
+    <title>ワードカードゲーム</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main id="app" class="app-shell">
       <section class="screen" data-screen="player-count">
-        <p class="eyebrow">WORD CARD GAME</p><h1>å¯¾æ¦äººæ°ãé¸æ</h1>
-        <p class="description">ä¸ç·ã«éã¶äººæ°ãé¸ãã§ãã ããã</p>
-        <div id="player-counts" class="count-grid" aria-label="å¯¾æ¦äººæ°"></div>
+        <p class="eyebrow">WORD CARD GAME</p><h1>対戦人数を選択</h1>
+        <p class="description">一緒に遊ぶ人数を選んでください。</p>
+        <div id="player-counts" class="count-grid" aria-label="対戦人数"></div>
       </section>
       <section class="screen is-hidden" data-screen="player-names">
-        <p class="eyebrow">STEP 2</p><h1>ãã¬ã¤ã¤ã¼åãç»é²</h1>
+        <p class="eyebrow">STEP 2</p><h1>プレイヤー名を登録</h1>
         <p id="name-description" class="description"></p>
-        <form id="player-form" novalidate><div id="name-fields" class="name-fields"></div><p id="form-error" class="form-error" role="alert"></p><div class="button-row"><button type="button" id="back-button" class="button button-secondary">æ»ã</button><button class="button button-primary">ã²ã¼ã ãå§ãã</button></div></form>
+        <form id="player-form" novalidate><div id="name-fields" class="name-fields"></div><p id="form-error" class="form-error" role="alert"></p><div class="button-row"><button type="button" id="back-button" class="button button-secondary">戻る</button><button class="button button-primary">ゲームを始める</button></div></form>
       </section>
       <section class="screen is-hidden" data-screen="ready">
-        <p class="eyebrow">GAME READY</p><h1>æºåå®äº</h1>
-        <p class="description">è¦ªã®é çªãã©ã³ãã ã«æ±ºå®ãã¾ãã</p><div id="player-list" class="player-list"></div>
-        <button id="start-button" class="button button-primary">ã²ã¼ã ãå§ãã</button>
+        <p class="eyebrow">GAME READY</p><h1>準備完了</h1>
+        <p class="description">親の順番をランダムに決定します。</p><div id="player-list" class="player-list"></div>
+        <button id="start-button" class="button button-primary">ゲームを始める</button>
       </section>
-      <section class="screen is-hidden" data-screen="handoff"><p class="eyebrow">PASS THE PHONE</p><h1>æ¬¡ã®äººã¸åãã¦ãã ããã</h1><p id="handoff-text" class="description"></p><button id="handoff-button" class="button button-primary">OK</button></section>
-      <section class="screen is-hidden" data-screen="round"><p class="eyebrow" id="round-label"></p><h1 id="round-title"></h1><div id="card-area" class="card-area"></div><button id="round-start-button" class="button button-primary">ãã®ã«ã¼ãã§å§ãã</button><button id="quit-button" class="button button-secondary">ã²ã¼ã ãä¸­æ­</button></section>
-      <section class="screen is-hidden" data-screen="parent-input"><p class="eyebrow">PARENT WORD</p><h1>è¦ªã¯ã¼ããå¥å</h1><p class="description">å¬å¼ã¯ã¼ããåèã«ãã¤ã©ã¹ãããé£æ³ããã¯ã¼ãã1ã¤å¥åãã¦ãã ãããä¼¼ãè¡¨ç¾ã§ãæ§ãã¾ããã</p><div id="official-preview" class="word-list"></div><input id="parent-word" maxlength="40" autocomplete="off" placeholder="è¦ªã¯ã¼ããå¥å" /><p id="parent-error" class="form-error"></p><button id="parent-submit" class="button button-primary">å¥åãå®äº</button></section>
-      <section class="screen is-hidden" data-screen="public"><p class="eyebrow">DISCUSSION</p><h1>ã¯ã¼ããå¬éãã¾ãã</h1><div id="public-words" class="word-list"></div><div id="timer" class="timer">2:00</div><p class="description">2åéãèªç±ã«è³ªåã»æ¨çãã¦ãã ããã</p><button id="discussion-end" class="button button-primary">æ¨çãçµäºãã¦åç­ã¸</button><button id="public-quit" class="button button-secondary">ã²ã¼ã ãä¸­æ­</button></section>
+      <section class="screen is-hidden" data-screen="handoff"><p class="eyebrow">PASS THE PHONE</p><h1>次の人へ回してください。</h1><p id="handoff-text" class="description"></p><button id="handoff-button" class="button button-primary">OK</button></section>
+      <section class="screen is-hidden" data-screen="round"><p class="eyebrow" id="round-label"></p><h1 id="round-title"></h1><div id="card-area" class="card-area"></div><button id="round-start-button" class="button button-primary">このカードで始める</button><button id="quit-button" class="button button-secondary">ゲームを中断</button></section>
+      <section class="screen is-hidden" data-screen="parent-input"><p class="eyebrow">PARENT WORD</p><h1>親ワードを入力</h1><p class="description">公式ワードを参考に、イラストから連想したワードを1つ入力してください。似た表現でも構いません。</p><div id="official-preview" class="word-list"></div><input id="parent-word" maxlength="40" autocomplete="off" placeholder="親ワードを入力" /><p id="parent-error" class="form-error"></p><button id="parent-submit" class="button button-primary">入力を完了</button></section>
+      <section class="screen is-hidden" data-screen="public"><p class="eyebrow">DISCUSSION</p><h1>ワードを公開しました</h1><div id="public-words" class="word-list"></div><div id="timer" class="timer">2:00</div><p class="description">2分間、自由に質問・推理してください。</p><button id="discussion-end" class="button button-primary">推理を終了して回答へ</button><button id="public-quit" class="button button-secondary">ゲームを中断</button></section>
       <section class="screen is-hidden" data-screen="answer"><p class="eyebrow">ANSWER</p><h1 id="answer-title"></h1><p id="answer-description" class="description"></p><div id="answer-words" class="word-list"></div><button id="answer-next" class="button button-primary"></button></section>
-      <section class="screen is-hidden" data-screen="result"><p class="eyebrow">RESULT</p><h1>åç­èãç¢ºèª</h1><p class="description">ã¾ããèª°ãã©ã®åè£ãé¸ãã ãã ããç¢ºèªãã¾ãã</p><div id="answer-summary" class="answer-summary"></div><button id="reveal-button" class="button button-primary">åç­ãéç¤ºãã</button></section>
-      <section class="screen is-hidden" data-screen="scores"><p class="eyebrow">SCORE</p><h1 id="score-title">çµæ</h1><div id="score-list" class="player-list"></div><button id="next-round" class="button button-primary">æ¬¡ã®ã©ã¦ã³ãã¸</button><button id="score-quit" class="button button-secondary">ã²ã¼ã ãä¸­æ­</button></section>
+      <section class="screen is-hidden" data-screen="result"><p class="eyebrow">RESULT</p><h1>回答者を確認</h1><p class="description">まず、誰がどの候補を選んだかだけを確認します。</p><div id="answer-summary" class="answer-summary"></div><button id="reveal-button" class="button button-primary">回答を開示する</button></section>
+      <section class="screen is-hidden" data-screen="scores"><p class="eyebrow">SCORE</p><h1 id="score-title">結果</h1><div id="score-list" class="player-list"></div><button id="next-round" class="button button-primary">次のラウンドへ</button><button id="score-quit" class="button button-secondary">ゲームを中断</button></section>
     </main><script src="app.js"></script>
   </body>
 </html>
