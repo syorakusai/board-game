@@ -61,9 +61,13 @@ section[data-screen="title"] .button, section[data-screen="howto"] .button { wid
 .discussion-screen .timer { margin: 0; font-size: clamp(2.25rem, 11vw, 3.5rem); }
 .discussion-screen .button-secondary { margin-top: 8px; }
 .result-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
-.result-screen .card-area { margin: 10px 0; }
+.result-screen .result-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 10px 0; }
+.result-screen .card-area { margin: 0; }
 .result-screen .compact-card img { max-height: 16vh; }
-.result-screen .description { margin: 8px 0 10px; line-height: 1.4; }
+.result-screen .description { margin: 0; line-height: 1.45; }
+.result-screen #result-summary { display: grid; gap: 7px; color: #382c23; font-size: 1rem; }
+.result-screen #result-summary strong { color: #a05b37; font-size: 1.12rem; }
+.result-screen #result-summary span { color: #70685f; font-size: .9rem; font-weight: 700; }
 .result-screen .vote-list { gap: 7px; margin: 10px 0 14px; }
 .result-screen .vote-card { padding: 7px 9px; border-radius: 10px; }
 .result-screen .vote-card.parent-answer { border-width: 3px; }
