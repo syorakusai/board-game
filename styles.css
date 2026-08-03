@@ -1,0 +1,25 @@
+:root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif; color: #222; background: #f4efe8; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+.app-shell { width: min(100%, 520px); }
+.screen { background: #fffdf9; border: 1px solid #e5ddd2; border-radius: 24px; padding: clamp(24px, 7vw, 44px); box-shadow: 0 16px 45px #55402b16; }
+.is-hidden { display: none; }
+.eyebrow { margin: 0 0 10px; color: #a05b37; font-size: .75rem; font-weight: 800; letter-spacing: .16em; }
+h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
+.description { margin: 12px 0 26px; color: #70685f; line-height: 1.7; }
+.count-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.count-button { min-height: 64px; border: 1px solid #dfd3c5; border-radius: 16px; background: #fff; color: #382c23; font-size: 1.25rem; font-weight: 700; cursor: pointer; }
+.count-button:hover, .count-button:focus-visible { border-color: #a05b37; background: #fff5ed; outline: none; }
+.name-fields { display: grid; gap: 14px; }
+.field-label { display: grid; gap: 6px; color: #51483f; font-size: .9rem; font-weight: 700; }
+input { width: 100%; border: 1px solid #d9cfc4; border-radius: 12px; padding: 13px 14px; font: inherit; font-weight: 400; background: #fff; }
+input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
+.form-error { min-height: 24px; margin: 12px 0 0; color: #b42318; font-size: .9rem; }
+.button-row { display: flex; gap: 10px; margin-top: 12px; }
+.button { flex: 1; border: 0; border-radius: 12px; padding: 14px 16px; font: inherit; font-weight: 800; cursor: pointer; }
+.button-primary { background: #a05b37; color: white; }
+.button-secondary { background: #eee7df; color: #55483d; }
+.player-list { display: grid; gap: 10px; margin: 20px 0 26px; }
+.player-item { display: flex; justify-content: space-between; padding: 14px 16px; border-radius: 12px; background: #f5efe8; }
+.player-item span:last-child { color: #a05b37; font-size: .85rem; font-weight: 700; }
+@media (max-width: 360px) { .button-row { flex-direction: column-reverse; } }
