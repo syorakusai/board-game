@@ -22,6 +22,7 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .button-primary { background: #a05b37; color: white; }
 .button-secondary { background: #eee7df; color: #55483d; }
 .player-list { display: grid; gap: 10px; margin: 20px 0 26px; }
+.selection-summary { margin-top: 12px; }
 .player-item { display: flex; justify-content: space-between; padding: 14px 16px; border-radius: 12px; background: #f5efe8; }
 .player-item span:last-child { color: #a05b37; font-size: .85rem; font-weight: 700; }
 .card-area { margin: 18px 0 22px; text-align: center; }
@@ -30,6 +31,7 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .button:disabled { opacity: .55; cursor: not-allowed; }
 .missing-card { min-height: 180px; display: grid; place-items: center; background: #eee7df; border-radius: 14px; color: #88796b; }
 .word-list { display: grid; gap: 10px; margin: 18px 0 22px; }
+.discussion-open-guide { margin-top: -6px; }
 .word { padding: 15px 16px; border: 1px solid #dfd3c5; border-radius: 12px; background: #fff; color: #382c23; font-size: 1.1rem; font-weight: 700; text-align: center; }
 .official { background: #f5efe8; }
 .word-button { width: 100%; cursor: pointer; font: inherit; }
