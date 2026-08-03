@@ -10,13 +10,20 @@ function cardMarkup(card){const src=cardImagePath(card?.image);return src?`<img 
 function handoff(player,next){document.querySelector("#handoff-text").innerHTML=`全員イラストを確認してください。<br>確認できたら、${esc(player.name)}さんが「OK」を押して親ワード入力へ進んでください。`;document.querySelector("#handoff-card-area").innerHTML=cardMarkup(state.card);state.handoffNext=next;show("handoff");}
 function chooseCard(){const cards=state.cards||[];let available=cards.filter(c=>!state.usedCards.has(c.id));if(!available.length){state.usedCards.clear();available=cards;}state.card=available[Math.floor(Math.random()*available.length)];state.usedCards.add(state.card.id);state.official=shuffle(state.card.officialWords).slice(0,3);}
 async function loadCards(){try{const r=await fetch("cards/cards.json");if(!r.ok)throw Error();const d=await r.json();if(!Array.isArray(d)||!d.length)throw Error();state.cards=d;}catch{state.cards=[{id:1,image:"",officialWords:["りんご","鴨","奇妙な組み合わせ"]}];}}
-function renderOrder(){document.querySelector("#player-list").innerHTML=state.order.map((i,n)=>`<div class="player-item"><span>${n+1}. ${esc(state.players[i].name)}</span></div>`).join("");}
+function renderOrder(){const list=document.querySelector("#player-list");if(!list)return;list.innerHTML=state.order.map((i,n)=>`<div class="player-item"><span>${n+1}. ${esc(state.players[i].name)}</span></div>`).join("");}
+function showReady(){
+  state.order=shuffle(state.players.map((_,i)=>i));
+  state.parentIndex=0;
+  show("ready");
+  renderOrder();
+  requestAnimationFrame(renderOrder);
+}
 for(let n=3;n<=6;n++){const b=document.createElement("button");b.className="count-button";b.textContent=`${n}人`;b.onclick=()=>{state.playerCount=n;document.querySelector("#name-description").textContent=`${n}人分の名前を入力してください。`;const f=document.querySelector("#name-fields");f.replaceChildren();for(let i=0;i<n;i++){const l=document.createElement("label");l.className="field-label";l.innerHTML=`プレイヤー${i+1}<input name="p${i}" maxlength="20" autocomplete="off" placeholder="名前を入力" />`;f.append(l);}if(savedPlayers.length===n)[...f.querySelectorAll("input")].forEach((x,i)=>x.value=savedPlayers[i]||"");show("player-names");f.querySelector("input").focus();};document.querySelector("#player-counts").append(b);}
 document.querySelector("#title-start").onclick=()=>show("player-count");
 document.querySelector("#howto-button").onclick=()=>show("howto");
 document.querySelector("#howto-back").onclick=()=>show("title");
 document.querySelector("#back-button").onclick=()=>show("player-count");
-document.querySelector("#player-form").onsubmit=e=>{e.preventDefault();const names=[...new FormData(e.target).values()].map(v=>String(v).trim()),err=document.querySelector("#form-error");err.textContent="";if(names.some(n=>!n)){err.textContent="すべてのプレイヤー名を入力してください。";return;}if(new Set(names).size!==names.length){err.textContent="プレイヤー名は重複しないようにしてください。";return;}state.players=names.map((name,i)=>({id:i,name,score:0}));state.order=shuffle(state.players.map((_,i)=>i));state.parentIndex=0;renderOrder();try{localStorage.setItem(PLAYER_STORAGE_KEY,JSON.stringify(names));}catch{}show("ready");};
+document.querySelector("#player-form").onsubmit=e=>{e.preventDefault();const names=[...new FormData(e.target).values()].map(v=>String(v).trim()),err=document.querySelector("#form-error");err.textContent="";if(names.some(n=>!n)){err.textContent="すべてのプレイヤー名を入力してください。";return;}if(new Set(names).size!==names.length){err.textContent="プレイヤー名は重複しないようにしてください。";return;}state.players=names.map((name,i)=>({id:i,name,score:0}));try{localStorage.setItem(PLAYER_STORAGE_KEY,JSON.stringify(names));}catch{}showReady();};
 document.querySelector("#start-button").onclick=async()=>{await loadCards();startRound();};
 function startRound(){state.round++;chooseCard();const p=state.players[state.order[state.parentIndex]];document.querySelectorAll("[data-round-title]").forEach(x=>x.textContent=`ROUND${state.round} ${x.dataset.roundTitle}`);document.querySelector("#round-title").textContent=`親：${p.name}`;document.querySelector("#round-card-message").textContent=`${p.name}さん、山札からカードを1枚引いてください。`;document.querySelector("#round-start-button").disabled=false;document.querySelector("#draw-card").textContent="カードを引く";show("round");}
 document.querySelector("#round-start-button").onclick=()=>{document.querySelector("#round-start-button").disabled=true;document.querySelector("#draw-card").textContent="カードを引きました";document.querySelector("#handoff-card-area").innerHTML=cardMarkup(state.card);handoff(state.players[state.order[state.parentIndex]],"親ワード入力");};
