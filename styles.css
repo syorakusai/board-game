@@ -49,4 +49,23 @@ section[data-screen="title"] { text-align: center; }
 section[data-screen="title"] .button, section[data-screen="howto"] .button { width: 100%; }
 .title-main-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 18px 0 22px; border-radius: 14px; }
 .deck-stack-image { display: block; width: min(72%, 280px); max-height: 42vh; margin: 4px auto 14px; object-fit: contain; }
+.discussion-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
+.discussion-screen .discussion-layout { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 10px 14px; align-items: start; margin: 14px 0 18px; }
+.discussion-screen .card-area { margin: 0; }
+.discussion-screen .compact-card img { max-height: 25vh; }
+.discussion-screen .word-list { gap: 7px; margin: 0; }
+.discussion-screen .word { padding: 9px 10px; font-size: .95rem; }
+.discussion-screen .timer { grid-column: 1 / -1; margin: 0; font-size: clamp(2.25rem, 11vw, 3.5rem); }
+.discussion-screen .button-secondary { margin-top: 8px; }
+.result-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
+.result-screen .card-area { margin: 10px 0; }
+.result-screen .compact-card img { max-height: 16vh; }
+.result-screen .description { margin: 8px 0 10px; line-height: 1.4; }
+.result-screen .vote-list { gap: 7px; margin: 10px 0 14px; }
+.result-screen .vote-card { padding: 7px 9px; border-radius: 10px; }
+.result-screen .vote-card.parent-answer { border-width: 3px; }
+.result-screen .vote-card .word { padding: 8px 10px; font-size: .95rem; }
+.result-screen .vote-count { display: inline; margin: 0 0 0 8px; font-size: .85rem; }
+.result-screen .voters { display: inline; padding: 0 0 0 6px; font-size: .85rem; }
+@media (max-width: 380px) { .discussion-screen .discussion-layout { gap: 8px; } .discussion-screen .word { padding: 8px; font-size: .88rem; } .result-screen .compact-card img { max-height: 14vh; } }
 @media (max-width: 360px) { .button-row { flex-direction: column-reverse; } }
