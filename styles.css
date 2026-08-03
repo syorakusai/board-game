@@ -32,6 +32,7 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .missing-card { min-height: 180px; display: grid; place-items: center; background: #eee7df; border-radius: 14px; color: #88796b; }
 .word-list { display: grid; gap: 10px; margin: 18px 0 22px; }
 .discussion-open-guide { margin-top: -6px; }
+#discussion-open-card-area.compact-card img { max-height: 27vh; }
 .word { padding: 15px 16px; border: 1px solid #dfd3c5; border-radius: 12px; background: #fff; color: #382c23; font-size: 1.1rem; font-weight: 700; text-align: center; }
 .official { background: #f5efe8; }
 .word-button { width: 100%; cursor: pointer; font: inherit; }
@@ -52,12 +53,12 @@ section[data-screen="title"] .button, section[data-screen="howto"] .button { wid
 .title-main-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 18px 0 22px; border-radius: 14px; }
 .deck-stack-image { display: block; width: min(72%, 280px); max-height: 42vh; margin: 4px auto 14px; object-fit: contain; }
 .discussion-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
-.discussion-screen .discussion-layout { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 10px 14px; align-items: start; margin: 14px 0 18px; }
+.discussion-screen .discussion-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 14px; align-items: center; margin: 14px 0 18px; }
 .discussion-screen .card-area { margin: 0; }
 .discussion-screen .compact-card img { max-height: 25vh; }
-.discussion-screen .word-list { gap: 7px; margin: 0; }
+.discussion-screen .word-list { grid-column: 1 / -1; gap: 7px; margin: 0; }
 .discussion-screen .word { padding: 9px 10px; font-size: .95rem; }
-.discussion-screen .timer { grid-column: 1 / -1; margin: 0; font-size: clamp(2.25rem, 11vw, 3.5rem); }
+.discussion-screen .timer { margin: 0; font-size: clamp(2.25rem, 11vw, 3.5rem); }
 .discussion-screen .button-secondary { margin-top: 8px; }
 .result-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
 .result-screen .card-area { margin: 10px 0; }
