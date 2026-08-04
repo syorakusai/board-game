@@ -1,6 +1,7 @@
 :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif; color: #222; background: #f4efe8; }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; background: #fffdf9; }
+body.lightbox-open { overflow: hidden; }
 .app-shell { width: min(100%, 520px); margin: 0 auto; }
 .screen { min-height: 100vh; background: #fffdf9; border: 0; border-radius: 0; padding: clamp(16px, 4vw, 28px); box-shadow: none; }
 .is-hidden { display: none; }
@@ -33,6 +34,8 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .player-item span:last-child { color: #a05b37; font-size: .85rem; font-weight: 700; }
 .card-area { margin: 18px 0 22px; text-align: center; }
 .card-area img { display: block; width: 100%; max-height: 48vh; object-fit: contain; border-radius: 14px; }
+.card-zoom-trigger { cursor: zoom-in; touch-action: manipulation; }
+.card-zoom-trigger:focus-visible { outline: 3px solid #a05b37; outline-offset: 4px; }
 .compact-card img { max-height: 30vh; }
 .button:disabled { opacity: .55; cursor: not-allowed; }
 .missing-card { min-height: 180px; display: grid; place-items: center; background: #eee7df; border-radius: 14px; color: #88796b; }
@@ -54,6 +57,11 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .vote-card .word { border: 0; background: #f5efe8; }
 .vote-count { margin-top: 8px; color: #a05b37; font-weight: 800; text-align: center; }
 .voters { padding: 6px 8px; color: #70685f; text-align: center; }
+.card-lightbox { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 18px; background: #000b; }
+.card-lightbox-content { display: grid; place-items: center; width: min(100%, 520px); height: min(100%, 92vh); }
+.card-lightbox-content img { display: block; width: auto; max-width: 100%; height: auto; max-height: 92vh; object-fit: contain; border-radius: 10px; box-shadow: 0 10px 36px #0008; }
+.card-lightbox-close { position: absolute; z-index: 1; top: 12px; right: 14px; width: 42px; height: 42px; border: 0; border-radius: 50%; background: #fff; color: #382c23; font-size: 2rem; line-height: 1; cursor: pointer; }
+.card-lightbox-close:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 section[data-screen="title"] { text-align: center; }
 section[data-screen="title"] .button, section[data-screen="howto"] .button { width: 100%; }
 .title-main-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 18px 0 22px; border-radius: 14px; }
