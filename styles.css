@@ -12,6 +12,7 @@ h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 .count-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .count-button { min-height: 64px; border: 1px solid #dfd3c5; border-radius: 16px; background: #fff; color: #382c23; font-size: 1.25rem; font-weight: 700; cursor: pointer; }
 .count-button:hover, .count-button:focus-visible { border-color: #a05b37; background: #fff5ed; outline: none; }
+.count-button.is-selected { border: 3px solid #a05b37; background: #fff5ed; }
 .name-fields { display: grid; gap: 14px; }
 .field-label { display: grid; gap: 6px; color: #51483f; font-size: .9rem; font-weight: 700; }
 input { width: 100%; border: 1px solid #d9cfc4; border-radius: 12px; padding: 13px 14px; font: inherit; font-weight: 400; background: #fff; }

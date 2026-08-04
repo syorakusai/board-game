@@ -112,12 +112,13 @@ cards/
 │   ├── cards.json
 │   └── card-001-apple-duck.png ～ card-015-museum-monkeys.png
 └── vol1/
-    └── cards.json
+    ├── cards.json
+    └── card-001-pigeon-maitre-d.png ～ card-010-elephant-magic.png
 ```
 
 - `test`：現在の15枚のテスト用カードです。
-- `vol1`：今後作成する第1弾のカードを登録します。現在は空のカードセットです。
-- カードセットを選択して遊ぶ画面は、今後実装します。
+- `vol1`：第1弾のカード10枚です。
+- 人数選択画面で、`テスト版` または `VOL.1` を選んで遊べます。
 
 ```json
 {
@@ -173,6 +174,7 @@ cards/
 - 画像読み込み失敗時のエラー表示
 - UTF-8による日本語表示
 - `test` にテスト用カード15枚の登録
+- `vol1` に第1弾カード10枚の登録
 
 ## 開発方針
 
