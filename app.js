@@ -16,7 +16,14 @@ function cardMarkup(card){const src=cardImagePath(card?.image);return src?`<img 
 const cardLightbox=document.querySelector("#card-lightbox"),cardLightboxContent=document.querySelector("#card-lightbox-content");
 function closeCardLightbox(){cardLightbox.classList.add("is-hidden");cardLightboxContent.replaceChildren();document.body.classList.remove("lightbox-open");}
 function openCardLightbox(image){cardLightboxContent.innerHTML=`<img src="${esc(image.src)}" alt="${esc(image.alt)}">`;cardLightbox.classList.remove("is-hidden");document.body.classList.add("lightbox-open");document.querySelector("#card-lightbox-close").focus();}
-document.addEventListener("click",e=>{const image=e.target.closest(".card-zoom-trigger");if(image)openCardLightbox(image);});
+document.addEventListener("click",e=>{
+  if(cardLightbox && !cardLightbox.classList.contains("is-hidden") && cardLightbox.contains(e.target)){
+    if(e.target.closest("#card-lightbox-close") || e.target.closest("#card-lightbox-content")) closeCardLightbox();
+    return;
+  }
+  const image=e.target.closest(".card-zoom-trigger");
+  if(image)openCardLightbox(image);
+});
 cardLightbox.addEventListener("click",e=>{
   if(e.target===cardLightbox||e.target===cardLightboxContent||e.target.closest("#card-lightbox-close"))closeCardLightbox();
 });
