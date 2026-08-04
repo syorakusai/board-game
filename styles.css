@@ -1,8 +1,8 @@
 :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans JP", sans-serif; color: #222; background: #f4efe8; }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 20px; }
-.app-shell { width: min(100%, 520px); }
-.screen { background: #fffdf9; border: 1px solid #e5ddd2; border-radius: 24px; padding: clamp(24px, 7vw, 44px); box-shadow: 0 16px 45px #55402b16; }
+body { margin: 0; min-height: 100vh; background: #fffdf9; }
+.app-shell { width: min(100%, 520px); margin: 0 auto; }
+.screen { min-height: 100vh; background: #fffdf9; border: 0; border-radius: 0; padding: clamp(16px, 4vw, 28px); box-shadow: none; }
 .is-hidden { display: none; }
 .eyebrow { margin: 0 0 10px; color: #a05b37; font-size: .75rem; font-weight: 800; letter-spacing: .16em; }
 h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
@@ -13,6 +13,11 @@ h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 .count-button { min-height: 64px; border: 1px solid #dfd3c5; border-radius: 16px; background: #fff; color: #382c23; font-size: 1.25rem; font-weight: 700; cursor: pointer; }
 .count-button:hover, .count-button:focus-visible { border-color: #a05b37; background: #fff5ed; outline: none; }
 .count-button.is-selected { border: 3px solid #a05b37; background: #fff5ed; }
+.card-set-description { margin-top: 22px; margin-bottom: 10px; }
+.card-set-grid { display: flex; gap: 10px; }
+.card-set-button { min-width: 82px; min-height: 48px; padding: 8px 14px; border: 1px solid #dfd3c5; border-radius: 13px; background: #fff; color: #382c23; font-size: .95rem; font-weight: 700; cursor: pointer; }
+.card-set-button:hover, .card-set-button:focus-visible { border-color: #a05b37; background: #fff5ed; outline: none; }
+.card-set-button.is-selected { border: 2px solid #a05b37; background: #fff5ed; }
 .name-fields { display: grid; gap: 14px; }
 .field-label { display: grid; gap: 6px; color: #51483f; font-size: .9rem; font-weight: 700; }
 input { width: 100%; border: 1px solid #d9cfc4; border-radius: 12px; padding: 13px 14px; font: inherit; font-weight: 400; background: #fff; }
