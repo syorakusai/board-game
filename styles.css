@@ -52,6 +52,10 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 section[data-screen="title"] { text-align: center; }
 section[data-screen="title"] .button, section[data-screen="howto"] .button { width: 100%; }
 .title-main-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 18px 0 22px; border-radius: 14px; }
+.howto-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 18px 0 22px; border-radius: 14px; }
+.howto-description { margin: 0 0 26px; color: #70685f; line-height: 1.9; }
+.howto-description p { margin: 0; }
+.howto-description p + p { margin-top: 18px; }
 .deck-stack-image { display: block; width: min(72%, 280px); max-height: 42vh; margin: 4px auto 14px; object-fit: contain; }
 .discussion-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
 .discussion-screen .discussion-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 14px; align-items: center; margin: 14px 0 18px; }
