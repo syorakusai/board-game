@@ -59,3 +59,4 @@ function stopGame(){clearInterval(state.timer);if(confirm("ゲームを終了し
 window.addEventListener("beforeunload",e=>{if(state.round){e.preventDefault();e.returnValue="";}});
 history.pushState(null,"",location.href);window.addEventListener("popstate",()=>{history.pushState(null,"",location.href);stopGame();});
 show("title");
+
