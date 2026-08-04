@@ -16,7 +16,10 @@ function cardMarkup(card){const src=cardImagePath(card?.image);return src?`<img 
 const cardLightbox=document.querySelector("#card-lightbox"),cardLightboxContent=document.querySelector("#card-lightbox-content");
 function closeCardLightbox(){cardLightbox.classList.add("is-hidden");cardLightboxContent.replaceChildren();document.body.classList.remove("lightbox-open");}
 function openCardLightbox(image){cardLightboxContent.innerHTML=`<img src="${esc(image.src)}" alt="${esc(image.alt)}">`;cardLightbox.classList.remove("is-hidden");document.body.classList.add("lightbox-open");document.querySelector("#card-lightbox-close").focus();}
-document.addEventListener("click",e=>{const image=e.target.closest(".card-zoom-trigger");if(image)openCardLightbox(image);else if(e.target===cardLightbox||e.target.closest("#card-lightbox-close"))closeCardLightbox();});
+document.addEventListener("click",e=>{const image=e.target.closest(".card-zoom-trigger");if(image)openCardLightbox(image);});
+cardLightbox.addEventListener("click",e=>{
+  if(e.target===cardLightbox||e.target===cardLightboxContent||e.target.closest("#card-lightbox-close"))closeCardLightbox();
+});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!cardLightbox.classList.contains("is-hidden"))closeCardLightbox();if((e.key==="Enter"||e.key===" ")&&e.target.matches(".card-zoom-trigger")){e.preventDefault();openCardLightbox(e.target);}});
 function handoff(player,next){document.querySelector("#handoff-text").innerHTML=`全員イラストを確認してください。<br>確認できたら、${esc(player.name)}さんが「OK」を押して親ワード入力へ進んでください。`;document.querySelector("#handoff-card-area").innerHTML=cardMarkup(state.card);state.handoffNext=next;show("handoff");}
 function chooseCard(){const cards=state.cards||[];let available=cards.filter(c=>!state.usedCards.has(c.id));if(!available.length){state.usedCards.clear();available=cards;}state.card=available[Math.floor(Math.random()*available.length)];state.usedCards.add(state.card.id);state.official=shuffle(state.card.officialWords).slice(0,3);}
