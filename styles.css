@@ -81,6 +81,7 @@ section[data-screen="title"] .button, section[data-screen="howto"] .button { wid
 .discussion-screen .button-secondary { margin-top: 8px; }
 .result-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
 .result-screen .result-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 10px 0; }
+.result-reveal-status { min-height: 1.7em; margin: 8px 0 4px; color: #a05b37; font-weight: 900; text-align: center; }
 .result-screen .card-area { margin: 0; }
 .result-screen .compact-card img { max-height: min(16vh, calc(100dvh - 300px)); }
 .result-screen .description { margin: 0; line-height: 1.45; }
@@ -90,6 +91,10 @@ section[data-screen="title"] .button, section[data-screen="howto"] .button { wid
 .result-screen .vote-list { gap: 7px; margin: 10px 0 14px; }
 .result-screen .vote-card { padding: 7px 9px; border-radius: 10px; }
 .result-screen .vote-card.parent-answer { border-width: 3px; }
+.result-screen .vote-card { transition: opacity .24s ease, transform .24s ease, border-color .24s ease, box-shadow .24s ease, background .24s ease; }
+.result-screen .vote-card.reveal-pending { opacity: .52; }
+.result-screen .vote-card.reveal-checking { opacity: 1; transform: scale(1.025); border-color: #a05b37; box-shadow: 0 0 0 3px #f1c6a9, 0 5px 14px #a05b3733; }
+.result-screen .vote-card.reveal-parent { opacity: 1; transform: scale(1.035); border-color: #c58b2b; background: #fffaf0; box-shadow: 0 0 0 4px #f0c96b, 0 0 22px #d9a83d88; }
 .result-screen .vote-card .word { padding: 8px 10px; font-size: .95rem; }
 .result-screen .vote-count { display: inline; margin: 0 0 0 8px; font-size: .85rem; }
 .result-screen .voters { display: inline; padding: 0 0 0 6px; font-size: .85rem; }
