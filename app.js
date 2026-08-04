@@ -11,11 +11,11 @@ function show(name){
 }
 const esc=v=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
-function cardImagePath(image){return image?(image.startsWith("cards/")?image:`cards/${image}`):"";}
+function cardImagePath(image){return image?(image.startsWith("cards/")?image:`cards/test/${image}`):"";}
 function cardMarkup(card){const src=cardImagePath(card?.image);return src?`<img src="${esc(src)}" alt="お題カード" onerror="this.parentElement.innerHTML='<div class=&quot;missing-card&quot;>カード画像を読み込めませんでした</div>'">`:`<div class="missing-card">カード画像を読み込めません</div>`;}
 function handoff(player,next){document.querySelector("#handoff-text").innerHTML=`全員イラストを確認してください。<br>確認できたら、${esc(player.name)}さんが「OK」を押して親ワード入力へ進んでください。`;document.querySelector("#handoff-card-area").innerHTML=cardMarkup(state.card);state.handoffNext=next;show("handoff");}
 function chooseCard(){const cards=state.cards||[];let available=cards.filter(c=>!state.usedCards.has(c.id));if(!available.length){state.usedCards.clear();available=cards;}state.card=available[Math.floor(Math.random()*available.length)];state.usedCards.add(state.card.id);state.official=shuffle(state.card.officialWords).slice(0,3);}
-async function loadCards(){try{const r=await fetch("cards/cards.json");if(!r.ok)throw Error();const d=await r.json();if(!Array.isArray(d)||!d.length)throw Error();state.cards=d;}catch{state.cards=[{id:1,image:"",officialWords:["りんご","鴨","奇妙な組み合わせ"]}];}}
+async function loadCards(){try{const r=await fetch("cards/test/cards.json");if(!r.ok)throw Error();const d=await r.json();if(!Array.isArray(d)||!d.length)throw Error();state.cards=d;}catch{state.cards=[{id:1,image:"",officialWords:["りんご","鴨","奇妙な組み合わせ"]}];}}
 function renderOrder(){const list=document.querySelector("#player-list");if(!list)return;list.innerHTML=state.order.map((i,n)=>`<div class="player-item"><span>${n+1}. ${esc(state.players[i].name)}</span></div>`).join("");}
 function showReady(){
   state.order=shuffle(state.players.map((_,i)=>i));
