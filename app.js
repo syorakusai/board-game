@@ -1,5 +1,7 @@
 const PLAYER_STORAGE_KEY = "word-card-players";
+const PLAYER_COUNT_STORAGE_KEY = "word-card-player-count";
 const savedPlayers = (() => { try { const v=JSON.parse(localStorage.getItem(PLAYER_STORAGE_KEY)||"[]"); return Array.isArray(v)?v.map(String):[]; } catch { return []; } })();
+const savedPlayerCount = (() => { try { const v=Number(localStorage.getItem(PLAYER_COUNT_STORAGE_KEY)); return Number.isInteger(v)&&v>=3&&v<=6?v:0; } catch { return 0; } })();
 const state = { playerCount:0, cardSet:"vol1", players:[], order:[], parentIndex:0, card:null, official:[], words:[], parentWord:"", answers:{}, answerIndex:0, answerLocked:false, selectedAnswer:"", timer:null, usedCards:new Set(), round:0, handoffNext:"" };
 const screens=document.querySelectorAll("[data-screen]");
 function show(name){
@@ -26,7 +28,8 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!cardLightbox.classList.contains("is-hidden"))closeCardLightbox();if((e.key==="Enter"||e.key===" ")&&e.target.matches(".card-zoom-trigger")){e.preventDefault();openCardLightbox(e.target);}});
 function handoff(player,next){document.querySelector("#handoff-text").innerHTML=`全員イラストを確認してください。<br>確認できたら、${esc(player.name)}さんが「OK」を押して親ワード入力へ進んでください。`;document.querySelector("#handoff-card-area").innerHTML=cardMarkup(state.card);state.handoffNext=next;show("handoff");}
-function chooseCard(){const cards=state.cards||[];let available=cards.filter(c=>!state.usedCards.has(c.id));if(!available.length){state.usedCards.clear();available=cards;}state.card=available[Math.floor(Math.random()*available.length)];state.usedCards.add(state.card.id);state.official=shuffle(state.card.officialWords).slice(0,3);}
+function preloadCardImage(){const src=cardImagePath(state.card?.image);if(src){const image=new Image();image.src=src;}}
+function chooseCard(){const cards=state.cards||[];let available=cards.filter(c=>!state.usedCards.has(c.id));if(!available.length){state.usedCards.clear();available=cards;}state.card=available[Math.floor(Math.random()*available.length)];state.usedCards.add(state.card.id);state.official=shuffle(state.card.officialWords).slice(0,3);preloadCardImage();}
 async function loadCards(){try{const r=await fetch(`cards/${state.cardSet}/cards.json`);if(!r.ok)throw Error();const d=await r.json();if(!Array.isArray(d)||!d.length)throw Error();state.cards=d;}catch{state.cards=[{id:1,image:"",officialWords:["りんご","鴨","奇妙な組み合わせ"]}];}}
 function renderOrder(){const list=document.querySelector("#player-list");if(!list)return;list.innerHTML=state.order.map((i,n)=>`<div class="player-item"><span>${n+1}. ${esc(state.players[i].name)}</span></div>`).join("");}
 function showReady(){
@@ -51,17 +54,20 @@ function renderPlayerNames(){
   if(savedPlayers.length===n)[...f.querySelectorAll("input")].forEach((x,i)=>x.value=savedPlayers[i]||"");
   show("player-names");
 }
+function selectPlayerCount(n,button){
+  state.playerCount=n;
+  document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===button));
+  playerCountNext.disabled=false;
+  try{localStorage.setItem(PLAYER_COUNT_STORAGE_KEY,String(n));}catch{}
+}
 for(let n=3;n<=6;n++){
   const b=document.createElement("button");
   b.className="count-button";
   b.textContent=`${n}人`;
-  b.onclick=()=>{
-    state.playerCount=n;
-    document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===b));
-    playerCountNext.disabled=false;
-  };
+  b.onclick=()=>selectPlayerCount(n,b);
   document.querySelector("#player-counts").append(b);
 }
+if(savedPlayerCount){const savedButton=[...document.querySelectorAll(".count-button")].find(button=>button.textContent===`${savedPlayerCount}人`);if(savedButton)selectPlayerCount(savedPlayerCount,savedButton);}
 playerCountNext.onclick=()=>{if(state.playerCount)renderPlayerNames();};
 document.querySelectorAll("[data-card-set]").forEach(button=>button.onclick=()=>{state.cardSet=button.dataset.cardSet;document.querySelectorAll("[data-card-set]").forEach(x=>x.classList.toggle("is-selected",x===button));});
 document.querySelector("#title-start").onclick=()=>show("player-count");
