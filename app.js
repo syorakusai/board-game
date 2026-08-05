@@ -4,6 +4,7 @@ const savedPlayers = (() => { try { const v=JSON.parse(localStorage.getItem(PLAY
 const savedPlayerCount = (() => { try { const v=Number(localStorage.getItem(PLAYER_COUNT_STORAGE_KEY)); return Number.isInteger(v)&&v>=2&&v<=6?v:0; } catch { return 0; } })();
 const state = { playerCount:0, cardSet:"vol1", players:[], order:[], parentIndex:0, card:null, official:[], words:[], parentWord:"", answers:{}, answerIndex:0, answerLocked:false, selectedAnswer:"", timer:null, usedCards:new Set(), round:0, handoffNext:"" };
 const screens=document.querySelectorAll("[data-screen]");
+document.querySelectorAll("[data-round-title]").forEach(title=>{const row=document.createElement("div"),exit=document.createElement("button");row.className="screen-title-row";exit.className="exit-button";exit.type="button";exit.textContent="退出";exit.setAttribute("aria-label","ゲームを退出してタイトル画面へ戻る");exit.onclick=returnToTitle;title.parentNode.insertBefore(row,title);row.append(title,exit);});
 function show(name){
   screens.forEach(s=>s.classList.toggle("is-hidden",s.dataset.screen!==name));
   window.scrollTo(0,0);
@@ -95,7 +96,6 @@ document.querySelector("#result-next").onclick=()=>{const children=state.players
 function returnToTitle(){clearInterval(state.timer);Object.assign(state,{playerCount:0,cardSet:"vol1",players:[],order:[],parentIndex:0,card:null,official:[],words:[],parentWord:"",answers:{},answerIndex:0,answerLocked:false,selectedAnswer:"",timer:null,usedCards:new Set(),round:0,handoffNext:""});document.querySelectorAll("[data-card-set]").forEach(x=>x.classList.toggle("is-selected",x.dataset.cardSet==="vol1"));show("title");}
 document.querySelector("#next-round").onclick=()=>{if(document.querySelector("#next-round").dataset.action==="title"){returnToTitle();return;}state.parentIndex=(state.parentIndex+1)%state.order.length;startRound();};
 function stopGame(){clearInterval(state.timer);if(confirm("ゲームを終了してタイトル画面に戻りますか？\n現在のゲーム内容は失われます。")){location.reload();}}
-["quit-button","public-quit","discussion-quit","score-quit"].forEach(id=>document.querySelector(`#${id}`).onclick=stopGame);
 window.addEventListener("beforeunload",e=>{if(state.round){e.preventDefault();e.returnValue="";}});
 history.pushState(null,"",location.href);window.addEventListener("popstate",()=>{history.pushState(null,"",location.href);stopGame();});
 show("title");
