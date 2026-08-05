@@ -51,7 +51,7 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .word-list { display: grid; gap: 10px; margin: 18px 0 22px; }
 .discussion-open-guide { margin-top: -6px; }
 #discussion-open-card-area.compact-card img { max-height: min(27vh, calc(100dvh - 260px)); }
-.word { padding: 15px 16px; border: 1px solid #dfd3c5; border-radius: 12px; background: #fff; color: #382c23; font-size: 1.1rem; font-weight: 700; text-align: center; }
+.word { padding: 10px 12px; border: 1px solid #dfd3c5; border-radius: 12px; background: #fff; color: #382c23; font-size: 1rem; font-weight: 700; text-align: center; }
 .official { background: #f5efe8; }
 .word-button { width: 100%; cursor: pointer; font: inherit; }
 .word-button:hover, .word-button:focus-visible { border-color: #a05b37; background: #fff5ed; outline: none; }
@@ -88,7 +88,7 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .discussion-screen .card-area { margin: 0; }
 .discussion-screen .compact-card img { max-height: min(25vh, calc(100dvh - 300px)); }
 .discussion-screen .word-list { grid-column: 1 / -1; gap: 7px; margin: 0; }
-.discussion-screen .word { padding: 9px 10px; font-size: .95rem; }
+.discussion-screen .word { padding: 10px 12px; font-size: .95rem; }
 .discussion-screen .timer { margin: 0; font-size: clamp(2.25rem, 11vw, 3.5rem); }
 .discussion-screen .button-secondary { margin-top: 8px; }
 .result-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
@@ -107,7 +107,7 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .result-screen .vote-card.reveal-checking { opacity: 1; transform: scale(1.035); border-color: #a05b37; background: #fff8f1; box-shadow: 0 0 0 3px #f1c6a9, 0 5px 14px #a05b3733; }
 .result-screen .vote-card.reveal-parent { opacity: 1; transform: scale(1.035); border-color: #c58b2b; background: #fffaf0; box-shadow: 0 0 0 4px #f0c96b, 0 0 22px #d9a83d88; }
 .result-screen .vote-card.reveal-flash { border-color: #c58b2b; background: #fffaf0; box-shadow: 0 0 0 4px #f0c96b, 0 0 22px #d9a83d88; }
-.result-screen .vote-card .word { padding: 8px 10px; font-size: .95rem; }
+.result-screen .vote-card .word { padding: 10px 12px; font-size: .95rem; }
 .result-screen .vote-count { display: inline; margin: 0 0 0 8px; font-size: .85rem; }
 .result-screen .voters { display: inline; padding: 0 0 0 6px; font-size: .85rem; }
 @media (max-width: 380px) { .discussion-screen .discussion-layout { gap: 8px; } .discussion-screen .word { padding: 8px; font-size: .88rem; } .result-screen .compact-card img { max-height: 14vh; } }
