@@ -110,4 +110,4 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .result-screen .vote-card .word { padding: 10px 12px; font-size: .95rem; }
 .result-screen .vote-count { display: inline; margin: 0 0 0 8px; font-size: .85rem; }
 .result-screen .voters { display: inline; padding: 0 0 0 6px; font-size: .85rem; }
-@media (max-width: 380px) { .discussion-screen .discussion-layout { gap: 8px; } .result-screen .compact-card img { max-height: 14vh; } }
+.answer-screen .answer-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 18px 0 22px; }\n.answer-screen .card-area { margin: 0; }\n.answer-screen .compact-card img { max-height: min(25vh, calc(100dvh - 300px)); }\n.answer-screen .answer-guide { min-width: 0; }\n.answer-screen .answer-guide .screen-subtitle { margin: 0 0 12px; }\n.answer-screen .answer-guide .description { margin: 0; line-height: 1.45; }\n.answer-screen .word-list { margin-top: 0; }\n@media (max-width: 380px) { .discussion-screen .discussion-layout { gap: 8px; } .result-screen .compact-card img { max-height: 14vh; } }
