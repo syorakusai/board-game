@@ -88,7 +88,7 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .discussion-screen .card-area { margin: 0; }
 .discussion-screen .compact-card img { max-height: min(25vh, calc(100dvh - 300px)); }
 .discussion-screen .word-list { grid-column: 1 / -1; gap: 7px; margin: 0; }
-.discussion-screen .word { padding: 10px 12px; font-size: .95rem; }
+.discussion-screen .word { padding: 10px 12px; font-size: 1rem; }
 .discussion-screen .timer { margin: 0; font-size: clamp(2.25rem, 11vw, 3.5rem); }
 .discussion-screen .button-secondary { margin-top: 8px; }
 .result-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
@@ -110,4 +110,4 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .result-screen .vote-card .word { padding: 10px 12px; font-size: .95rem; }
 .result-screen .vote-count { display: inline; margin: 0 0 0 8px; font-size: .85rem; }
 .result-screen .voters { display: inline; padding: 0 0 0 6px; font-size: .85rem; }
-@media (max-width: 380px) { .discussion-screen .discussion-layout { gap: 8px; } .discussion-screen .word { padding: 8px; font-size: .88rem; } .result-screen .compact-card img { max-height: 14vh; } }
+@media (max-width: 380px) { .discussion-screen .discussion-layout { gap: 8px; } .result-screen .compact-card img { max-height: 14vh; } }
