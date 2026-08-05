@@ -8,9 +8,9 @@ body.lightbox-open { overflow: hidden; }
 .eyebrow { margin: 0 0 10px; color: #a05b37; font-size: .75rem; font-weight: 800; letter-spacing: .16em; }
 h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 [data-round-title] { font-size: clamp(1.05rem, 4.6vw, 1.5rem); letter-spacing: -.02em; white-space: nowrap; }
-.screen-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.screen-title-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; width: 100%; gap: 12px; }
 .screen-title-row h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.exit-button { flex: 0 0 auto; padding: 2px 0; border: 0; background: transparent; color: #a05b37; font: inherit; font-size: clamp(1.05rem, 4.6vw, 1.5rem); font-weight: 800; line-height: 1.2; cursor: pointer; }
+.exit-button { white-space: nowrap; padding: 2px 0; border: 0; background: transparent; color: #a05b37; font: inherit; font-size: clamp(1.05rem, 4.6vw, 1.5rem); font-weight: 800; line-height: 1.2; cursor: pointer; }
 .exit-button:hover, .exit-button:focus-visible { color: #7d4024; text-decoration: underline; outline: none; }
 .screen-subtitle { margin: 10px 0 0; color: #a05b37; font-size: 1rem; font-weight: 800; }
 #round-title { font-size: 1.35rem; font-weight: 800; color: #382c23; }
