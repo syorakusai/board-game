@@ -11,7 +11,6 @@ const state = { playerCount:0, cardSet:savedCardSet, wordSet:savedWordSets[saved
 const screens=document.querySelectorAll("[data-screen]");
 document.title="貴族のひそめごと";
 document.querySelector('[data-screen="title"] .eyebrow')?.remove();
-document.querySelector('[data-screen="title"] h1').textContent="貴族のひそめごと";
 document.querySelector('[data-screen="title"] .title-main-image')?.setAttribute("alt","貴族のひそめごとのメインイラスト");
 const fixedScreenTitles={howto:"宴の作法","player-count":"宴の支度","player-names":"客人の名乗り",ready:"宴の席次"};
 Object.entries(fixedScreenTitles).forEach(([screen,title])=>{const el=document.querySelector(`[data-screen="${screen}"] h1`);if(el)el.textContent=title;});
