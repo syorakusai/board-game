@@ -10,7 +10,7 @@ document.title="貴族のひそめごと";
 document.querySelector('[data-screen="title"] .eyebrow')?.remove();
 document.querySelector('[data-screen="title"] h1').textContent="貴族のひそめごと";
 document.querySelector('[data-screen="title"] .title-main-image')?.setAttribute("alt","貴族のひそめごとのメインイラスト");
-const fixedScreenTitles={howto:"宴の作法","player-count":"宴の支度","player-names":"客人の名乗り",ready:"宴席の順"};
+const fixedScreenTitles={howto:"宴の作法","player-count":"宴の支度","player-names":"客人の名乗り",ready:"宴の席次"};
 Object.entries(fixedScreenTitles).forEach(([screen,title])=>{const el=document.querySelector(`[data-screen="${screen}"] h1`);if(el)el.textContent=title;});
 const roundTitleMap={"CARD DRAW":"札選び","CARD OPEN":"お題との対面","PARENT WORD":"親のひそめごと","WORD OPEN":"言葉のお披露目","DISCUSSION OPEN":"推理の支度",DISCUSSION:"宴の推理","WORD SELECT":"推理結果の記帳","SELECTION OPEN":"ひそめごと開帳",RESULT:"宴の顛末",SCORE:"得点の記録"};
 const roundNames=["","第一","第二","第三","第四","第五","第六","第七","第八","第九","第十"];
