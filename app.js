@@ -48,10 +48,10 @@ function renderPlayerNames(){
   for(let i=0;i<n;i++){
     const l=document.createElement("label");
     l.className="field-label";
-    l.innerHTML=`${["一人目","二人目","三人目","四人目","五人目","六人目"][i]}<input name="p${i}" maxlength="20" autocomplete="off" placeholder="名前を入力" />`;
+    l.innerHTML=`${["一人目","二人目","三人目","四人目","五人目","六人目"][i]}<input name="p${i}" maxlength="20" autocomplete="off" placeholder="客人${i+1}" />`;
     f.append(l);
   }
-  [...f.querySelectorAll("input")].forEach((x,i)=>x.value=savedPlayers[i]||"");
+  [...f.querySelectorAll("input")].forEach((x,i)=>x.value=savedPlayers[i]||`客人${i+1}`);
   show("player-names");
 }
 function selectPlayerCount(n,button){
