@@ -82,7 +82,7 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .howto-description h2:first-child { margin-top: 0; }
 .howto-description h3 { margin: 20px 0 6px; color: #51483f; font-size: 1rem; line-height: 1.5; }
 .howto-description p { margin: 0 0 10px; }
-.deck-stack-image { display: block; width: auto; max-width: 100%; height: auto; max-height: min(48vh, calc(100dvh - 240px)); margin: 4px auto 14px; object-fit: contain; }
+.deck-stack-image { display: block; width: auto; max-width: none; height: auto; max-height: calc(min(48vh, calc(100dvh - 240px)) / 0.736); margin: 4px auto 14px; object-fit: contain; }
 .discussion-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
 .discussion-screen .discussion-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 14px; align-items: center; margin: 14px 0 18px; }
 .discussion-screen .card-area { margin: 0; }
