@@ -8,7 +8,7 @@ body.lightbox-open { overflow: hidden; }
 .eyebrow { margin: 0 0 10px; color: #a05b37; font-size: .75rem; font-weight: 800; letter-spacing: .16em; }
 h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 [data-round-title] { font-size: clamp(1.05rem, 4.6vw, 1.5rem); letter-spacing: -.02em; white-space: nowrap; }
-.screen-subtitle { margin: 10px 0 0; color: #a05b37; font-size: 1rem; font-weight: 800; }
+.screen-subtitle { margin: 10px 0 0; color: #a05b37; font-size: 1rem; font-weight: 800; }\n#round-title { font-size: 1.35rem; font-weight: 800; color: #382c23; }
 .description { margin: 12px 0 26px; color: #70685f; line-height: 1.7; }
 .count-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .count-button { min-height: 52px; border: 1px solid #dfd3c5; border-radius: 14px; background: #fff; color: #382c23; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
