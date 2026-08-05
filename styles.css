@@ -30,8 +30,8 @@ h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 input { width: 100%; border: 1px solid #d9cfc4; border-radius: 12px; padding: 13px 14px; font: inherit; font-weight: 400; background: #fff; }
 input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .form-error { min-height: 24px; margin: 12px 0 0; color: #b42318; font-size: .9rem; }
-.button-row { display: flex; gap: 10px; margin-top: 16px; }
-.button { display: block; width: 100%; min-height: 52px; flex: 1; border: 0; border-radius: 12px; padding: 14px 20px; font: inherit; font-weight: 800; cursor: pointer; }
+.button-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }
+.button { display: flex; align-items: center; justify-content: center; width: 100%; height: 52px; min-height: 52px; flex: 1; border: 0; border-radius: 12px; padding: 0 20px; font: inherit; font-weight: 800; line-height: 1.2; cursor: pointer; }
 .button-primary { background: #a05b37; color: white; }
 .button-secondary { background: #eee7df; color: #55483d; }
 .player-list { display: grid; gap: 10px; margin: 20px 0 26px; }
@@ -58,6 +58,7 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .word-button.is-selected { border: 3px solid #a05b37; background: #fff5ed; }
 .timer { margin: 20px 0; color: #a05b37; font-size: clamp(2.7rem, 14vw, 4.5rem); font-variant-numeric: tabular-nums; font-weight: 900; text-align: center; }
 .button-secondary { margin-top: 12px; }
+.button-row .button-secondary { margin-top: 0; }
 #parent-word { margin-bottom: 12px; }
 .vote-list { display: grid; gap: 12px; margin: 18px 0 24px; }
 .vote-card { padding: 10px; border: 1px solid #dfd3c5; border-radius: 14px; background: #fff; }
