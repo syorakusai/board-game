@@ -93,7 +93,8 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .discussion-screen .button-secondary { margin-top: 8px; }
 .result-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
 .result-screen .result-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 10px 0; }
-.result-reveal-status { min-height: 1.7em; margin: 8px 0 4px; color: #a05b37; font-weight: 900; text-align: center; }
+.result-summary-panel { display: grid; gap: 10px; align-content: center; min-width: 0; }
+.result-reveal-status { min-height: 1.7em; margin: 0; color: #a05b37; font-weight: 900; text-align: center; }
 .result-screen .card-area { margin: 0; }
 .result-screen .compact-card img { max-height: min(16vh, calc(100dvh - 300px)); }
 .result-screen .description { margin: 0; line-height: 1.45; }
