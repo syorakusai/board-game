@@ -36,8 +36,8 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .player-item span:last-child { color: #a05b37; font-size: .85rem; font-weight: 700; }
 .card-area { margin: 18px 0 22px; text-align: center; }
 #handoff-card-area { min-height: min(48vh, calc(100dvh - 240px)); display: grid; place-items: center; }
-.handoff-actions { display: grid; gap: 10px; }
-#handoff-button, #handoff-redraw-button { width: 100%; min-height: 72px; padding: 16px 20px; font-size: 1.25rem; }
+.handoff-actions { display: flex; gap: 10px; margin-top: 12px; }
+#handoff-button, #handoff-redraw-button { width: auto; min-height: 0; padding: 14px 16px; font-size: inherit; }
 .card-area img { display: block; width: auto; max-width: 100%; height: auto; max-height: min(48vh, calc(100dvh - 240px)); margin: 0 auto; object-fit: contain; border-radius: 14px; }
 .card-zoom-trigger { cursor: zoom-in; touch-action: manipulation; }
 .card-zoom-trigger:focus-visible { outline: 3px solid #a05b37; outline-offset: 4px; }
