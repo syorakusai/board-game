@@ -1,10 +1,12 @@
 const PLAYER_STORAGE_KEY = "word-card-players";
 const PLAYER_COUNT_STORAGE_KEY = "word-card-player-count";
 const CARD_SET_STORAGE_KEY = "word-card-set";
+const WORD_SET_STORAGE_KEY = "word-card-word-sets";
 const savedPlayers = (() => { try { const v=JSON.parse(localStorage.getItem(PLAYER_STORAGE_KEY)||"[]"); return Array.isArray(v)?v.map(String):[]; } catch { return []; } })();
 const savedPlayerCount = (() => { try { const v=Number(localStorage.getItem(PLAYER_COUNT_STORAGE_KEY)); return Number.isInteger(v)&&v>=2&&v<=6?v:0; } catch { return 0; } })();
 const savedCardSet = (() => { try { const v=localStorage.getItem(CARD_SET_STORAGE_KEY); return v==="test"||v==="vol1"?v:"vol1"; } catch { return "vol1"; } })();
-const state = { playerCount:0, cardSet:savedCardSet, players:[], order:[], parentIndex:0, card:null, official:[], words:[], parentWord:"", answers:{}, answerIndex:0, answerLocked:false, selectedAnswer:"", timer:null, usedCards:new Set(), round:0, handoffNext:"" };
+const savedWordSets = (() => { try { const v=JSON.parse(localStorage.getItem(WORD_SET_STORAGE_KEY)||"{}"); return v&&typeof v==="object"&&!Array.isArray(v)?v:{}; } catch { return {}; } })();
+const state = { playerCount:0, cardSet:savedCardSet, wordSet:savedWordSets[savedCardSet]||"standard-1", setCatalog:{}, cardSetData:null, wordSets:[], players:[], order:[], parentIndex:0, card:null, official:[], words:[], parentWord:"", answers:{}, answerIndex:0, answerLocked:false, selectedAnswer:"", timer:null, usedCards:new Set(), round:0, handoffNext:"" };
 const screens=document.querySelectorAll("[data-screen]");
 document.title="貴族のひそめごと";
 document.querySelector('[data-screen="title"] .eyebrow')?.remove();
@@ -40,8 +42,13 @@ document.addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!cardLightbox.classList.contains("is-hidden"))closeCardLightbox();if((e.key==="Enter"||e.key===" ")&&e.target.matches(".card-zoom-trigger")){e.preventDefault();openCardLightbox(e.target);}});
 function handoff(player,next){document.querySelector("#handoff-text").innerHTML=`全員イラストを確認してください。<br>確認できたら、${esc(player.name)}さんが「確認」を押して親ワード入力へ進んでください。`;document.querySelector("#handoff-card-area").innerHTML=cardMarkup(state.card);state.handoffNext=next;show("handoff");}
 function preloadCardImage(){const src=cardImagePath(state.card?.image);if(src){const image=new Image();image.src=src;}}
-function chooseCard(){const cards=state.cards||[];let available=cards.filter(c=>!state.usedCards.has(c.id));if(!available.length){state.usedCards.clear();available=cards;}state.card=available[Math.floor(Math.random()*available.length)];state.usedCards.add(state.card.id);state.official=shuffle(state.card.officialWords).slice(0,3);preloadCardImage();}
-async function loadCards(){try{const r=await fetch(`cards/${state.cardSet}/cards.json`);if(!r.ok)throw Error();const d=await r.json();if(!Array.isArray(d)||!d.length)throw Error();state.cards=d;}catch{state.cards=[{id:1,image:"",officialWords:["りんご","鴨","奇妙な組み合わせ"]}];}}
+function chooseCard(){const cards=state.cards||[];let available=cards.filter(c=>!state.usedCards.has(c.id));if(!available.length){state.usedCards.clear();available=cards;}state.card=available[Math.floor(Math.random()*available.length)];state.usedCards.add(state.card.id);const wordSet=state.wordSets.find(set=>set.id===state.wordSet)||state.wordSets[0];const wordCard=wordSet?.cards?.find(c=>String(c.cardId)===String(state.card.id));state.official=shuffle(wordCard?.officialWords||[]).slice(0,3);preloadCardImage();}
+async function fetchCardSet(setId){const r=await fetch(`cards/${setId}/cards.json`);if(!r.ok)throw Error();const d=await r.json();if(!d||!Array.isArray(d.cards)||!Array.isArray(d.wordSets)||!d.cards.length||!d.wordSets.length)throw Error();return d;}
+function saveWordSetSelection(){try{localStorage.setItem(WORD_SET_STORAGE_KEY,JSON.stringify(Object.fromEntries(Object.entries(state.setCatalog).map(([id])=>[id,state.cardSet===id?state.wordSet:(savedWordSets[id]||"standard-1")]))));}catch{}}
+function renderWordSetOptions(){const select=document.querySelector("#word-set-select");if(!select)return;const data=state.setCatalog[state.cardSet];const sets=data?.wordSets||[];select.replaceChildren(...sets.map(set=>{const option=document.createElement("option");option.value=set.id;option.textContent=set.name;return option;}));if(!sets.some(set=>set.id===state.wordSet))state.wordSet=sets[0]?.id||"standard-1";select.value=state.wordSet;}
+function renderCardSetOptions(){const select=document.querySelector("#card-set-select");if(!select)return;select.replaceChildren(...Object.values(state.setCatalog).map(data=>{const option=document.createElement("option");option.value=data.id;option.textContent=data.name;return option;}));if(!state.setCatalog[state.cardSet])state.cardSet=Object.keys(state.setCatalog)[0]||"vol1";select.value=state.cardSet;renderWordSetOptions();}
+async function loadCardSetCatalog(){const entries=await Promise.all(["test","vol1"].map(async id=>{try{return await fetchCardSet(id);}catch{return null;}}));entries.filter(Boolean).forEach(data=>{state.setCatalog[data.id]=data;});renderCardSetOptions();}
+async function loadCards(){try{const d=state.setCatalog[state.cardSet]||await fetchCardSet(state.cardSet);state.cardSetData=d;state.cards=d.cards;state.wordSets=d.wordSets;const saved=savedWordSets[state.cardSet]||state.wordSet;state.wordSet=state.wordSets.some(set=>set.id===saved)?saved:state.wordSets[0].id;renderWordSetOptions();}catch{state.cards=[{id:1,image:""}];state.wordSets=[{id:"standard-1",name:"標準1",cards:[{cardId:1,officialWords:["りんご","鴨","奇妙な組み合わせ"]}]}];state.wordSet="standard-1";}}
 function renderOrder(){const list=document.querySelector("#player-list");if(!list)return;list.innerHTML=state.order.map((i,n)=>`<div class="player-item"><span>${n+1}. ${esc(state.players[i].name)}</span></div>`).join("");}
 function showReady(){
   state.order=shuffle(state.players.map((_,i)=>i));
@@ -80,8 +87,8 @@ for(let n=2;n<=6;n++){
 }
 if(savedPlayerCount){const savedButton=[...document.querySelectorAll(".count-button")].find(button=>button.textContent===`${savedPlayerCount}人`);if(savedButton)selectPlayerCount(savedPlayerCount,savedButton);}
 playerCountNext.onclick=()=>{if(state.playerCount)renderPlayerNames();};
-document.querySelectorAll("[data-card-set]").forEach(button=>button.onclick=()=>{state.cardSet=button.dataset.cardSet;try{localStorage.setItem(CARD_SET_STORAGE_KEY,state.cardSet);}catch{}document.querySelectorAll("[data-card-set]").forEach(x=>x.classList.toggle("is-selected",x===button));});
-document.querySelectorAll("[data-card-set]").forEach(button=>button.classList.toggle("is-selected",button.dataset.cardSet===state.cardSet));
+document.querySelector("#card-set-select").onchange=e=>{state.cardSet=e.target.value;state.wordSet=savedWordSets[state.cardSet]||"standard-1";try{localStorage.setItem(CARD_SET_STORAGE_KEY,state.cardSet);}catch{}renderWordSetOptions();saveWordSetSelection();};
+document.querySelector("#word-set-select").onchange=e=>{state.wordSet=e.target.value;saveWordSetSelection();};
 document.querySelector("#title-start").onclick=()=>show("player-count");
 document.querySelector("#howto-button").onclick=()=>show("howto");
 document.querySelector("#howto-back").onclick=()=>show("title");
@@ -110,4 +117,4 @@ const GAME_EXIT_MESSAGE="ゲームを終了してタイトル画面に戻りま�
 function stopGame(){clearInterval(state.timer);if(confirm(GAME_EXIT_MESSAGE)){location.reload();}}
 window.addEventListener("beforeunload",e=>{if(state.round){e.preventDefault();e.returnValue=GAME_EXIT_MESSAGE;}});
 history.pushState(null,"",location.href);window.addEventListener("popstate",()=>{history.pushState(null,"",location.href);stopGame();});
-show("title");
+loadCardSetCatalog().then(()=>show("title"));
