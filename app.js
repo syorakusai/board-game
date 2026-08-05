@@ -1,4 +1,3 @@
-
 const PLAYER_STORAGE_KEY = "word-card-players";
 const savedPlayers = (() => { try { const v=JSON.parse(localStorage.getItem(PLAYER_STORAGE_KEY)||"[]"); return Array.isArray(v)?v.map(String):[]; } catch { return []; } })();
 const state = { playerCount:0, cardSet:"vol1", players:[], order:[], parentIndex:0, card:null, official:[], words:[], parentWord:"", answers:{}, answerIndex:0, answerLocked:false, selectedAnswer:"", timer:null, usedCards:new Set(), round:0, handoffNext:"" };
@@ -37,7 +36,33 @@ function showReady(){
   renderOrder();
   requestAnimationFrame(renderOrder);
 }
-for(let n=3;n<=6;n++){const b=document.createElement("button");b.className="count-button";b.textContent=`${n}人`;b.onclick=()=>{state.playerCount=n;document.querySelector("#name-description").textContent=`${n}人分の名前を入力してください。`;const f=document.querySelector("#name-fields");f.replaceChildren();for(let i=0;i<n;i++){const l=document.createElement("label");l.className="field-label";l.innerHTML=`プレイヤー${i+1}<input name="p${i}" maxlength="20" autocomplete="off" placeholder="名前を入力" />`;f.append(l);}if(savedPlayers.length===n)[...f.querySelectorAll("input")].forEach((x,i)=>x.value=savedPlayers[i]||"");show("player-names");f.querySelector("input").focus();};document.querySelector("#player-counts").append(b);}
+const playerCountNext=document.querySelector("#player-count-next");
+function renderPlayerNames(){
+  const n=state.playerCount;
+  document.querySelector("#name-description").textContent=`${n}人分の名前を入力してください。`;
+  const f=document.querySelector("#name-fields");
+  f.replaceChildren();
+  for(let i=0;i<n;i++){
+    const l=document.createElement("label");
+    l.className="field-label";
+    l.innerHTML=`プレイヤー${i+1}<input name="p${i}" maxlength="20" autocomplete="off" placeholder="名前を入力" />`;
+    f.append(l);
+  }
+  if(savedPlayers.length===n)[...f.querySelectorAll("input")].forEach((x,i)=>x.value=savedPlayers[i]||"");
+  show("player-names");
+}
+for(let n=3;n<=6;n++){
+  const b=document.createElement("button");
+  b.className="count-button";
+  b.textContent=`${n}人`;
+  b.onclick=()=>{
+    state.playerCount=n;
+    document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===b));
+    playerCountNext.disabled=false;
+  };
+  document.querySelector("#player-counts").append(b);
+}
+playerCountNext.onclick=()=>{if(state.playerCount)renderPlayerNames();};
 document.querySelectorAll("[data-card-set]").forEach(button=>button.onclick=()=>{state.cardSet=button.dataset.cardSet;document.querySelectorAll("[data-card-set]").forEach(x=>x.classList.toggle("is-selected",x===button));});
 document.querySelector("#title-start").onclick=()=>show("player-count");
 document.querySelector("#howto-button").onclick=()=>show("howto");
