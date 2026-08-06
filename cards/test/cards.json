@@ -66,7 +66,7 @@
   "wordSets": [
     {
       "id": "standard-1",
-      "name": "標準1",
+      "name": "標準セット",
       "cards": [
         {
           "cardId": 1,
@@ -297,7 +297,7 @@
     },
     {
       "id": "standard-2",
-      "name": "標準2",
+      "name": "標準セット2",
       "cards": [
         {
           "cardId": 1,
