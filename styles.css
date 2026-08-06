@@ -73,7 +73,8 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .card-lightbox-close { position: absolute; z-index: 1; top: 12px; right: 14px; width: 52px; height: 52px; border: 0; border-radius: 50%; background: #eee8dc; color: #192321; font-size: 2.4rem; line-height: 1; cursor: pointer; }
 .card-lightbox-close:focus-visible { outline: 3px solid #eee8dc; outline-offset: 3px; }
 section[data-screen="title"] { text-align: center; }
-
+.title-heading { margin: 0 0 8px; color: #f3eee4; font-size: clamp(1.7rem, 7vw, 2.35rem); font-weight: 900; line-height: 1.25; letter-spacing: .02em; text-shadow: 0 1px 0 #0008; }
+.title-tagline { margin: 0 0 22px; color: #e8c47a; font-size: clamp(1rem, 4.3vw, 1.35rem); font-weight: 700; line-height: 1.5; letter-spacing: .03em; text-shadow: 0 1px 2px #000b; }
 section[data-screen="title"] .button, section[data-screen="howto"] .button { width: 100%; }
 section[data-screen="title"] .button + .button { margin-top: 10px; }
 .title-main-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 0 0 22px; border-radius: 14px; }
