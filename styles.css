@@ -88,7 +88,7 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .discussion-screen .word-list { grid-column: 1 / -1; gap: 7px; margin: 0; }
 .discussion-screen .word { padding: 10px 12px; font-size: 1rem; }
 .discussion-screen .timer { margin: 0; font-size: clamp(2.25rem, 11vw, 3.5rem); }
-.discussion-screen .button-secondary { margin-top: 8px; }
+.discussion-screen .button-primary { margin-top: 8px; }
 .result-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
 .result-screen .result-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 10px 0; }
 .result-summary-panel { display: grid; gap: 10px; align-content: center; min-width: 0; }
