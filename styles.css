@@ -72,6 +72,7 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .card-lightbox-close { position: absolute; z-index: 1; top: 12px; right: 14px; width: 52px; height: 52px; border: 0; border-radius: 50%; background: #eee8dc; color: #192321; font-size: 2.4rem; line-height: 1; cursor: pointer; }
 .card-lightbox-close:focus-visible { outline: 3px solid #eee8dc; outline-offset: 3px; }
 section[data-screen="title"] { text-align: center; }
+section[data-screen="title"] .title-page-title { margin: 18px 0 0; color: #eee8dc; font-size: clamp(1.05rem, 4vw, 1.35rem); font-weight: 800; line-height: 1.3; text-align: center; }
 section[data-screen="title"] .button, section[data-screen="howto"] .button { width: 100%; }
 section[data-screen="title"] .button + .button { margin-top: 10px; }
 .title-main-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 0 0 22px; border-radius: 14px; }
