@@ -175,7 +175,7 @@ cards/
   "wordSets": [
     {
       "id": "standard-1",
-      "name": "標準1",
+      "name": "標準セット",
       "cards": [
         {
           "cardId": 1,
