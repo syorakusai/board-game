@@ -34,8 +34,8 @@ jobs:
           path = Path("index.html")
           text = path.read_text(encoding="utf-8")
           version = os.environ["VERSION"][:7]
-          updated = re.sub(r"styles\.css\?v=[^\\"']+", f"styles.css?v={version}", text)
-          updated = re.sub(r"app\.js\?v=[^\\"']+", f"app.js?v={version}", updated)
+          updated = re.sub(r'styles[.]css[?]v=[^"']+', f"styles.css?v=\${version}", text)
+          updated = re.sub(r'app[.]js[?]v=[^"']+', f"app.js?v=\${version}", updated)
           if updated == text:
               raise SystemExit("No cache-busted asset references found")
           path.write_text(updated, encoding="utf-8")
