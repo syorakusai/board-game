@@ -2,7 +2,6 @@ const PLAYER_STORAGE_KEY = "word-card-players";
 const PLAYER_COUNT_STORAGE_KEY = "word-card-player-count";
 const CARD_SET_STORAGE_KEY = "word-card-set";
 const WORD_SET_STORAGE_KEY = "word-card-word-sets";
-const CARD_IMAGE_VERSION = "20260806-1";
 const savedPlayers = (() => { try { const v=JSON.parse(localStorage.getItem(PLAYER_STORAGE_KEY)||"[]"); return Array.isArray(v)?v.map(String):[]; } catch { return []; } })();
 const savedPlayerCount = (() => { try { const v=Number(localStorage.getItem(PLAYER_COUNT_STORAGE_KEY)); return Number.isInteger(v)&&v>=2&&v<=6?v:0; } catch { return 0; } })();
 const savedCardSet = (() => { try { const v=localStorage.getItem(CARD_SET_STORAGE_KEY); return v==="test"||v==="vol1"?v:"vol1"; } catch { return "vol1"; } })();
@@ -27,7 +26,7 @@ function show(name){
 }
 const esc=v=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
-function cardImagePath(image){if(!image)return "";const path=image.startsWith("cards/")?image:`cards/${state.cardSet}/${image}`;return `${path}${path.includes("?")?"&":"?"}v=${CARD_IMAGE_VERSION}`;}
+function cardImagePath(image){if(!image)return "";return image.startsWith("cards/")?image:`cards/${state.cardSet}/${image}`;}
 function cardMarkup(card){const src=cardImagePath(card?.image);return src?`<img class="card-zoom-trigger" src="${esc(src)}" alt="お題カード。タップで拡大表示" tabindex="0" role="button" onerror="this.parentElement.innerHTML='<div class=&quot;missing-card&quot;>カード画像を読み込めませんでした</div>'">`:`<div class="missing-card">カード画像を読み込めません</div>`;}
 const cardLightbox=document.querySelector("#card-lightbox"),cardLightboxContent=document.querySelector("#card-lightbox-content");
 function closeCardLightbox(){cardLightbox.classList.add("is-hidden");cardLightboxContent.replaceChildren();document.body.classList.toggle("lightbox-open",historyLightbox&&!historyLightbox.classList.contains("is-hidden"));}
