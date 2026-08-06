@@ -8,6 +8,8 @@ on:
       - "index.html"
       - "app.js"
       - "styles.css"
+      - "cards/**"
+      - "assets/**"
       - ".github/workflows/cache-bust.yml"
 
 permissions:
