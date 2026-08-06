@@ -24,9 +24,27 @@ function show(name){
   document.body.scrollTop=0;
   requestAnimationFrame(()=>window.scrollTo(0,0));
 }
+const ASSET_VERSION = (() => {
+  try {
+    const src = document.currentScript?.src || "";
+    return new URL(src, location.href).searchParams.get("v") || "runtime-1";
+  } catch {
+    return "runtime-1";
+  }
+})();
+
+function assetUrl(path) {
+  if (!path) return "";
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}v=${encodeURIComponent(ASSET_VERSION)}`;
+}
 const esc=v=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
-function cardImagePath(image){return image?(image.startsWith("cards/")?image:`cards/${state.cardSet}/${image}`):"";}
+function cardImagePath(image){
+  if(!image)return "";
+  const path=image.startsWith("cards/")?image:`cards/${state.cardSet}/${image}`;
+  return assetUrl(path);
+}
 function cardMarkup(card){const src=cardImagePath(card?.image);return src?`<img class="card-zoom-trigger" src="${esc(src)}" alt="お題カード。タップで拡大表示" tabindex="0" role="button" onerror="this.parentElement.innerHTML='<div class=&quot;missing-card&quot;>カード画像を読み込めませんでした</div>'">`:`<div class="missing-card">カード画像を読み込めません</div>`;}
 const cardLightbox=document.querySelector("#card-lightbox"),cardLightboxContent=document.querySelector("#card-lightbox-content");
 function closeCardLightbox(){cardLightbox.classList.add("is-hidden");cardLightboxContent.replaceChildren();document.body.classList.toggle("lightbox-open",historyLightbox&&!historyLightbox.classList.contains("is-hidden"));}
@@ -52,7 +70,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!historyLightbox.cl
 function handoff(player,next){document.querySelector("#handoff-text").innerHTML=`全員イラストを確認してください。<br>確認できたら、${esc(player.name)}さんが「確認」を押して親ワード入力へ進んでください。`;document.querySelector("#handoff-card-area").innerHTML=cardMarkup(state.card);state.handoffNext=next;show("handoff");}
 function preloadCardImage(){const src=cardImagePath(state.card?.image);if(src){const image=new Image();image.src=src;}}
 function chooseCard(){const cards=state.cards||[];let available=cards.filter(c=>!state.usedCards.has(c.id));if(!available.length){state.usedCards.clear();available=cards;}state.card=available[Math.floor(Math.random()*available.length)];state.usedCards.add(state.card.id);const wordSet=state.wordSets.find(set=>set.id===state.wordSet)||state.wordSets[0];const wordCard=wordSet?.cards?.find(c=>String(c.cardId)===String(state.card.id));state.official=shuffle(wordCard?.officialWords||[]).slice(0,3);preloadCardImage();}
-async function fetchCardSet(setId){const r=await fetch(`cards/${setId}/cards.json`);if(!r.ok)throw Error();const d=await r.json();if(!d||!Array.isArray(d.cards)||!Array.isArray(d.wordSets)||!d.cards.length||!d.wordSets.length)throw Error();return d;}
+async function fetchCardSet(setId){const r=await fetch(assetUrl(`cards/${setId}/cards.json`));if(!r.ok)throw Error();const d=await r.json();if(!d||!Array.isArray(d.cards)||!Array.isArray(d.wordSets)||!d.cards.length||!d.wordSets.length)throw Error();return d;}
 function saveWordSetSelection(){try{const saved=readWordSetSelections();saved[state.cardSet]=state.wordSet;localStorage.setItem(WORD_SET_STORAGE_KEY,JSON.stringify(saved));}catch{}}
 function renderWordSetOptions(){const select=document.querySelector("#word-set-select");if(!select)return;const data=state.setCatalog[state.cardSet];const sets=data?.wordSets||[];select.replaceChildren(...sets.map(set=>{const option=document.createElement("option");option.value=set.id;option.textContent=set.name;return option;}));if(!sets.some(set=>set.id===state.wordSet))state.wordSet=sets[0]?.id||"standard-1";select.value=state.wordSet;}
 function renderCardSetOptions(){const select=document.querySelector("#card-set-select");if(!select)return;select.replaceChildren(...Object.values(state.setCatalog).map(data=>{const option=document.createElement("option");option.value=data.id;option.textContent=data.name;return option;}));if(!state.setCatalog[state.cardSet])state.cardSet=Object.keys(state.setCatalog)[0]||"vol1";select.value=state.cardSet;renderWordSetOptions();}
