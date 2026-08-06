@@ -10,6 +10,9 @@ h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 [data-round-title] { font-size: clamp(1.05rem, 4.6vw, 1.5rem); letter-spacing: -.02em; white-space: nowrap; }
 .screen-title-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; width: 100%; gap: 12px; }
 .screen-title-row h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.screen-title-actions { display: flex; align-items: center; gap: 12px; }
+.history-button { white-space: nowrap; padding: 2px 0; border: 0; background: transparent; color: #d39a55; font: inherit; font-size: clamp(1.05rem, 4.6vw, 1.5rem); font-weight: 800; line-height: 1.2; cursor: pointer; }
+.history-button:hover, .history-button:focus-visible { color: #f0c36e; text-decoration: underline; outline: none; }
 .exit-button { white-space: nowrap; padding: 2px 0; border: 0; background: transparent; color: #d39a55; font: inherit; font-size: clamp(1.05rem, 4.6vw, 1.5rem); font-weight: 800; line-height: 1.2; cursor: pointer; }
 .exit-button:hover, .exit-button:focus-visible { color: #f0c36e; text-decoration: underline; outline: none; }
 .screen-subtitle { margin: 10px 0 0; color: #d39a55; font-size: 1rem; font-weight: 800; }
@@ -93,6 +96,7 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .result-screen .result-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 10px 0; }
 .result-summary-panel { display: grid; gap: 10px; align-content: center; min-width: 0; }
 .result-reveal-status { min-height: 1.7em; margin: 0; color: #a05b37; font-weight: 900; text-align: center; }
+.result-parent { margin: 0; color: #d39a55; font-size: 1rem; font-weight: 800; text-align: center; }
 .result-screen .card-area { margin: 0; }
 .result-screen .compact-card img { max-height: min(16vh, calc(100dvh - 300px)); }
 .result-screen .description { margin: 0; line-height: 1.45; }
@@ -109,4 +113,36 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .result-screen .vote-card .word { padding: 10px 12px; font-size: .95rem; }
 .result-screen .vote-count { display: inline; margin: 0 0 0 8px; font-size: .85rem; }
 .result-screen .voters { display: inline; padding: 0 0 0 6px; font-size: .85rem; }
+.history-lightbox { position: fixed; z-index: 900; inset: 0; overflow-y: auto; padding: 16px; background: #000b; }
+.history-lightbox.is-hidden { display: none; }
+.history-panel { width: min(100%, 680px); min-height: calc(100dvh - 32px); margin: 0 auto; padding: 18px; border: 1px solid #46534d; border-radius: 16px; background: #14201e; box-shadow: 0 10px 36px #0008; }
+.history-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: -18px; z-index: 1; margin: -18px -18px 16px; padding: 16px 18px; background: #14201e; border-bottom: 1px solid #46534d; }
+.history-header h2 { margin: 0; color: #eee8dc; font-size: 1.35rem; }
+.history-close { width: 44px; height: 44px; border: 0; border-radius: 50%; background: #eee8dc; color: #192321; font-size: 2rem; line-height: 1; cursor: pointer; }
+.history-close:focus-visible { outline: 3px solid #eee8dc; outline-offset: 3px; }
+.history-list { display: grid; gap: 18px; }
+.history-scores { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #46534d; }
+.history-score-list { display: grid; gap: 5px; }
+.history-score { display: flex; justify-content: space-between; gap: 10px; padding: 7px 9px; border-radius: 8px; background: #263630; color: #eee8dc; }
+.history-score strong { color: #f0c36e; white-space: nowrap; }
+.history-empty { margin: 12px 0; color: #c2c1b5; text-align: center; }
+.history-entry { padding: 14px; border: 1px solid #46534d; border-radius: 14px; background: #192623; }
+.history-entry-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; color: #d39a55; }
+.history-entry-heading h3 { margin: 0; color: #eee8dc; font-size: 1.1rem; }
+.history-entry-overview { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 12px; align-items: start; }
+.history-card-area { min-width: 0; }
+.history-card-area img { display: block; width: 100%; max-height: 300px; margin: 0 auto; object-fit: contain; border-radius: 10px; }
+.history-result { min-width: 0; }
+.history-label { margin: 8px 0 4px; color: #a9aaa0; font-size: .78rem; font-weight: 800; }
+.history-parent-word { margin: 0; padding: 8px 10px; border-radius: 9px; background: #3a3026; color: #f0c36e; font-weight: 800; }
+.history-words { display: grid; gap: 6px; }
+.history-words .word { padding: 7px 8px; font-size: .88rem; }
+.history-answers { display: grid; gap: 5px; }
+.history-answer { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) auto; gap: 6px; align-items: center; padding: 7px 8px; border-radius: 8px; background: #263630; font-size: .82rem; }
+.history-answer span:nth-child(2) { overflow-wrap: anywhere; color: #c2c1b5; }
+.history-answer strong { font-size: .72rem; white-space: nowrap; }
+.history-answer .is-correct { color: #d39a55; }
+.history-answer .is-incorrect { color: #a9aaa0; }
+.history-summary { margin: 12px 0 0; color: #eee8dc; font-size: .88rem; font-weight: 800; line-height: 1.5; }
+@media (max-width: 380px) { .screen-title-actions { gap: 8px; } .history-entry-overview { grid-template-columns: 1fr; } .history-card-area img { max-height: 260px; } }
 .answer-screen .answer-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 18px 0 22px; }\n.answer-screen .card-area { margin: 0; }\n.answer-screen .compact-card img { max-height: min(25vh, calc(100dvh - 300px)); }\n.answer-screen .answer-guide { min-width: 0; }\n.answer-screen .answer-guide .screen-subtitle { margin: 0 0 12px; }\n.answer-screen .answer-guide .description { margin: 0; line-height: 1.45; }\n.answer-screen .word-list { margin-top: 0; }\n@media (max-width: 380px) { .discussion-screen .discussion-layout { gap: 8px; } .result-screen .compact-card img { max-height: 14vh; } }
