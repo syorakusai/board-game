@@ -66,10 +66,10 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .vote-card .word { border: 0; background: #263630; }
 .vote-count { margin-top: 8px; color: #d39a55; font-weight: 800; text-align: center; }
 .voters { padding: 6px 8px; color: #b7b8ad; text-align: center; }
-.card-lightbox { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 80px 16px 16px; background: #000b; }
+.card-lightbox { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: start center; padding: 72px 16px 8px; background: #000b; }
 .card-lightbox.is-hidden { display: none; }
-.card-lightbox-content { display: grid; place-items: center; min-width: 0; min-height: 0; width: min(100%, 520px); height: calc(100dvh - 96px); }
-.card-lightbox-content img { display: block; width: auto; height: auto; max-width: calc(100vw - 32px); max-height: calc(100dvh - 96px); object-fit: contain; border-radius: 10px; box-shadow: 0 10px 36px #0008; }
+.card-lightbox-content { display: grid; place-items: start center; min-width: 0; min-height: 0; width: min(100%, 520px); max-height: calc(100dvh - 80px); }
+.card-lightbox-content img { display: block; width: auto; height: auto; max-width: calc(100vw - 32px); max-height: calc(100dvh - 80px); object-fit: contain; border-radius: 10px; box-shadow: 0 10px 36px #0008; }
 .card-lightbox-close { position: absolute; z-index: 1; top: 12px; right: 14px; width: 52px; height: 52px; border: 0; border-radius: 50%; background: #eee8dc; color: #192321; font-size: 2.4rem; line-height: 1; cursor: pointer; }
 .card-lightbox-close:focus-visible { outline: 3px solid #eee8dc; outline-offset: 3px; }
 section[data-screen="title"] { text-align: center; }
