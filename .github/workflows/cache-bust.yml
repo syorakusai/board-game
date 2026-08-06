@@ -8,13 +8,7 @@ on:
       - "index.html"
       - "app.js"
       - "styles.css"
-      - "cards/**"
-      - "assets/**"
       - ".github/workflows/cache-bust.yml"
-
-concurrency:
-  group: asset-cache-version
-  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -27,35 +21,37 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Update and commit cache version
+      - name: Update asset query versions
+        id: update
         env:
           VERSION: ${{ github.sha }}
         run: |
-          for attempt in 1 2 3 4 5; do
-            git fetch origin main
-            git checkout -B main origin/main
-            VERSION_SHORT="${VERSION:0:7}"
-            sed -E -i "s#styles\\.css\\?v=[^\\"']+#styles.css?v=${VERSION_SHORT}#; s#app\\.js\\?v=[^\\"']+#app.js?v=${VERSION_SHORT}#" index.html
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
 
-            if git diff --quiet -- index.html; then
-              echo "Cache version is already current"
-              exit 0
-            fi
+          path = Path("index.html")
+          text = path.read_text(encoding="utf-8")
+          version = os.environ["VERSION"][:7]
+          updated = re.sub(r"""styles\.css\?v=[^"']+""", f"styles.css?v={version}", text)
+          updated = re.sub(r"""app\.js\?v=[^"']+""", f"app.js?v={version}", updated)
+          if updated == text:
+              raise SystemExit("No cache-busted asset references found")
+          path.write_text(updated, encoding="utf-8")
+          PY
 
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add index.html
-            git commit -m "Update asset cache version"
+          if git diff --quiet -- index.html; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
 
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-
-            echo "Push raced with another main update; retrying (attempt $attempt/5)"
-            git fetch origin main
-            git reset --hard origin/main
-            sleep 2
-          done
-
-          echo "Unable to push the cache version update after 5 attempts"
-          exit 1
+      - name: Commit updated cache version
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Update asset cache version"
+          git push
