@@ -34,22 +34,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git checkout -B main origin/main
-
-            python - <<'PY'
-            import os
-            import re
-            from pathlib import Path
-
-            path = Path("index.html")
-            text = path.read_text(encoding="utf-8")
-            version = os.environ["VERSION"][:7]
-            updated = re.sub(r"""styles\.css\?v=[^"']+""", f"styles.css?v={version}", text)
-            updated = re.sub(r"""app\.js\?v=[^"']+""", f"app.js?v={version}", updated)
-            if updated == text:
-                print("No cache-busted asset references need updating")
-            else:
-                path.write_text(updated, encoding="utf-8")
-            PY
+            python -c 'import os,re; from pathlib import Path; p=Path("index.html"); t=p.read_text(encoding="utf-8"); v=os.environ["VERSION"][:7]; u=re.sub(r"styles\.css\?v=[^"]+", f"styles.css?v={v}", t); u=re.sub(r"app\.js\?v=[^"]+", f"app.js?v={v}", u); p.write_text(u, encoding="utf-8")'
 
             if git diff --quiet -- index.html; then
               echo "Cache version is already current"
