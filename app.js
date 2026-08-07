@@ -12,7 +12,7 @@ const screens=document.querySelectorAll("[data-screen]");
 document.title="貴族のひそめごと";
 document.querySelector('[data-screen="title"] .eyebrow')?.remove();
 document.querySelector('[data-screen="title"] .title-main-image')?.setAttribute("alt","貴族のひそめごとのメインイラスト");
-const fixedScreenTitles={howto:"宴の作法","player-count":"宴の支度","player-names":"客人の名乗り",ready:"宴の席次"};
+const fixedScreenTitles={howto:"遊び方","player-count":"宴の支度","player-names":"客人の名乗り",ready:"宴の席次"};
 Object.entries(fixedScreenTitles).forEach(([screen,title])=>{const el=document.querySelector(`[data-screen="${screen}"] h1`);if(el)el.textContent=title;});
 const roundTitleMap={"CARD DRAW":"札選び","CARD OPEN":"お題との対面","PARENT WORD":"親のひそめごと","WORD OPEN":"言葉のお披露目",DISCUSSION:"宴の推理","TIME UP":"お時間です","WORD SELECT":"推理結果の記帳","SELECTION OPEN":"ひそめごと開帳",RESULT:"宴の顛末",SCORE:"得点の記録"};
 const roundNames=["","第一","第二","第三","第四","第五","第六","第七","第八","第九","第十"];
@@ -106,6 +106,15 @@ document.querySelector("#title-start").onclick=()=>{restorePlayerCountSelection(
 document.querySelector("#title-start").addEventListener("click",()=>{state.history=[];});
 document.querySelector("#howto-button").onclick=()=>show("howto");
 document.querySelector("#howto-back").onclick=()=>show("title");
+document.querySelectorAll("[data-howto-tab]").forEach(tab=>tab.onclick=()=>{
+  const target=tab.dataset.howtoTab;
+  document.querySelectorAll("[data-howto-tab]").forEach(button=>{
+    const selected=button===tab;
+    button.classList.toggle("is-selected",selected);
+    button.setAttribute("aria-selected",String(selected));
+  });
+  document.querySelectorAll("[data-howto-panel]").forEach(panel=>panel.classList.toggle("is-selected",panel.dataset.howtoPanel===target));
+});
 document.querySelector("#back-button").onclick=()=>show("player-count");
 document.querySelector("#player-form").onsubmit=e=>{e.preventDefault();const names=[...new FormData(e.target).values()].map(v=>String(v).trim()),err=document.querySelector("#form-error");err.textContent="";if(names.some(n=>!n)){err.textContent="すべてのプレイヤー名を入力してください。";return;}if(new Set(names).size!==names.length){err.textContent="プレイヤー名は重複しないようにしてください。";return;}state.players=names.map((name,i)=>({id:i,name,score:0}));try{localStorage.setItem(PLAYER_STORAGE_KEY,JSON.stringify(names));}catch{}showReady();};
 document.querySelector("#start-button").onclick=async()=>{await loadCards();startRound();};
