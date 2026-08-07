@@ -73,17 +73,26 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .card-lightbox-close { position: absolute; z-index: 1; top: 12px; right: 14px; width: 52px; height: 52px; border: 0; border-radius: 50%; background: #eee8dc; color: #192321; font-size: 2.4rem; line-height: 1; cursor: pointer; }
 .card-lightbox-close:focus-visible { outline: 3px solid #eee8dc; outline-offset: 3px; }
 section[data-screen="title"] { text-align: center; }
+section[data-screen="howto"] { display: flex; flex-direction: column; }
 .title-heading { margin: 0 0 3px; color: #d4c6ad; font-size: clamp(.95rem, 4vw, 1.2rem); font-weight: 700; line-height: 1.35; letter-spacing: .08em; }
 .title-tagline { margin: 0 0 14px; color: #a89e8d; font-size: clamp(.72rem, 3.1vw, .9rem); font-weight: 600; line-height: 1.45; letter-spacing: .02em; }
-section[data-screen="title"] .button, section[data-screen="howto"] .button { width: 100%; }
+section[data-screen="title"] .button, section[data-screen="howto"] > .button { width: 100%; }
 section[data-screen="title"] .button + .button { margin-top: 10px; }
 .title-main-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 0 0 22px; border-radius: 14px; }
-.howto-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 18px 0 22px; border-radius: 14px; }
+.howto-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 20px 0 18px; }
+.howto-tab { min-height: 46px; border: 1px solid #46534d; border-radius: 10px; padding: 6px 4px; background: #1d2b28; color: #c2c1b5; font: inherit; font-size: .78rem; font-weight: 800; line-height: 1.25; cursor: pointer; }
+.howto-tab:hover, .howto-tab:focus-visible { border-color: #c58b48; background: #3a3026; outline: none; }
+.howto-tab.is-selected { border-color: #c58b48; background: #a45d38; color: #fff8ed; }
+.howto-content { flex: 1; min-height: 280px; }
+.howto-panel { display: none; }
+.howto-panel.is-selected { display: block; }
+.howto-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 0 0 22px; border-radius: 14px; }
 .howto-description { margin: 0 0 26px; color: #c2c1b5; line-height: 1.9; text-align: left; }
 .howto-description h2 { margin: 30px 0 10px; color: #eee8dc; font-size: 1.18rem; line-height: 1.4; }
 .howto-description h2:first-child { margin-top: 0; }
 .howto-description h3 { margin: 20px 0 6px; color: #d0c8b8; font-size: 1rem; line-height: 1.5; }
 .howto-description p { margin: 0 0 10px; }
+.howto-content + #howto-back { margin-top: auto; }
 .deck-stack-image { display: block; width: auto; max-width: 100%; height: auto; max-height: min(calc(48vh / 0.736), calc(100dvh - 390px)); margin: 4px auto 8px; object-fit: contain; }
 .discussion-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
 .discussion-screen .discussion-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 14px; align-items: center; margin: 14px 0 18px; }
@@ -143,4 +152,5 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .history-vote-list .vote-count { display: inline; margin: 0 0 0 8px; font-size: .85rem; }
 .history-vote-list .voters { display: inline; padding: 0 0 0 6px; font-size: .85rem; }
 @media (max-width: 380px) { .screen-title-actions { gap: 8px; } .history-entry-overview { grid-template-columns: 1fr; } .history-card-area img { max-height: 260px; } }
+@media (max-width: 420px) { .howto-tabs { gap: 4px; } .howto-tab { min-height: 50px; font-size: .7rem; } }
 .answer-screen .answer-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 18px 0 22px; }\n.answer-screen .card-area { margin: 0; }\n.answer-screen .compact-card img { max-height: min(25vh, calc(100dvh - 300px)); }\n.answer-screen .answer-guide { min-width: 0; }\n.answer-screen .answer-guide .screen-subtitle { margin: 0 0 12px; }\n.answer-screen .answer-guide .description { margin: 0; line-height: 1.45; }\n.answer-screen .word-list { margin-top: 0; }\n@media (max-width: 380px) { .discussion-screen .discussion-layout { gap: 8px; } .result-screen .compact-card img { max-height: 14vh; } }
