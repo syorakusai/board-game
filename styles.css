@@ -109,8 +109,8 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .result-screen .vote-card.parent-answer { border-width: 3px; }
 .result-screen .vote-card { transition: opacity .24s ease, transform .24s ease, border-color .24s ease, box-shadow .24s ease, background .24s ease; }
 .result-screen .vote-card.reveal-checking { opacity: 1; transform: scale(1.035); border-color: #a45d38; background: #332921; box-shadow: 0 0 0 3px #76552f, 0 5px 14px #0006; }
-.result-screen .vote-card.reveal-parent { opacity: 1; transform: scale(1.035); border-color: #d39a55; background: #3a3026; box-shadow: 0 0 0 4px #9b713e, 0 0 22px #d9a83d88; }
-.result-screen .vote-card.reveal-flash { border-color: #d39a55; background: #3a3026; box-shadow: 0 0 0 4px #9b713e, 0 0 22px #d9a83d88; }
+.result-screen .vote-card.reveal-parent { opacity: 1; transform: scale(1.055); border: 5px solid #f1c85a; background: #44351d; box-shadow: 0 0 0 4px #7d4d1e, 0 0 18px 7px #eebc4a99, 0 0 34px 12px #eebc4a66; }
+.result-screen .vote-card.reveal-flash { border-color: #fff1a5; background: #5a461d; box-shadow: 0 0 0 5px #d28d2d, 0 0 24px 10px #ffe274, 0 0 44px 18px #eebc4aaa; }
 .result-screen .vote-card .word { padding: 10px 12px; font-size: .95rem; }
 .result-screen .vote-count { display: inline; margin: 0 0 0 8px; font-size: .85rem; }
 .result-screen .voters { display: inline; padding: 0 0 0 6px; font-size: .85rem; }
