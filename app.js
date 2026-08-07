@@ -106,6 +106,21 @@ document.querySelector("#title-start").onclick=()=>{restorePlayerCountSelection(
 document.querySelector("#title-start").addEventListener("click",()=>{state.history=[];});
 document.querySelector("#howto-button").onclick=()=>show("howto");
 document.querySelector("#howto-back").onclick=()=>show("title");
+function selectHowtoPanel(id){
+  document.querySelectorAll("[data-howto-tab]").forEach(tab=>{
+    const selected=tab.dataset.howtoTab===id;
+    tab.classList.toggle("is-selected",selected);
+    tab.setAttribute("aria-selected",String(selected));
+  });
+  document.querySelectorAll("[data-howto-panel]").forEach(panel=>{
+    panel.classList.toggle("is-selected",panel.dataset.howtoPanel===id);
+  });
+  const content=document.querySelector(".howto-content");
+  if(content)content.scrollTop=0;
+}
+document.querySelectorAll("[data-howto-tab]").forEach(tab=>{
+  tab.addEventListener("click",()=>selectHowtoPanel(tab.dataset.howtoTab));
+});
 document.querySelector("#back-button").onclick=()=>show("player-count");
 document.querySelector("#player-form").onsubmit=e=>{e.preventDefault();const names=[...new FormData(e.target).values()].map(v=>String(v).trim()),err=document.querySelector("#form-error");err.textContent="";if(names.some(n=>!n)){err.textContent="すべてのプレイヤー名を入力してください。";return;}if(new Set(names).size!==names.length){err.textContent="プレイヤー名は重複しないようにしてください。";return;}state.players=names.map((name,i)=>({id:i,name,score:0}));try{localStorage.setItem(PLAYER_STORAGE_KEY,JSON.stringify(names));}catch{}showReady();};
 document.querySelector("#start-button").onclick=async()=>{await loadCards();startRound();};
