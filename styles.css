@@ -19,12 +19,13 @@ h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 #round-title { font-size: 1.35rem; font-weight: 800; color: #eee8dc; }
 .description { margin: 12px 0 26px; color: #c2c1b5; line-height: 1.7; }
 .count-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.count-button { min-height: 52px; border: 1px solid #46534d; border-radius: 14px; background: #1d2b28; color: #eee8dc; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
+.count-button { min-height: 48px; border: 1px solid #46534d; border-radius: 12px; background: #1d2b28; color: #eee8dc; font-size: 1rem; font-weight: 700; cursor: pointer; }
 .count-button:hover, .count-button:focus-visible { border-color: #c58b48; background: #3a3026; outline: none; }
 .count-button.is-selected { border: 3px solid #c58b48; background: #3a3026; }
 .set-selection { display: grid; gap: 8px; margin: 24px 0 20px; }
 .set-selection-label { color: #c2c1b5; font-size: .9rem; font-weight: 700; }
-.set-select { width: 100%; min-height: 48px; border: 1px solid #46534d; border-radius: 12px; padding: 0 14px; background: #1d2b28; color: #eee8dc; font: inherit; font-weight: 700; }
+.set-select { width: 100%; min-height: 44px; border: 1px solid #46534d; border-radius: 12px; padding: 0 14px; background: #1d2b28; color: #eee8dc; font: inherit; font-weight: 700; }
+.set-selection-label:nth-of-type(2) { margin-top: 8px; }
 .set-select:focus-visible { border-color: #c58b48; outline: 3px solid #76552f; outline-offset: 1px; }
 #player-count-next { display: block; width: 100%; min-height: 52px; margin-top: 32px; padding: 14px 20px; }
 .button-row #player-count-next { margin-top: 0; }
