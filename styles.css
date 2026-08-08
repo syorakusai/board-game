@@ -27,6 +27,7 @@ h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 .set-select { width: 100%; min-height: 48px; border: 1px solid #46534d; border-radius: 12px; padding: 0 14px; background: #1d2b28; color: #eee8dc; font: inherit; font-weight: 700; }
 .set-select:focus-visible { border-color: #c58b48; outline: 3px solid #76552f; outline-offset: 1px; }
 #player-count-next { display: block; width: 100%; min-height: 52px; margin-top: 32px; padding: 14px 20px; }
+.button-row #player-count-next { margin-top: 0; }
 .name-fields { display: grid; gap: 14px; }
 .field-label { display: grid; gap: 6px; color: #c2c1b5; font-size: .9rem; font-weight: 700; }
 input { width: 100%; border: 1px solid #46534d; border-radius: 12px; padding: 13px 14px; font: inherit; font-weight: 400; background: #1d2b28; color: #eee8dc; }
