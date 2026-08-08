@@ -95,9 +95,8 @@ section[data-screen="howto"]:not(.is-hidden) { display: grid; grid-template-rows
 section[data-screen="title"] .button, section[data-screen="howto"] > .button { width: 100%; }
 section[data-screen="title"] .button + .button { margin-top: 10px; }
 .title-main-image { display: block; width: 100%; max-width: 100%; height: auto; margin: 0 0 22px; border-radius: 14px; }
-.howto-tabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 18px 0 14px; }
-.howto-tab { grid-column: span 2; min-height: 48px; border: 1px solid #46534d; border-radius: 10px; padding: 8px 6px; background: #1d2b28; color: #c2c1b5; font: inherit; font-size: .88rem; font-weight: 800; line-height: 1.25; cursor: pointer; }
-.howto-tab:nth-child(4), .howto-tab:nth-child(5) { grid-column: span 3; }
+.howto-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 18px 0 14px; }
+.howto-tab { min-height: 48px; border: 1px solid #46534d; border-radius: 10px; padding: 8px 6px; background: #1d2b28; color: #c2c1b5; font: inherit; font-size: .88rem; font-weight: 800; line-height: 1.25; cursor: pointer; }
 .howto-tab:hover, .howto-tab:focus-visible { border-color: #c58b48; background: #3a3026; outline: none; }
 .howto-tab.is-selected { border-color: #c58b48; background: #a45d38; color: #fff8ed; }
 .howto-content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 2px 20px 0; }
