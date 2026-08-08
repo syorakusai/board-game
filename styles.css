@@ -108,7 +108,7 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .howto-description h3 { margin: 20px 0 6px; color: #d0c8b8; font-size: 1rem; line-height: 1.5; }
 .howto-description p { margin: 0 0 10px; }
 .howto-content + #howto-back { margin-top: 12px; }
-.deck-stack-image { display: block; width: auto; max-width: 100%; height: auto; max-height: min(calc(48vh / 0.736), calc(100dvh - 390px)); margin: 4px auto 8px; object-fit: contain; cursor: pointer; }
+.deck-stack-image { display: block; width: auto; max-width: 100%; height: auto; max-height: min(48vh, calc(100dvh - 240px)); margin: 18px auto 22px; object-fit: contain; cursor: pointer; }
 .deck-stack-image:focus-visible { outline: 2px solid #d5b45f; outline-offset: 4px; }
 .discussion-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
 .discussion-screen .discussion-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 14px; align-items: center; margin: 14px 0 18px; }
