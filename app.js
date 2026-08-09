@@ -83,7 +83,7 @@ function renderPlayerNames(){
     l.innerHTML=`${["一人目","二人目","三人目","四人目","五人目","六人目"][i]}<input name="p${i}" maxlength="20" autocomplete="off" placeholder="客人${i+1}" />`;
     f.append(l);
   }
-  [...f.querySelectorAll("input")].forEach((x,i)=>x.value=savedPlayers[i]||`客人${i+1}`);
+  [...f.querySelectorAll("input")].forEach((x,i)=>x.value=state.players[i]?.name||savedPlayers[i]||`客人${i+1}`);
   show("player-names");
 }
 function selectPlayerCount(n,button){
@@ -126,6 +126,7 @@ document.querySelectorAll("[data-howto-tab]").forEach(tab=>{
   tab.addEventListener("click",()=>selectHowtoPanel(tab.dataset.howtoTab));
 });
 document.querySelector("#back-button").onclick=()=>show("player-count");
+document.querySelector("#ready-back").onclick=()=>renderPlayerNames();
 document.querySelector("#player-form").onsubmit=e=>{e.preventDefault();const names=[...new FormData(e.target).values()].map(v=>String(v).trim()),err=document.querySelector("#form-error");err.textContent="";if(names.some(n=>!n)){err.textContent="すべてのプレイヤー名を入力してください。";return;}if(new Set(names).size!==names.length){err.textContent="プレイヤー名は重複しないようにしてください。";return;}state.players=names.map((name,i)=>({id:i,name,score:0}));try{localStorage.setItem(PLAYER_STORAGE_KEY,JSON.stringify(names));}catch{}showReady();};
 document.querySelector("#start-button").onclick=async()=>{await loadCards();startRound();};
 function startRound(){state.round++;const p=state.players[state.order[state.parentIndex]],roundName=roundNames[state.round]||`第${state.round}`;document.querySelectorAll("[data-round-title]").forEach(x=>x.textContent=`${roundName}席　${roundTitleMap[x.dataset.roundTitle]||x.dataset.roundTitle}`);document.querySelector("#round-title").textContent=`親：${p.name}`;document.querySelector("#round-card-message").textContent=`${p.name}さん、伏せ札の山から1枚引いてください。`;document.querySelector("#round-start-button").disabled=false;document.querySelector("#draw-card").textContent="伏せ札を引く";show("round");}
