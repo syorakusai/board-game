@@ -1,4 +1,4 @@
-const CACHE_NAME = "kizoku-no-hisomegoto-v2";
+const CACHE_NAME = "kizoku-no-hisomegoto-v3";
 const APP_SHELL = [
   "./",
   "index.html",
