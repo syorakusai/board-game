@@ -362,5 +362,11 @@ cards/
 
 ## 公開先
 
+## PWA対応
+
+- スマートフォンのブラウザから「ホーム画面に追加」すると、アプリとして起動できます。
+- 初回表示後は、ゲーム本体と、その端末で読み込んだカード・画面素材をオフラインでも利用できます。
+- アプリ本体はオンライン時に最新版を取得します。ゲーム途中の進行状態は、アプリを閉じたり再読み込みした場合には復元しません。
+
 - GitHub: https://github.com/syorakusai/board-game
 - GitHub Pages: https://syorakusai.github.io/board-game/

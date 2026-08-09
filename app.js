@@ -1,4 +1,7 @@
 const PLAYER_STORAGE_KEY = "word-card-players";
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
+}
 const PLAYER_COUNT_STORAGE_KEY = "word-card-player-count";
 const CARD_SET_STORAGE_KEY = "word-card-set";
 const WORD_SET_STORAGE_KEY = "word-card-word-sets";
