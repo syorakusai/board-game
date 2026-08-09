@@ -42,6 +42,7 @@ input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .seating-illustration { display: block; width: 100%; height: auto; margin: 0 auto 20px; border-radius: 14px; }
 .selection-summary { margin-top: 12px; }
 .player-item { display: flex; justify-content: space-between; padding: 14px 16px; border-radius: 12px; background: #1d2b28; }
+section[data-screen="ready"] .player-item span:first-child { color: #fff; }
 .player-item span:last-child { color: #a05b37; font-size: .85rem; font-weight: 700; }
 .final-screen { padding-bottom: 28px; }
 .final-heading { margin: 24px 0 14px; color: #f0c36e; font-family: Georgia, "Noto Serif JP", serif; font-size: clamp(1.65rem, 7vw, 2.3rem); letter-spacing: .08em; text-align: center; }
