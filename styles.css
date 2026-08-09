@@ -13,8 +13,15 @@ h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 .screen-title-actions { display: flex; align-items: center; gap: 12px; }
 .history-button { white-space: nowrap; padding: 2px 0; border: 0; background: transparent; color: #d39a55; font: inherit; font-size: clamp(1.05rem, 4.6vw, 1.5rem); font-weight: 800; line-height: 1.2; cursor: pointer; }
 .history-button:hover, .history-button:focus-visible { color: #f0c36e; text-decoration: underline; outline: none; }
-.exit-button { white-space: nowrap; padding: 2px 0; border: 0; background: transparent; color: #d39a55; font: inherit; font-size: clamp(1.05rem, 4.6vw, 1.5rem); font-weight: 800; line-height: 1.2; cursor: pointer; }
-.exit-button:hover, .exit-button:focus-visible { color: #f0c36e; text-decoration: underline; outline: none; }
+.game-menu { position: relative; }
+.menu-button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #d39a55; font: inherit; font-size: 2rem; font-weight: 800; line-height: 1; cursor: pointer; }
+.menu-button:hover, .menu-button:focus-visible { background: #263630; color: #f0c36e; outline: none; }
+.game-menu-panel { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: grid; min-width: 120px; overflow: hidden; border: 1px solid #46534d; border-radius: 10px; background: #1d2b28; box-shadow: 0 8px 20px #0008; }
+.game-menu-panel.is-hidden { display: none; }
+.game-menu.is-open .game-menu-panel { display: grid; }
+.game-menu-panel button { min-height: 44px; border: 0; border-bottom: 1px solid #46534d; padding: 0 14px; background: transparent; color: #eee8dc; font: inherit; font-weight: 800; text-align: left; cursor: pointer; }
+.game-menu-panel button:last-child { border-bottom: 0; }
+.game-menu-panel button:hover, .game-menu-panel button:focus-visible { background: #3a3026; color: #f0c36e; outline: none; }
 .screen-subtitle { margin: 10px 0 0; color: #d39a55; font-size: 1rem; font-weight: 800; }
 #round-title { font-size: 1.35rem; font-weight: 800; color: #eee8dc; }
 .description { margin: 12px 0 26px; color: #c2c1b5; line-height: 1.7; }
