@@ -1,4 +1,4 @@
-const CACHE_NAME = "kizoku-no-hisomegoto-v4";
+const CACHE_NAME = "kizoku-no-hisomegoto-v5";
 const APP_SHELL = [
   "./",
   "index.html",
@@ -26,6 +26,15 @@ self.addEventListener("fetch", event => {
       caches.open(CACHE_NAME).then(cache => cache.put("./", copy));
       return response;
     }).catch(() => caches.match("./")));
+    return;
+  }
+  const url = new URL(request.url);
+  const appShellFile = ["/board-game/index.html", "/board-game/app.js", "/board-game/styles.css"].includes(url.pathname);
+  if (appShellFile) {
+    event.respondWith(fetch(request).then(response => {
+      if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+      return response;
+    }).catch(() => caches.match(request)));
     return;
   }
   event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
