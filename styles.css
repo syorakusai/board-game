@@ -10,11 +10,11 @@ h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.25rem); }
 [data-round-title] { font-size: clamp(1.05rem, 4.6vw, 1.5rem); letter-spacing: -.02em; white-space: nowrap; }
 .screen-title-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; width: 100%; gap: 12px; }
 .screen-title-row h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.screen-title-actions { display: flex; align-items: center; gap: 12px; }
-.history-button { white-space: nowrap; padding: 2px 0; border: 0; background: transparent; color: #d39a55; font: inherit; font-size: clamp(1.05rem, 4.6vw, 1.5rem); font-weight: 800; line-height: 1.2; cursor: pointer; }
+.screen-title-actions { display: flex; align-items: center; gap: 8px; }
+.history-button { white-space: nowrap; padding: 2px 0; border: 0; background: transparent; color: #d39a55; font: inherit; font-size: .95rem; font-weight: 800; line-height: 1.2; cursor: pointer; }
 .history-button:hover, .history-button:focus-visible { color: #f0c36e; text-decoration: underline; outline: none; }
 .game-menu { position: relative; }
-.menu-button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #d39a55; font: inherit; font-size: 2rem; font-weight: 800; line-height: 1; cursor: pointer; }
+.menu-button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #d39a55; font: inherit; font-size: 1.7rem; font-weight: 800; line-height: 1; cursor: pointer; }
 .menu-button:hover, .menu-button:focus-visible { background: #263630; color: #f0c36e; outline: none; }
 .game-menu-panel { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: grid; min-width: 120px; overflow: hidden; border: 1px solid #46534d; border-radius: 10px; background: #1d2b28; box-shadow: 0 8px 20px #0008; }
 .game-menu-panel.is-hidden { display: none; }
