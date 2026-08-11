@@ -175,14 +175,30 @@ document.querySelector("#result-open-button").onclick=()=>{document.querySelecto
   ()=>({sequence:[...forward((parentIndex+1)%cards.length,8),...forward(beforeParent(2),3),parentIndex],delays:[150,190,240,300,380,250,360,530,780,1160,2160]}),
   ()=>({sequence:[...forward((parentIndex+1)%cards.length,10),...forward((parentIndex+3)%cards.length,9),parentIndex],delays:[160,210,270,340,430,540,680,850,1200,190,220,260,320,430,600,850,1450,1000]})
 ];const plan=patterns[Math.floor(Math.random()*patterns.length)]();const finish=()=>{const parentCard=cards[parentIndex];parentCard.classList.remove("reveal-checking");parentCard.classList.add("reveal-parent");let flashes=0;const flash=()=>{parentCard.classList.toggle("reveal-flash");flashes++;if(flashes>=8){parentCard.classList.remove("reveal-flash");status.textContent="";summaryEl.innerHTML=summary;next.disabled=false;return;}setTimeout(flash,150);};flash();};let step=0;const roulette=()=>{cards.forEach(card=>card.classList.remove("reveal-checking","reveal-parent","reveal-flash"));const index=plan.sequence[step];cards[index].classList.add("reveal-checking");status.textContent="";if(step===plan.sequence.length-1){finish();return;}const delay=plan.delays[Math.min(step,plan.delays.length-1)];step++;setTimeout(roulette,delay);};roulette();};
+function finalRoundCards(){
+  const cards=state.history.filter(record=>record.image).map(record=>({round:record.round,image:record.image}));
+  if(state.card?.image&&!cards.some(card=>card.round===state.round))cards.push({round:state.round,image:state.card.image});
+  return cards;
+}
+function finalCardRecapMarkup(cards){
+  const midpoint=(cards.length-1)/2;
+  return cards.map((card,index)=>{
+    const distance=index-midpoint;
+    const x=Math.round(distance*7),y=Math.abs(distance)*2,rotation=(distance*2.2).toFixed(1);
+    const miniX=Math.round(distance*22),miniRotation=(distance*5).toFixed(1);
+    return `<img class="final-recap-card" src="${esc(cardImagePath(card.image))}" alt="第${card.round}席のお題カード" style="--entry-delay:${index*130}ms;--card-x:${x}px;--card-y:${y}px;--card-rotate:${rotation}deg;--mini-x:${miniX}px;--mini-rotate:${miniRotation}deg;--stack-order:${index}">`;
+  }).join("");
+}
 function showFinalResults(winners){
-  const finalScreen=document.querySelector('[data-screen="final"]');
+  const cards=finalRoundCards(),screen=document.querySelector('[data-screen="final"]'),recap=document.querySelector("#final-card-recap"),revealDelay=cards.length*130+720;
+  recap.innerHTML=finalCardRecapMarkup(cards);
+  screen.style.setProperty("--final-reveal-delay",`${revealDelay}ms`);
   document.querySelector("#final-winners").innerHTML=winners.map(player=>`<p>${esc(player.name)}</p>`).join("");
-  document.querySelector("#final-score-summary").innerHTML=state.players.map((player,index)=>`<div class="final-score${winners.some(winner=>winner.id===player.id)?" is-winner":""}" style="--final-score-delay:${1.3+index*.12}s"><span>${esc(player.name)}</span><strong>${player.score}ポイント</strong></div>`).join("");
-  finalScreen.style.setProperty("--final-button-delay",`${1.3+state.players.length*.12}s`);
-  finalScreen.classList.remove("is-animating");
+  document.querySelector("#final-score-summary").innerHTML=state.players.map(player=>`<div class="final-score${winners.some(winner=>winner.id===player.id)?" is-winner":""}"><span>${esc(player.name)}</span><strong>${player.score}ポイント</strong></div>`).join("");
+  screen.classList.remove("is-revealing");
   show("final");
-  requestAnimationFrame(()=>finalScreen.classList.add("is-animating"));
+  void screen.offsetWidth;
+  screen.classList.add("is-revealing");
 }
 document.querySelector("#result-next").onclick=()=>{const children=state.players.filter((_,i)=>i!==state.order[state.parentIndex]),correct=children.filter(p=>state.answers[p.id]===state.parentWord),parent=state.players[state.order[state.parentIndex]];if(!correct.length){if(children.length>1)parent.score++;}else if(correct.length===children.length){if(children.length>1)parent.score=Math.max(0,parent.score-1);children.forEach(p=>p.score++);}else correct.forEach(p=>p.score++);const winners=state.players.filter(p=>p.score>=5);if(winners.length){showFinalResults(winners);return;}document.querySelector("#score-summary").innerHTML=state.players.map(p=>`<div class="player-item"><span>${esc(p.name)}</span><span>${p.score}ポイント</span></div>`).join("");document.querySelector("#score-title").textContent=children.length===1?(correct.length===0?"子が不正解":"子が正解"):(correct.length===0?"全員不正解":correct.length===children.length?"全員正解":"一部の子が正解");const nextRoundButton=document.querySelector("#next-round");nextRoundButton.textContent="次の席へ";nextRoundButton.dataset.action="next-round";show("scores");};
 document.querySelector("#result-open-button").addEventListener("click",()=>{document.querySelector("#result-parent").textContent=`親：${state.players[state.order[state.parentIndex]].name}`;});
