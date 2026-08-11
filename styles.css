@@ -62,6 +62,26 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .final-score.is-winner { border: 2px solid #d6a84e; background: linear-gradient(90deg, #493519, #263229); box-shadow: inset 0 0 0 1px #f0c36e55; }
 .final-score.is-winner span { color: #fff3bf; font-size: 1.08rem; font-weight: 800; }
 .final-score.is-winner strong { color: #ffe080; font-size: 1rem; }
+.final-screen.is-animating .final-heading { opacity: 0; animation: final-heading-enter .42s cubic-bezier(.2,.8,.25,1) .2s forwards; }
+.final-screen.is-animating .final-image { opacity: 0; transform: translateY(18px) scale(.97); animation: final-image-enter .5s cubic-bezier(.2,.8,.25,1) .5s forwards; }
+.final-screen.is-animating .final-winners { opacity: 0; transform: translateY(12px) scale(.94); animation: final-winners-enter .46s cubic-bezier(.2,.8,.25,1) .9s forwards, final-winners-glow 2.8s ease-in-out 1.45s infinite; }
+.final-screen.is-animating .final-score { opacity: 0; transform: translateY(10px); animation: final-score-enter .34s ease-out var(--final-score-delay) forwards; }
+.final-screen.is-animating #final-to-title { opacity: 0; transform: translateY(8px); animation: final-score-enter .34s ease-out var(--final-button-delay) forwards; }
+.final-screen.is-animating .final-score.is-winner { animation: final-score-enter .34s ease-out var(--final-score-delay) forwards, final-winner-frame 1.6s ease-in-out calc(var(--final-score-delay) + .34s) 1; }
+@keyframes final-heading-enter { to { opacity: 1; } }
+@keyframes final-image-enter { to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes final-winners-enter { 70% { opacity: 1; transform: translateY(0) scale(1.04); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes final-winners-glow { 50% { text-shadow: 0 2px 0 #392414, 0 0 14px #f0c36e99; } }
+@keyframes final-score-enter { to { opacity: 1; transform: translateY(0); } }
+@keyframes final-winner-frame { 50% { box-shadow: inset 0 0 0 1px #f0c36e55, 0 0 16px #f0c36e88; } }
+@media (prefers-reduced-motion: reduce) {
+  .final-screen.is-animating .final-heading,
+  .final-screen.is-animating .final-image,
+  .final-screen.is-animating .final-winners,
+  .final-screen.is-animating .final-score,
+  .final-screen.is-animating #final-to-title,
+  .final-screen.is-animating .final-score.is-winner { animation: none; opacity: 1; transform: none; }
+}
 .card-area { margin: 18px 0 22px; text-align: center; }
 #handoff-card-area { min-height: min(48vh, calc(100dvh - 240px)); display: grid; place-items: center; }
 .handoff-actions { display: flex; gap: 10px; margin-top: 12px; }
