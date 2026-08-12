@@ -1,0 +1,1 @@
+globalThis.APP_VERSION = "20260813-1";
