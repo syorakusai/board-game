@@ -163,18 +163,36 @@ function askAnswer(){const orderedChildren=[...state.order.slice(state.parentInd
 function voteMarkup(){return state.words.map(w=>{const voters=state.players.filter((_,i)=>i!==state.order[state.parentIndex]).filter(p=>state.answers[p.id]===w).map(p=>p.name);return `<div class="vote-card" data-parent-word="${w===state.parentWord}"><div class="word">${esc(w)}</div><div class="vote-count">${voters.length}票</div><div class="voters">${voters.length?voters.map(esc).join("、"):"選択者なし"}</div></div>`;}).join("");}
 function selectionMarkup(){return state.words.map(w=>{const voters=state.players.filter((_,i)=>i!==state.order[state.parentIndex]).filter(p=>state.answers[p.id]===w).map(p=>p.name);return `<div class="vote-card"><div class="word">${esc(w)}</div><div class="vote-count">${voters.length}票</div><div class="voters">${voters.length?voters.map(esc).join("、"):"選択者なし"}</div></div>`;}).join("");}
 function showResultOpen(){document.querySelector("#result-open-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#selection-summary").innerHTML=selectionMarkup();show("result-open");}
-document.querySelector("#result-open-button").onclick=()=>{document.querySelector("#result-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#result-votes").innerHTML=voteMarkup();const children=state.players.filter((_,i)=>i!==state.order[state.parentIndex]),correct=children.filter(p=>state.answers[p.id]===state.parentWord),isTwoPlayer=children.length===1,summary=correct.length===0?(isTwoPlayer?"<strong>子が不正解</strong><span>得点なし</span>":"<strong>全員不正解</strong><span>親：+1ポイント</span>"):correct.length===children.length?(isTwoPlayer?"<strong>子が正解</strong><span>子：+1ポイント</span>":"<strong>全員正解</strong><span>子：全員+1ポイント<br>親：−1ポイント</span>"):"<strong>一部の子が正解</strong><span>正解した子：各+1ポイント</span>",status=document.querySelector("#result-reveal-status"),summaryEl=document.querySelector("#result-summary"),next=document.querySelector("#result-next"),cards=[...document.querySelectorAll("#result-votes .vote-card")];summaryEl.innerHTML="";status.textContent="";next.disabled=true;show("result");cards.forEach(card=>card.classList.remove("reveal-pending","reveal-checking","reveal-parent","reveal-flash"));const parentIndex=cards.findIndex(card=>card.dataset.parentWord==="true");if(parentIndex<0||!cards.length){status.textContent="親のワードを確認できません。";summaryEl.innerHTML=summary;next.disabled=false;return;}const forward=(from,count)=>Array.from({length:count},(_,i)=>(from+i)%cards.length);const backward=(from,count)=>Array.from({length:count},(_,i)=>(from-i+cards.length)%cards.length);const beforeParent=(offset=1)=>(parentIndex-offset+cards.length)%cards.length;const patterns=[
-  ()=>({sequence:[...forward((parentIndex+1)%cards.length,cards.length*2+2),parentIndex],delays:[189,216,256,310,378,459,553,674,836,1079]}),
-  ()=>({sequence:[...forward((parentIndex+2)%cards.length,cards.length+3),...backward(beforeParent(1),2),parentIndex],delays:[198,240,297,368,453,566,707,919,1202]}),
-  ()=>({sequence:[...forward((parentIndex+1)%cards.length,cards.length*2),...forward(beforeParent(2),3),parentIndex],delays:[181,220,272,337,415,233,324,454,622,829,1063]}),
-  ()=>({sequence:[...forward((parentIndex+1)%cards.length,11),parentIndex],delays:[150,180,220,270,330,410,510,640,800,980,1210]}),
-  ()=>({sequence:[...forward((parentIndex+2)%cards.length,9),...backward(beforeParent(1),2),parentIndex],delays:[170,210,260,320,390,480,590,720,870,1040,650]}),
-  ()=>({sequence:[...forward((parentIndex+1)%cards.length,8),...forward(beforeParent(2),3),parentIndex],delays:[140,180,230,290,360,220,330,490,720,1080,1660]}),
-  ()=>({sequence:[...forward((parentIndex+1)%cards.length,11),parentIndex],delays:[160,200,250,310,390,490,620,780,980,1230,1090]}),
-  ()=>({sequence:[...forward((parentIndex+2)%cards.length,9),...backward(beforeParent(1),2),parentIndex],delays:[180,220,270,340,430,540,680,850,1060,1280,650]}),
-  ()=>({sequence:[...forward((parentIndex+1)%cards.length,8),...forward(beforeParent(2),3),parentIndex],delays:[150,190,240,300,380,250,360,530,780,1160,2160]}),
-  ()=>({sequence:[...forward((parentIndex+1)%cards.length,10),...forward((parentIndex+3)%cards.length,9),parentIndex],delays:[160,210,270,340,430,540,680,850,1200,190,220,260,320,430,600,850,1450,1000]})
-];const plan=patterns[Math.floor(Math.random()*patterns.length)]();const finish=()=>{const parentCard=cards[parentIndex];parentCard.classList.remove("reveal-checking");parentCard.classList.add("reveal-parent");let flashes=0;const flash=()=>{parentCard.classList.toggle("reveal-flash");flashes++;if(flashes>=8){parentCard.classList.remove("reveal-flash");status.textContent="";summaryEl.innerHTML=summary;next.disabled=false;return;}setTimeout(flash,150);};flash();};let step=0;const roulette=()=>{cards.forEach(card=>card.classList.remove("reveal-checking","reveal-parent","reveal-flash"));const index=plan.sequence[step];cards[index].classList.add("reveal-checking");status.textContent="";if(step===plan.sequence.length-1){finish();return;}const delay=plan.delays[Math.min(step,plan.delays.length-1)];step++;setTimeout(roulette,delay);};roulette();};
+document.querySelector("#result-open-button").onclick=()=>{document.querySelector("#result-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#result-votes").innerHTML=voteMarkup();const children=state.players.filter((_,i)=>i!==state.order[state.parentIndex]),correct=children.filter(p=>state.answers[p.id]===state.parentWord),isTwoPlayer=children.length===1,summary=correct.length===0?(isTwoPlayer?"<strong>子が不正解</strong><span>得点なし</span>":"<strong>全員不正解</strong><span>親：+1ポイント</span>"):correct.length===children.length?(isTwoPlayer?"<strong>子が正解</strong><span>子：+1ポイント</span>":"<strong>全員正解</strong><span>子：全員+1ポイント<br>親：−1ポイント</span>"):"<strong>一部の子が正解</strong><span>正解した子：各+1ポイント</span>",status=document.querySelector("#result-reveal-status"),summaryEl=document.querySelector("#result-summary"),next=document.querySelector("#result-next"),cards=[...document.querySelectorAll("#result-votes .vote-card")];summaryEl.innerHTML="";status.textContent="";next.disabled=true;show("result");cards.forEach(card=>card.classList.remove("reveal-pending","reveal-checking","reveal-parent","reveal-flash"));const parentIndex=cards.findIndex(card=>card.dataset.parentWord==="true");if(parentIndex<0||!cards.length){status.textContent="親のワードを確認できません。";summaryEl.innerHTML=summary;next.disabled=false;return;}
+  const randomIndex=()=>Math.floor(Math.random()*cards.length);
+  const move=(index,direction)=>((index+direction+cards.length)%cards.length);
+  // 10種類はテンポと芝居の型。正解に至る候補列は毎回作り直す。
+  const makeRoute=(length,type)=>{
+    let current=randomIndex(),direction=Math.random()<.5?-1:1;
+    const sequence=[current],turnAt=Math.max(2,length-(2+Math.floor(Math.random()*4))),hesitateAt=Math.max(2,length-(2+Math.floor(Math.random()*3)));
+    for(let step=1;step<length;step++){
+      if(!(type==="hesitate"&&step===hesitateAt)){
+        if((type==="return"&&step===turnAt)||(type==="zigzag"&&step>2&&step%2===0)||(type==="burst"&&step===turnAt))direction*=-1;
+        current=move(current,direction);
+        if(type==="burst"&&step===turnAt+1)current=move(current,direction);
+      }
+      sequence.push(current);
+    }
+    return sequence;
+  };
+  const pattern=(delays,type)=>({sequence:[...makeRoute(delays.length,type),parentIndex],delays});
+  const patterns=[
+    ()=>pattern([189,216,256,310,378,459,553,674,836,1079],"orbit"),
+    ()=>pattern([198,240,297,368,453,566,707,919,1202],"return"),
+    ()=>pattern([181,220,272,337,415,233,324,454,622,829,1063],"zigzag"),
+    ()=>pattern([150,180,220,270,330,410,510,640,800,980,1210],"orbit"),
+    ()=>pattern([170,210,260,320,390,480,590,720,870,1040,650],"return"),
+    ()=>pattern([140,180,230,290,360,220,330,490,720,1080,1660],"hesitate"),
+    ()=>pattern([160,200,250,310,390,490,620,780,980,1230,1090],"zigzag"),
+    ()=>pattern([180,220,270,340,430,540,680,850,1060,1280,650],"return"),
+    ()=>pattern([150,190,240,300,380,250,360,530,780,1160,2160],"hesitate"),
+    ()=>pattern([160,210,270,340,430,540,680,850,1200,190,220,260,320,430,600,850,1450,1000],"burst")
+  ];const plan=patterns[Math.floor(Math.random()*patterns.length)]();const finish=()=>{const parentCard=cards[parentIndex];parentCard.classList.remove("reveal-checking");parentCard.classList.add("reveal-parent");let flashes=0;const flash=()=>{parentCard.classList.toggle("reveal-flash");flashes++;if(flashes>=8){parentCard.classList.remove("reveal-flash");status.textContent="";summaryEl.innerHTML=summary;next.disabled=false;return;}setTimeout(flash,150);};flash();};let step=0;const roulette=()=>{cards.forEach(card=>card.classList.remove("reveal-checking","reveal-parent","reveal-flash"));const index=plan.sequence[step];cards[index].classList.add("reveal-checking");status.textContent="";if(step===plan.sequence.length-1){finish();return;}const delay=plan.delays[Math.min(step,plan.delays.length-1)];step++;setTimeout(roulette,delay);};roulette();};
 function finalRoundCards(){
   const cards=state.history.filter(record=>record.image).map(record=>({round:record.round,image:record.image}));
   if(state.card?.image&&!cards.some(card=>card.round===state.round))cards.push({round:state.round,image:state.card.image});
