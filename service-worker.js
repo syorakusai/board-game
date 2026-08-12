@@ -1,9 +1,14 @@
-const CACHE_NAME = "kizoku-no-hisomegoto-v11";
+importScripts("app-version.js");
+const CACHE_NAME = `kizoku-no-hisomegoto-${self.APP_VERSION || "dev"}`;
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css",
   "app.js",
+  "app-version.js",
+  "game-state.js",
+  "roulette.js",
+  "card-sets.json",
   "manifest.webmanifest",
   "assets/pwa-icon-192.png",
   "assets/pwa-icon-512.png"
@@ -29,7 +34,7 @@ self.addEventListener("fetch", event => {
     return;
   }
   const url = new URL(request.url);
-  const appShellFile = ["/board-game/index.html", "/board-game/app.js", "/board-game/styles.css"].includes(url.pathname);
+  const appShellFile = ["/board-game/index.html", "/board-game/app.js", "/board-game/app-version.js", "/board-game/game-state.js", "/board-game/roulette.js", "/board-game/styles.css", "/board-game/card-sets.json"].includes(url.pathname);
   if (appShellFile) {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
