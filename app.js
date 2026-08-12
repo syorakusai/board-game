@@ -170,13 +170,15 @@ function showResultOpen(){document.querySelector("#result-open-card-area").inner
 document.querySelector("#result-open-button").onclick=()=>{document.querySelector("#result-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#result-votes").innerHTML=voteMarkup();const children=state.players.filter((_,i)=>i!==state.order[state.parentIndex]),correct=children.filter(p=>state.answers[p.id]===state.parentWord),isTwoPlayer=children.length===1,summary=correct.length===0?(isTwoPlayer?"<strong>子が不正解</strong><span>得点なし</span>":"<strong>全員不正解</strong><span>親：+1ポイント</span>"):correct.length===children.length?(isTwoPlayer?"<strong>子が正解</strong><span>子：+1ポイント</span>":"<strong>全員正解</strong><span>子：全員+1ポイント<br>親：−1ポイント</span>"):"<strong>一部の子が正解</strong><span>正解した子：各+1ポイント</span>",status=document.querySelector("#result-reveal-status"),summaryEl=document.querySelector("#result-summary"),next=document.querySelector("#result-next"),cards=[...document.querySelectorAll("#result-votes .vote-card")];summaryEl.innerHTML="";status.textContent="";next.disabled=true;show("result");cards.forEach(card=>card.classList.remove("reveal-pending","reveal-checking","reveal-parent","reveal-flash"));const parentIndex=cards.findIndex(card=>card.dataset.parentWord==="true");if(parentIndex<0||!cards.length){status.textContent="親のワードを確認できません。";summaryEl.innerHTML=summary;next.disabled=false;return;}
   const randomIndex=()=>Math.floor(Math.random()*cards.length);
   const forward=index=>(index+1)%cards.length;
+  const backward=index=>(index-1+cards.length)%cards.length;
   const varyDelay=delay=>Math.max(90,Math.round(delay*(0.9+Math.random()*0.2)));
   const rhythmDelay=(delays,step,totalSteps)=>{
     const position=totalSteps<2?0:step*(delays.length-1)/(totalSteps-1);
     const before=Math.floor(position),after=Math.min(delays.length-1,before+1),ratio=position-before;
     return varyDelay(delays[before]+(delays[after]-delays[before])*ratio);
   };
-  // 候補は常に表示順どおりに一方向へ進む。毎回変えるのは速度と間だけにする。
+  const stepsTo=(from,to,move)=>{let steps=0,current=from;while(current!==to){current=move(current);steps++;}return steps;};
+  // 既存10パターンは、表示順どおりに一方向へ進む。
   const makeRoute=minimumSteps=>{
     let current=randomIndex(),steps=0;
     const sequence=[current];
@@ -193,6 +195,27 @@ document.querySelector("#result-open-button").onclick=()=>{document.querySelecto
     const variedDelays=sequence.slice(0,-1).map((_,step)=>rhythmDelay(delays,step,sequence.length-1));
     return {sequence,delays:variedDelays};
   };
+  // 追加3パターンは、順方向で回り始めてから途中で反転する。
+  // 逆回転中に止まりそうに見せる候補は毎回4つから選ぶ。
+  const reversePattern=delays=>{
+    let current=randomIndex();
+    const sequence=[current],reverseMarkers=[];
+    const push=(move,count)=>{for(let i=0;i<count;i++){current=move(current);sequence.push(current);}};
+    push(forward,5+Math.floor(Math.random()*4));
+    const decoyIndex=randomIndex();
+    const reverseSteps=stepsTo(current,decoyIndex,backward)||cards.length;
+    push(backward,reverseSteps);
+    reverseMarkers.push(sequence.length-1);
+    // 囮の位置を通過しても逆回転を続け、そこで正解だと読めないようにする。
+    push(backward,1+Math.floor(Math.random()*3));
+    const finishSteps=stepsTo(current,parentIndex,forward)||cards.length;
+    push(forward,finishSteps);
+    const variedDelays=sequence.slice(0,-1).map((_,step)=>{
+      const base=rhythmDelay(delays,step,sequence.length-1);
+      return reverseMarkers.includes(step+1)?Math.round(base*1.9):base;
+    });
+    return {sequence,delays:variedDelays};
+  };
   const patterns=[
     ()=>pattern([189,216,256,310,378,459,553,674,836,1079]),
     ()=>pattern([198,240,297,368,453,566,707,919,1202]),
@@ -203,7 +226,10 @@ document.querySelector("#result-open-button").onclick=()=>{document.querySelecto
     ()=>pattern([160,200,250,310,390,490,620,780,980,1230,1090]),
     ()=>pattern([180,220,270,340,430,540,680,850,1060,1280,650]),
     ()=>pattern([150,190,240,300,380,250,360,530,780,1160,2160]),
-    ()=>pattern([160,210,270,340,430,540,680,850,1200,190,220,260,320,430,600,850,1450,1000])
+    ()=>pattern([160,210,270,340,430,540,680,850,1200,190,220,260,320,430,600,850,1450,1000]),
+    ()=>reversePattern([160,200,250,320,410,530,690,860,1060,1320,980]),
+    ()=>reversePattern([150,190,240,310,400,520,680,870,1110,1380,760]),
+    ()=>reversePattern([170,220,280,350,450,580,740,930,1160,1450,1080])
   ];const plan=patterns[Math.floor(Math.random()*patterns.length)]();const finish=()=>{const parentCard=cards[parentIndex];parentCard.classList.remove("reveal-checking");parentCard.classList.add("reveal-parent");let flashes=0;const flash=()=>{parentCard.classList.toggle("reveal-flash");flashes++;if(flashes>=8){parentCard.classList.remove("reveal-flash");status.textContent="";summaryEl.innerHTML=summary;next.disabled=false;return;}setTimeout(flash,150);};flash();};let step=0;const roulette=()=>{cards.forEach(card=>card.classList.remove("reveal-checking","reveal-parent","reveal-flash"));const index=plan.sequence[step];cards[index].classList.add("reveal-checking");status.textContent="";if(step===plan.sequence.length-1){finish();return;}const delay=plan.delays[Math.min(step,plan.delays.length-1)];step++;setTimeout(roulette,delay);};roulette();};
 function finalRoundCards(){
   const cards=state.history.filter(record=>record.image).map(record=>({round:record.round,image:record.image}));
