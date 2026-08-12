@@ -165,33 +165,41 @@ function selectionMarkup(){return state.words.map(w=>{const voters=state.players
 function showResultOpen(){document.querySelector("#result-open-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#selection-summary").innerHTML=selectionMarkup();show("result-open");}
 document.querySelector("#result-open-button").onclick=()=>{document.querySelector("#result-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#result-votes").innerHTML=voteMarkup();const children=state.players.filter((_,i)=>i!==state.order[state.parentIndex]),correct=children.filter(p=>state.answers[p.id]===state.parentWord),isTwoPlayer=children.length===1,summary=correct.length===0?(isTwoPlayer?"<strong>子が不正解</strong><span>得点なし</span>":"<strong>全員不正解</strong><span>親：+1ポイント</span>"):correct.length===children.length?(isTwoPlayer?"<strong>子が正解</strong><span>子：+1ポイント</span>":"<strong>全員正解</strong><span>子：全員+1ポイント<br>親：−1ポイント</span>"):"<strong>一部の子が正解</strong><span>正解した子：各+1ポイント</span>",status=document.querySelector("#result-reveal-status"),summaryEl=document.querySelector("#result-summary"),next=document.querySelector("#result-next"),cards=[...document.querySelectorAll("#result-votes .vote-card")];summaryEl.innerHTML="";status.textContent="";next.disabled=true;show("result");cards.forEach(card=>card.classList.remove("reveal-pending","reveal-checking","reveal-parent","reveal-flash"));const parentIndex=cards.findIndex(card=>card.dataset.parentWord==="true");if(parentIndex<0||!cards.length){status.textContent="親のワードを確認できません。";summaryEl.innerHTML=summary;next.disabled=false;return;}
   const randomIndex=()=>Math.floor(Math.random()*cards.length);
-  const move=(index,direction)=>((index+direction+cards.length)%cards.length);
-  // 10種類はテンポと芝居の型。正解に至る候補列は毎回作り直す。
-  const makeRoute=(length,type)=>{
-    let current=randomIndex(),direction=Math.random()<.5?-1:1;
-    const sequence=[current],turnAt=Math.max(2,length-(2+Math.floor(Math.random()*4))),hesitateAt=Math.max(2,length-(2+Math.floor(Math.random()*3)));
-    for(let step=1;step<length;step++){
-      if(!(type==="hesitate"&&step===hesitateAt)){
-        if((type==="return"&&step===turnAt)||(type==="zigzag"&&step>2&&step%2===0)||(type==="burst"&&step===turnAt))direction*=-1;
-        current=move(current,direction);
-        if(type==="burst"&&step===turnAt+1)current=move(current,direction);
-      }
+  const forward=index=>(index+1)%cards.length;
+  const varyDelay=delay=>Math.max(90,Math.round(delay*(0.9+Math.random()*0.2)));
+  const rhythmDelay=(delays,step,totalSteps)=>{
+    const position=totalSteps<2?0:step*(delays.length-1)/(totalSteps-1);
+    const before=Math.floor(position),after=Math.min(delays.length-1,before+1),ratio=position-before;
+    return varyDelay(delays[before]+(delays[after]-delays[before])*ratio);
+  };
+  // 候補は常に表示順どおりに一方向へ進む。毎回変えるのは速度と間だけにする。
+  const makeRoute=minimumSteps=>{
+    let current=randomIndex(),steps=0;
+    const sequence=[current];
+    while(steps<minimumSteps||current!==parentIndex){
+      current=forward(current);
       sequence.push(current);
+      steps++;
     }
     return sequence;
   };
-  const pattern=(delays,type)=>({sequence:[...makeRoute(delays.length,type),parentIndex],delays});
+  const pattern=delays=>{
+    const minimumSteps=Math.max(6,delays.length-2+Math.floor(Math.random()*5));
+    const sequence=makeRoute(minimumSteps);
+    const variedDelays=sequence.slice(0,-1).map((_,step)=>rhythmDelay(delays,step,sequence.length-1));
+    return {sequence,delays:variedDelays};
+  };
   const patterns=[
-    ()=>pattern([189,216,256,310,378,459,553,674,836,1079],"orbit"),
-    ()=>pattern([198,240,297,368,453,566,707,919,1202],"return"),
-    ()=>pattern([181,220,272,337,415,233,324,454,622,829,1063],"zigzag"),
-    ()=>pattern([150,180,220,270,330,410,510,640,800,980,1210],"orbit"),
-    ()=>pattern([170,210,260,320,390,480,590,720,870,1040,650],"return"),
-    ()=>pattern([140,180,230,290,360,220,330,490,720,1080,1660],"hesitate"),
-    ()=>pattern([160,200,250,310,390,490,620,780,980,1230,1090],"zigzag"),
-    ()=>pattern([180,220,270,340,430,540,680,850,1060,1280,650],"return"),
-    ()=>pattern([150,190,240,300,380,250,360,530,780,1160,2160],"hesitate"),
-    ()=>pattern([160,210,270,340,430,540,680,850,1200,190,220,260,320,430,600,850,1450,1000],"burst")
+    ()=>pattern([189,216,256,310,378,459,553,674,836,1079]),
+    ()=>pattern([198,240,297,368,453,566,707,919,1202]),
+    ()=>pattern([181,220,272,337,415,233,324,454,622,829,1063]),
+    ()=>pattern([150,180,220,270,330,410,510,640,800,980,1210]),
+    ()=>pattern([170,210,260,320,390,480,590,720,870,1040,650]),
+    ()=>pattern([140,180,230,290,360,220,330,490,720,1080,1660]),
+    ()=>pattern([160,200,250,310,390,490,620,780,980,1230,1090]),
+    ()=>pattern([180,220,270,340,430,540,680,850,1060,1280,650]),
+    ()=>pattern([150,190,240,300,380,250,360,530,780,1160,2160]),
+    ()=>pattern([160,210,270,340,430,540,680,850,1200,190,220,260,320,430,600,850,1450,1000])
   ];const plan=patterns[Math.floor(Math.random()*patterns.length)]();const finish=()=>{const parentCard=cards[parentIndex];parentCard.classList.remove("reveal-checking");parentCard.classList.add("reveal-parent");let flashes=0;const flash=()=>{parentCard.classList.toggle("reveal-flash");flashes++;if(flashes>=8){parentCard.classList.remove("reveal-flash");status.textContent="";summaryEl.innerHTML=summary;next.disabled=false;return;}setTimeout(flash,150);};flash();};let step=0;const roulette=()=>{cards.forEach(card=>card.classList.remove("reveal-checking","reveal-parent","reveal-flash"));const index=plan.sequence[step];cards[index].classList.add("reveal-checking");status.textContent="";if(step===plan.sequence.length-1){finish();return;}const delay=plan.delays[Math.min(step,plan.delays.length-1)];step++;setTimeout(roulette,delay);};roulette();};
 function finalRoundCards(){
   const cards=state.history.filter(record=>record.image).map(record=>({round:record.round,image:record.image}));
