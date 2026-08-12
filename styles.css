@@ -56,7 +56,7 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .final-card-recap::before, .final-card-recap::after { position: absolute; z-index: -1; inset: -45%; content: ""; opacity: 0; pointer-events: none; }
 .final-card-recap::before { background: repeating-conic-gradient(from 4deg, #f9d96900 0deg 10deg, #f9d96946 11deg 14deg, #f9d96900 15deg 28deg); }
 .final-card-recap::after { background: radial-gradient(circle, #fff5b2 0 3%, #e7ad39bb 10%, transparent 42%); transform: scale(.2); }
-.final-recap-card { position: absolute; z-index: var(--stack-order); top: 22px; left: 50%; display: block; width: clamp(118px, 37vw, 168px); height: auto; border: 2px solid #f4d771; border-radius: 10px; box-shadow: 0 12px 25px #000b, 0 0 0 3px #6c451d; opacity: 0; transform: translate(-50%, -240px) rotate(-16deg); }
+.final-recap-card { position: absolute; z-index: var(--stack-order); top: 50px; left: 50%; display: block; width: clamp(118px, 37vw, 168px); height: auto; border: 2px solid #f4d771; border-radius: 10px; box-shadow: 0 12px 25px #000b, 0 0 0 3px #6c451d; opacity: 0; transform: translate(-50%, -240px) rotate(-16deg); }
 .final-heading { margin: 24px 0 14px; color: #f0c36e; font-family: Georgia, "Noto Serif JP", serif; font-size: clamp(1.65rem, 7vw, 2.3rem); letter-spacing: .08em; text-align: center; }
 .final-image { display: block; width: 100%; height: auto; margin: 0 auto; border: 1px solid #8d632f; border-radius: 12px; box-shadow: 0 8px 24px #0008; }
 .final-winners { display: grid; gap: 4px; margin: 18px 0 22px; color: #f5d67b; font-family: Georgia, "Noto Serif JP", serif; font-size: clamp(1.65rem, 8vw, 2.35rem); font-weight: 800; line-height: 1.2; letter-spacing: .08em; text-align: center; text-shadow: 0 2px 0 #392414; }
@@ -82,9 +82,9 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .final-screen.is-revealing .final-card-recap { animation: final-recap-contract 520ms cubic-bezier(.2,.8,.2,1) calc(var(--final-reveal-delay) - 430ms) forwards; }
 .final-screen.is-revealing .final-card-recap::before { animation: final-recap-rays 900ms ease-out calc(var(--final-reveal-delay) - 620ms) forwards; }
 .final-screen.is-revealing .final-card-recap::after { animation: final-recap-flash 680ms ease-out calc(var(--final-reveal-delay) - 500ms) forwards; }
-.final-screen.is-revealing .final-recap-card { animation: final-card-from-left 560ms cubic-bezier(.15,.9,.2,1) var(--entry-delay) forwards, final-card-to-recap 500ms cubic-bezier(.2,.8,.2,1) calc(var(--final-reveal-delay) - 500ms) forwards; }
+.final-screen.is-revealing .final-recap-card { animation: final-card-from-left 780ms cubic-bezier(.15,.9,.2,1) var(--entry-delay) forwards, final-card-to-recap 500ms cubic-bezier(.2,.8,.2,1) calc(var(--final-reveal-delay) - 500ms) forwards; }
 .final-screen.is-revealing .final-recap-card:nth-child(even) { animation-name: final-card-from-right, final-card-to-recap; }
-.final-screen.is-revealing .final-recap-card.is-last { animation-name: final-card-from-left, final-card-to-recap, final-card-last-hit; animation-duration: 560ms, 500ms, 900ms; animation-timing-function: cubic-bezier(.15,.9,.2,1), cubic-bezier(.2,.8,.2,1), ease-out; animation-delay: var(--entry-delay), calc(var(--final-reveal-delay) - 500ms), var(--entry-delay); animation-fill-mode: forwards, forwards, both; }
+.final-screen.is-revealing .final-recap-card.is-last { animation-name: final-card-from-left, final-card-to-recap, final-card-last-hit; animation-duration: 780ms, 500ms, 900ms; animation-timing-function: cubic-bezier(.15,.9,.2,1), cubic-bezier(.2,.8,.2,1), ease-out; animation-delay: var(--entry-delay), calc(var(--final-reveal-delay) - 500ms), var(--entry-delay); animation-fill-mode: forwards, forwards, both; }
 .final-screen.is-revealing .final-recap-card.is-last:nth-child(even) { animation-name: final-card-from-right, final-card-to-recap, final-card-last-hit; }
 .final-screen.is-revealing .final-reveal-content > * { opacity: 0; }
 .final-screen.is-revealing .final-heading { animation: final-reveal-drop 440ms cubic-bezier(.2,.8,.2,1) var(--final-reveal-delay) forwards; }
