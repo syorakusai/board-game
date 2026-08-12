@@ -10,7 +10,7 @@ const savedPlayerCount = (() => { try { const v=Number(localStorage.getItem(PLAY
 const savedCardSet = (() => { try { const v=localStorage.getItem(CARD_SET_STORAGE_KEY); return v==="test"||v==="vol1"?v:"vol1"; } catch { return "vol1"; } })();
 function readWordSetSelections(){try{const v=JSON.parse(localStorage.getItem(WORD_SET_STORAGE_KEY)||"{}");return v&&typeof v==="object"&&!Array.isArray(v)?v:{};}catch{return {};}}
 const savedWordSets = readWordSetSelections();
-const state = { playerCount:0, cardSet:savedCardSet, wordSet:savedWordSets[savedCardSet]||"standard-1", setCatalog:{}, cardSetData:null, wordSets:[], players:[], order:[], parentIndex:0, card:null, official:[], words:[], parentWord:"", answers:{}, answerIndex:0, answerLocked:false, selectedAnswer:"", timer:null, usedCards:new Set(), round:0, handoffNext:"", history:[], currentScreen:"title", howtoReturnScreen:"title" };
+const state = { playerCount:0, discussionMinutes:2, cardSet:savedCardSet, wordSet:savedWordSets[savedCardSet]||"standard-1", setCatalog:{}, cardSetData:null, wordSets:[], players:[], order:[], parentIndex:0, card:null, official:[], words:[], parentWord:"", answers:{}, answerIndex:0, answerLocked:false, selectedAnswer:"", timer:null, usedCards:new Set(), round:0, handoffNext:"", history:[], currentScreen:"title", howtoReturnScreen:"title" };
 const screens=document.querySelectorAll("[data-screen]");
 document.title="貴族のひそめごと";
 document.querySelector('[data-screen="title"] .eyebrow')?.remove();
@@ -84,7 +84,9 @@ function showReady(){
 const playerCountNext=document.querySelector("#player-count-next");
 function updatePlayerCountNext(){playerCountNext.disabled=!Number.isInteger(state.playerCount)||state.playerCount<2||state.playerCount>6;}
 function readSavedPlayerCount(){try{const n=Number(localStorage.getItem(PLAYER_COUNT_STORAGE_KEY));return Number.isInteger(n)&&n>=2&&n<=6?n:0;}catch{return 0;}}
-function restorePlayerCountSelection(){const n=readSavedPlayerCount();state.playerCount=n;const button=[...document.querySelectorAll(".count-button")].find(x=>x.textContent===`${n}人`);document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===button));updatePlayerCountNext();}
+function setDiscussionMinutes(minutes){state.discussionMinutes=minutes;document.querySelector("#discussion-time-select").value=String(minutes);}
+function defaultDiscussionMinutes(playerCount){return playerCount>=5?3:2;}
+function restorePlayerCountSelection(){const n=readSavedPlayerCount();state.playerCount=n;const button=[...document.querySelectorAll(".count-button")].find(x=>x.textContent===`${n}人`);document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===button));setDiscussionMinutes(defaultDiscussionMinutes(n));updatePlayerCountNext();}
 function renderPlayerNames(){
   const n=state.playerCount;
   document.querySelector("#name-description").textContent="客人の名前を入力してください。";
@@ -101,6 +103,7 @@ function renderPlayerNames(){
 }
 function selectPlayerCount(n,button){
   state.playerCount=n;
+  setDiscussionMinutes(defaultDiscussionMinutes(n));
   document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===button));
   updatePlayerCountNext();
   try{localStorage.setItem(PLAYER_COUNT_STORAGE_KEY,String(n));}catch{}
@@ -118,6 +121,7 @@ playerCountNext.onclick=()=>{if(state.playerCount)renderPlayerNames();};
 document.querySelector("#player-count-back").onclick=()=>show("title");
 document.querySelector("#card-set-select").onchange=e=>{state.cardSet=e.target.value;state.wordSet=readWordSetSelections()[state.cardSet]||"standard-1";try{localStorage.setItem(CARD_SET_STORAGE_KEY,state.cardSet);}catch{}renderWordSetOptions();saveWordSetSelection();updatePlayerCountNext();};
 document.querySelector("#word-set-select").onchange=e=>{state.wordSet=e.target.value;saveWordSetSelection();updatePlayerCountNext();};
+document.querySelector("#discussion-time-select").onchange=e=>{state.discussionMinutes=Number(e.target.value);};
 document.querySelector("#title-start").onclick=()=>{restorePlayerCountSelection();show("player-count");};
 document.querySelector("#title-start").addEventListener("click",()=>{state.history=[];});
 function openHowto(){state.howtoReturnScreen=state.currentScreen;document.querySelectorAll(".game-menu.is-open").forEach(menu=>{menu.classList.remove("is-open");menu.querySelector(".menu-button")?.setAttribute("aria-expanded","false");});show("howto");}
@@ -154,7 +158,7 @@ document.querySelector("#handoff-button").onclick=()=>{document.querySelector("#
 document.querySelector("#handoff-redraw-button").onclick=()=>{const p=state.players[state.order[state.parentIndex]];document.querySelector("#round-start-button").disabled=false;document.querySelector("#draw-card").textContent="伏せ札を引く";document.querySelector("#round-card-message").textContent=`${p.name}さん、伏せ札の山から1枚引いてください。`;show("round");};
 document.querySelector("#parent-submit").onclick=()=>{const v=document.querySelector("#parent-word").value.trim(),e=document.querySelector("#parent-error");if(!v){e.textContent="親ワードを入力してください。";return;}e.textContent="";state.parentWord=v;state.words=shuffle([...state.official,v]);document.querySelector("#public-card-area").innerHTML=cardMarkup(state.card);show("word-open");};
 document.querySelector("#word-open-button").onclick=()=>{document.querySelector("#discussion-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#public-words").innerHTML=numberedWordsMarkup(state.words);show("discussion");startTimer();};
-function startTimer(){let left=120;const el=document.querySelector("#timer");clearInterval(state.timer);const tick=()=>{el.textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`;if(left--<=0){clearInterval(state.timer);state.timer=null;closeRoundOverlays();showTimeout();}};tick();state.timer=setInterval(tick,1000);}
+function startTimer(){let left=state.discussionMinutes*60;const el=document.querySelector("#timer");clearInterval(state.timer);const tick=()=>{el.textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`;if(left--<=0){clearInterval(state.timer);state.timer=null;closeRoundOverlays();showTimeout();}};tick();state.timer=setInterval(tick,1000);}
 document.querySelector("#discussion-end").onclick=startAnswer;
 function showTimeout(){document.querySelector("#timeout-card-area").innerHTML=`<img src="assets/time-up-butler.jpg" alt="お時間ですと書かれた額縁を持つ老執事" onerror="this.outerHTML='<div class=&quot;missing-card&quot;>お時間ですの画像を読み込めませんでした</div>'">`;show("timeout");}
 document.querySelector("#timeout-to-answer").onclick=startAnswer;
