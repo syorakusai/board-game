@@ -1,21 +1,15 @@
-const PLAYER_STORAGE_KEY = "word-card-players";
+import { CARD_SET_STORAGE_KEY, PLAYER_COUNT_STORAGE_KEY, PLAYER_STORAGE_KEY, WORD_SET_STORAGE_KEY, esc, numberedWordsMarkup, readWordSetSelections, savedCardSet, savedPlayerCount, savedPlayers, shuffle, state } from "./game-state.js";
+import { createRouletteController } from "./roulette.js";
+
+const rouletteController=createRouletteController();
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
 }
-const PLAYER_COUNT_STORAGE_KEY = "word-card-player-count";
-const CARD_SET_STORAGE_KEY = "word-card-set";
-const WORD_SET_STORAGE_KEY = "word-card-word-sets";
-const savedPlayers = (() => { try { const v=JSON.parse(localStorage.getItem(PLAYER_STORAGE_KEY)||"[]"); return Array.isArray(v)?v.map(String):[]; } catch { return []; } })();
-const savedPlayerCount = (() => { try { const v=Number(localStorage.getItem(PLAYER_COUNT_STORAGE_KEY)); return Number.isInteger(v)&&v>=2&&v<=6?v:0; } catch { return 0; } })();
-const savedCardSet = (() => { try { const v=localStorage.getItem(CARD_SET_STORAGE_KEY); return v==="test"||v==="vol1"?v:"vol1"; } catch { return "vol1"; } })();
-function readWordSetSelections(){try{const v=JSON.parse(localStorage.getItem(WORD_SET_STORAGE_KEY)||"{}");return v&&typeof v==="object"&&!Array.isArray(v)?v:{};}catch{return {};}}
-const savedWordSets = readWordSetSelections();
-const state = { playerCount:0, discussionMinutes:2, cardSet:savedCardSet, wordSet:savedWordSets[savedCardSet]||"standard-1", setCatalog:{}, cardSetData:null, wordSets:[], players:[], order:[], parentIndex:0, card:null, official:[], words:[], parentWord:"", answers:{}, answerIndex:0, answerLocked:false, selectedAnswer:"", timer:null, usedCards:new Set(), preparedCard:null, cardPreparation:null, gameSession:0, round:0, handoffNext:"", history:[], currentScreen:"title", howtoReturnScreen:"title" };
 const screens=document.querySelectorAll("[data-screen]");
 document.title="貴族のひそめごと";
 document.querySelector('[data-screen="title"] .eyebrow')?.remove();
 document.querySelector('[data-screen="title"] .title-main-image')?.setAttribute("alt","貴族のひそめごとのメインイラスト");
-const fixedScreenTitles={howto:"宴の作法","player-count":"宴の支度","player-names":"客人の名乗り",ready:"宴の席次"};
+const fixedScreenTitles={"player-count":"宴の支度","player-names":"客人の名乗り",ready:"宴の席次"};
 Object.entries(fixedScreenTitles).forEach(([screen,title])=>{const el=document.querySelector(`[data-screen="${screen}"] h1`);if(el)el.textContent=title;});
 const roundTitleMap={"CARD DRAW":"札選び","CARD OPEN":"お題との対面","PARENT WORD":"親のひそめごと","WORD OPEN":"言葉のお披露目",DISCUSSION:"宴の推理","TIME UP":"お時間です","WORD SELECT":"推理結果の記帳","SELECTION OPEN":"ひそめごと開帳",RESULT:"宴の顛末",SCORE:"得点の記録",FINAL:"宴の結び"};
 const roundNames=["","第一","第二","第三","第四","第五","第六","第七","第八","第九","第十"];
@@ -29,9 +23,6 @@ function show(name){
   document.body.scrollTop=0;
   requestAnimationFrame(()=>window.scrollTo(0,0));
 }
-const esc=v=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-const numberedWordsMarkup=(words,tag="div")=>words.map((word,index)=>`<${tag} class="word${tag==="button"?" word-button":""}"${tag==="button"?` data-word="${esc(word)}"`:""}><span class="word-number" aria-hidden="true">${index+1}</span><span class="word-text">${esc(word)}</span></${tag}>`).join("");
-const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
 function cardImagePath(image){if(!image)return "";return image.startsWith("cards/")?image:`cards/${state.cardSet}/${image}`;}
 function cardMarkup(card){const src=cardImagePath(card?.image);return src?`<img class="card-zoom-trigger" src="${esc(src)}" alt="お題カード。タップで拡大表示" tabindex="0" role="button" onerror="this.parentElement.innerHTML='<div class=&quot;missing-card&quot;>カード画像を読み込めませんでした</div>'">`:`<div class="missing-card">カード画像を読み込めません</div>`;}
 const cardLightbox=document.querySelector("#card-lightbox"),cardLightboxContent=document.querySelector("#card-lightbox-content");
@@ -71,9 +62,9 @@ function prepareCard(){if(state.preparedCard)return state.cardPreparation||Promi
 async function chooseCard(){await prepareCard();const prepared=state.preparedCard;if(!prepared)return;state.card=prepared.card;state.official=prepared.official;state.usedCards.add(state.card.id);state.preparedCard=null;state.cardPreparation=null;}
 async function fetchCardSet(setId){const r=await fetch(`cards/${setId}/cards.json`);if(!r.ok)throw Error();const d=await r.json();if(!d||!Array.isArray(d.cards)||!Array.isArray(d.wordSets)||!d.cards.length||!d.wordSets.length)throw Error();return d;}
 function saveWordSetSelection(){try{const saved=readWordSetSelections();saved[state.cardSet]=state.wordSet;localStorage.setItem(WORD_SET_STORAGE_KEY,JSON.stringify(saved));}catch{}}
-function renderWordSetOptions(){const select=document.querySelector("#word-set-select");if(!select)return;const data=state.setCatalog[state.cardSet];const sets=data?.wordSets||[];select.replaceChildren(...sets.map(set=>{const option=document.createElement("option");option.value=set.id;option.textContent=set.name;return option;}));if(!sets.some(set=>set.id===state.wordSet))state.wordSet=sets[0]?.id||"standard-1";select.value=state.wordSet;}
-function renderCardSetOptions(){const select=document.querySelector("#card-set-select");if(!select)return;select.replaceChildren(...Object.values(state.setCatalog).map(data=>{const option=document.createElement("option");option.value=data.id;option.textContent=data.name;return option;}));if(!state.setCatalog[state.cardSet])state.cardSet=Object.keys(state.setCatalog)[0]||"vol1";select.value=state.cardSet;renderWordSetOptions();}
-async function loadCardSetCatalog(){const entries=await Promise.all(["test","vol1"].map(async id=>{try{return await fetchCardSet(id);}catch{return null;}}));entries.filter(Boolean).forEach(data=>{state.setCatalog[data.id]=data;});renderCardSetOptions();}
+function renderWordSetOptions(){const select=document.querySelector("#word-set-select");if(!select)return;const data=state.setCatalog[state.cardSet];const sets=data?.wordSets||[];select.replaceChildren(...sets.map(set=>{const option=document.createElement("option");option.value=set.id;option.textContent=set.name;return option;}));if(!sets.some(set=>set.id===state.wordSet))state.wordSet=sets[0]?.id||"";select.value=state.wordSet;}
+function renderCardSetOptions(){const select=document.querySelector("#card-set-select");if(!select)return;select.replaceChildren(...Object.values(state.setCatalog).map(data=>{const option=document.createElement("option");option.value=data.id;option.textContent=data.name;return option;}));if(!state.setCatalog[state.cardSet])state.cardSet=state.defaultCardSet;select.value=state.cardSet;renderWordSetOptions();}
+async function loadCardSetCatalog(){const response=await fetch("card-sets.json");if(!response.ok)throw Error();const config=await response.json(),ids=Array.isArray(config.cardSetIds)?config.cardSetIds:[];const entries=await Promise.all(ids.map(async id=>{try{return await fetchCardSet(id);}catch{return null;}}));entries.filter(Boolean).forEach(data=>{state.setCatalog[data.id]=data;});state.defaultCardSet=state.setCatalog[config.defaultCardSet]?config.defaultCardSet:Object.keys(state.setCatalog)[0]||"";renderCardSetOptions();}
 async function loadCards(){try{const d=state.setCatalog[state.cardSet]||await fetchCardSet(state.cardSet);state.cardSetData=d;state.cards=d.cards;state.wordSets=d.wordSets;const saved=readWordSetSelections()[state.cardSet]||state.wordSet;state.wordSet=state.wordSets.some(set=>set.id===saved)?saved:state.wordSets[0].id;renderWordSetOptions();saveWordSetSelection();}catch{state.cards=[{id:1,image:""}];state.wordSets=[{id:"standard-1",name:"標準セット",cards:[{cardId:1,officialWords:["りんご","鴨","奇妙な組み合わせ"]}]}];state.wordSet="standard-1";}}
 function renderOrder(){const list=document.querySelector("#player-list");if(!list)return;list.innerHTML=state.order.map((i,n)=>`<div class="player-item"><span class="player-order"><span class="player-order-number">${n+1}.</span> <span class="player-name">${esc(state.players[i].name)}</span></span></div>`).join("");}
 function showReady(){
@@ -151,7 +142,7 @@ document.querySelector("#ready-back").onclick=()=>renderPlayerNames();
 document.querySelector("#player-form").onsubmit=e=>{e.preventDefault();const names=[...new FormData(e.target).values()].map(v=>String(v).trim()),err=document.querySelector("#form-error");err.textContent="";if(names.some(n=>!n)){err.textContent="すべてのプレイヤー名を入力してください。";return;}if(new Set(names).size!==names.length){err.textContent="プレイヤー名は重複しないようにしてください。";return;}state.gameSession++;clearPreparedCard();state.players=names.map((name,i)=>({id:i,name,score:0}));try{localStorage.setItem(PLAYER_STORAGE_KEY,JSON.stringify(names));}catch{}showReady();};
 document.querySelector("#start-button").onclick=async()=>{await loadCards();startRound();};
 function setRoundDrawReady(player){document.querySelector("#round-card-message").textContent=`${player.name}さん、伏せ札の山から1枚引いてください。`;document.querySelector("#round-start-button").disabled=false;document.querySelector("#draw-card").textContent="伏せ札を引く";document.querySelector("#draw-status").classList.add("is-hidden");deckStackImage.classList.remove("is-loading");deckStackImage.setAttribute("aria-disabled","false");}
-function startRound(){state.round++;const p=state.players[state.order[state.parentIndex]],roundName=roundNames[state.round]||`第${state.round}`;document.querySelectorAll("[data-round-title]").forEach(x=>x.textContent=`${roundName}席　${roundTitleMap[x.dataset.roundTitle]||x.dataset.roundTitle}`);document.querySelector("#round-title").textContent=`親：${p.name}`;setRoundDrawReady(p);prepareCard();show("round");}
+function startRound(){rouletteController.cancel();state.round++;const p=state.players[state.order[state.parentIndex]],roundName=roundNames[state.round]||`第${state.round}`;document.querySelectorAll("[data-round-title]").forEach(x=>x.textContent=`${roundName}席　${roundTitleMap[x.dataset.roundTitle]||x.dataset.roundTitle}`);document.querySelector("#round-title").textContent=`親：${p.name}`;setRoundDrawReady(p);prepareCard();show("round");}
 async function drawRoundCard(){const button=document.querySelector("#round-start-button"),gameSession=state.gameSession;if(button.disabled)return;button.disabled=true;document.querySelector("#draw-card").textContent="お題を準備しています…";document.querySelector("#draw-status").classList.remove("is-hidden");deckStackImage.classList.add("is-loading");deckStackImage.setAttribute("aria-disabled","true");await chooseCard();if(gameSession!==state.gameSession)return;document.querySelector("#draw-card").textContent="カードを引きました";document.querySelector("#handoff-card-area").innerHTML=cardMarkup(state.card);handoff(state.players[state.order[state.parentIndex]],"親ワード入力");}
 document.querySelector("#round-start-button").onclick=drawRoundCard;
 const deckStackImage=document.querySelector("#deck-stack-image");
@@ -170,70 +161,7 @@ function askAnswer(){const orderedChildren=[...state.order.slice(state.parentInd
 function voteMarkup(){return state.words.map(w=>{const voters=state.players.filter((_,i)=>i!==state.order[state.parentIndex]).filter(p=>state.answers[p.id]===w).map(p=>p.name);return `<div class="vote-card" data-parent-word="${w===state.parentWord}"><div class="word">${esc(w)}</div><div class="vote-count">${voters.length}票</div><div class="voters">${voters.length?voters.map(esc).join("、"):"選択者なし"}</div></div>`;}).join("");}
 function selectionMarkup(){return state.words.map(w=>{const voters=state.players.filter((_,i)=>i!==state.order[state.parentIndex]).filter(p=>state.answers[p.id]===w).map(p=>p.name);return `<div class="vote-card"><div class="word">${esc(w)}</div><div class="vote-count">${voters.length}票</div><div class="voters">${voters.length?voters.map(esc).join("、"):"選択者なし"}</div></div>`;}).join("");}
 function showResultOpen(){document.querySelector("#result-open-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#selection-summary").innerHTML=selectionMarkup();show("result-open");}
-document.querySelector("#result-open-button").onclick=()=>{document.querySelector("#result-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#result-votes").innerHTML=voteMarkup();const children=state.players.filter((_,i)=>i!==state.order[state.parentIndex]),correct=children.filter(p=>state.answers[p.id]===state.parentWord),isTwoPlayer=children.length===1,summary=correct.length===0?(isTwoPlayer?"<strong>子が不正解</strong><span>得点なし</span>":"<strong>全員不正解</strong><span>親：+1ポイント</span>"):correct.length===children.length?(isTwoPlayer?"<strong>子が正解</strong><span>子：+1ポイント</span>":"<strong>全員正解</strong><span>子：全員+1ポイント<br>親：−1ポイント</span>"):"<strong>一部の子が正解</strong><span>正解した子：各+1ポイント</span>",status=document.querySelector("#result-reveal-status"),summaryEl=document.querySelector("#result-summary"),next=document.querySelector("#result-next"),cards=[...document.querySelectorAll("#result-votes .vote-card")];summaryEl.innerHTML="";status.textContent="";next.disabled=true;show("result");cards.forEach(card=>card.classList.remove("reveal-pending","reveal-checking","reveal-parent","reveal-flash"));const parentIndex=cards.findIndex(card=>card.dataset.parentWord==="true");if(parentIndex<0||!cards.length){status.textContent="親のワードを確認できません。";summaryEl.innerHTML=summary;next.disabled=false;return;}
-  const randomIndex=()=>Math.floor(Math.random()*cards.length);
-  const forward=index=>(index+1)%cards.length;
-  const backward=index=>(index-1+cards.length)%cards.length;
-  const varyDelay=delay=>Math.max(90,Math.round(delay*(0.9+Math.random()*0.2)));
-  const rhythmDelay=(delays,step,totalSteps)=>{
-    const position=totalSteps<2?0:step*(delays.length-1)/(totalSteps-1);
-    const before=Math.floor(position),after=Math.min(delays.length-1,before+1),ratio=position-before;
-    return varyDelay(delays[before]+(delays[after]-delays[before])*ratio);
-  };
-  const stepsTo=(from,to,move)=>{let steps=0,current=from;while(current!==to){current=move(current);steps++;}return steps;};
-  // 既存10パターンは、表示順どおりに一方向へ進む。
-  const makeRoute=minimumSteps=>{
-    let current=randomIndex(),steps=0;
-    const sequence=[current];
-    while(steps<minimumSteps||current!==parentIndex){
-      current=forward(current);
-      sequence.push(current);
-      steps++;
-    }
-    return sequence;
-  };
-  const pattern=delays=>{
-    const minimumSteps=Math.max(6,delays.length-2+Math.floor(Math.random()*5));
-    const sequence=makeRoute(minimumSteps);
-    const variedDelays=sequence.slice(0,-1).map((_,step)=>rhythmDelay(delays,step,sequence.length-1));
-    return {sequence,delays:variedDelays};
-  };
-  // 追加3パターンは、順方向で回り始めてから途中で反転する。
-  // 逆回転中に止まりそうに見せる候補は毎回4つから選ぶ。
-  const reversePattern=delays=>{
-    let current=randomIndex();
-    const sequence=[current],reverseMarkers=[];
-    const push=(move,count)=>{for(let i=0;i<count;i++){current=move(current);sequence.push(current);}};
-    push(forward,5+Math.floor(Math.random()*4));
-    const decoyIndex=randomIndex();
-    const reverseSteps=stepsTo(current,decoyIndex,backward)||cards.length;
-    push(backward,reverseSteps);
-    reverseMarkers.push(sequence.length-1);
-    // 囮の位置を通過しても逆回転を続け、そこで正解だと読めないようにする。
-    push(backward,1+Math.floor(Math.random()*3));
-    const finishSteps=stepsTo(current,parentIndex,forward)||cards.length;
-    push(forward,finishSteps);
-    const variedDelays=sequence.slice(0,-1).map((_,step)=>{
-      const base=rhythmDelay(delays,step,sequence.length-1);
-      return reverseMarkers.includes(step+1)?Math.round(base*1.9):base;
-    });
-    return {sequence,delays:variedDelays};
-  };
-  const patterns=[
-    ()=>pattern([189,216,256,310,378,459,553,674,836,1079]),
-    ()=>pattern([198,240,297,368,453,566,707,919,1202]),
-    ()=>pattern([181,220,272,337,415,233,324,454,622,829,1063]),
-    ()=>pattern([150,180,220,270,330,410,510,640,800,980,1210]),
-    ()=>pattern([170,210,260,320,390,480,590,720,870,1040,650]),
-    ()=>pattern([140,180,230,290,360,220,330,490,720,1080,1660]),
-    ()=>pattern([160,200,250,310,390,490,620,780,980,1230,1090]),
-    ()=>pattern([180,220,270,340,430,540,680,850,1060,1280,650]),
-    ()=>pattern([150,190,240,300,380,250,360,530,780,1160,2160]),
-    ()=>pattern([160,210,270,340,430,540,680,850,1200,190,220,260,320,430,600,850,1450,1000]),
-    ()=>reversePattern([160,200,250,320,410,530,690,860,1060,1320,980]),
-    ()=>reversePattern([150,190,240,310,400,520,680,870,1110,1380,760]),
-    ()=>reversePattern([170,220,280,350,450,580,740,930,1160,1450,1080])
-  ];const plan=patterns[Math.floor(Math.random()*patterns.length)]();const finish=()=>{const parentCard=cards[parentIndex];parentCard.classList.remove("reveal-checking");parentCard.classList.add("reveal-parent");let flashes=0;const flash=()=>{parentCard.classList.toggle("reveal-flash");flashes++;if(flashes>=8){parentCard.classList.remove("reveal-flash");status.textContent="";summaryEl.innerHTML=summary;next.disabled=false;return;}setTimeout(flash,150);};flash();};let step=0;const roulette=()=>{cards.forEach(card=>card.classList.remove("reveal-checking","reveal-parent","reveal-flash"));const index=plan.sequence[step];cards[index].classList.add("reveal-checking");status.textContent="";if(step===plan.sequence.length-1){finish();return;}const delay=plan.delays[Math.min(step,plan.delays.length-1)];step++;setTimeout(roulette,delay);};roulette();};
+document.querySelector("#result-open-button").onclick=()=>{document.querySelector("#result-card-area").innerHTML=cardMarkup(state.card);document.querySelector("#result-votes").innerHTML=voteMarkup();const children=state.players.filter((_,i)=>i!==state.order[state.parentIndex]),correct=children.filter(p=>state.answers[p.id]===state.parentWord),isTwoPlayer=children.length===1,summary=correct.length===0?(isTwoPlayer?"<strong>子が不正解</strong><span>得点なし</span>":"<strong>全員不正解</strong><span>親：+1ポイント</span>"):correct.length===children.length?(isTwoPlayer?"<strong>子が正解</strong><span>子：+1ポイント</span>":"<strong>全員正解</strong><span>子：全員+1ポイント<br>親：−1ポイント</span>"):"<strong>一部の子が正解</strong><span>正解した子：各+1ポイント</span>",status=document.querySelector("#result-reveal-status"),summaryEl=document.querySelector("#result-summary"),next=document.querySelector("#result-next"),cards=[...document.querySelectorAll("#result-votes .vote-card")];summaryEl.innerHTML="";status.textContent="";next.disabled=true;show("result");cards.forEach(card=>card.classList.remove("reveal-pending","reveal-checking","reveal-parent","reveal-flash"));const parentIndex=cards.findIndex(card=>card.dataset.parentWord==="true");if(parentIndex<0||!cards.length){status.textContent="親のワードを確認できません。";summaryEl.innerHTML=summary;next.disabled=false;return;}rouletteController.start({cards,parentIndex,status,summaryEl,next,summary});};
 function finalRoundCards(){
   const cards=state.history.filter(record=>record.image).map(record=>({round:record.round,image:record.image}));
   if(state.card?.image&&!cards.some(card=>card.round===state.round))cards.push({round:state.round,image:state.card.image});
@@ -263,11 +191,11 @@ function showFinalResults(winners){
 document.querySelector("#result-next").onclick=()=>{const children=state.players.filter((_,i)=>i!==state.order[state.parentIndex]),correct=children.filter(p=>state.answers[p.id]===state.parentWord),parent=state.players[state.order[state.parentIndex]];if(!correct.length){if(children.length>1)parent.score++;}else if(correct.length===children.length){if(children.length>1)parent.score=Math.max(0,parent.score-1);children.forEach(p=>p.score++);}else correct.forEach(p=>p.score++);const winners=state.players.filter(p=>p.score>=5);if(winners.length){showFinalResults(winners);return;}document.querySelector("#score-summary").innerHTML=state.players.map(p=>`<div class="player-item"><span>${esc(p.name)}</span><span>${p.score}ポイント</span></div>`).join("");document.querySelector("#score-title").textContent=children.length===1?(correct.length===0?"子が不正解":"子が正解"):(correct.length===0?"全員不正解":correct.length===children.length?"全員正解":"一部の子が正解");const nextRoundButton=document.querySelector("#next-round");nextRoundButton.textContent="次の席へ";nextRoundButton.dataset.action="next-round";show("scores");};
 document.querySelector("#result-open-button").addEventListener("click",()=>{document.querySelector("#result-parent").textContent=`親：${state.players[state.order[state.parentIndex]].name}`;});
 document.querySelector("#result-next").addEventListener("click",()=>{if(state.history.some(record=>record.round===state.round))return;const children=state.players.filter((_,i)=>i!==state.order[state.parentIndex]),correct=children.filter(p=>state.answers[p.id]===state.parentWord),summary=correct.length===0?(children.length===1?"子が不正解。得点なし":"全員不正解。親プラス1ポイント"):correct.length===children.length?(children.length===1?"子が正解。子プラス1ポイント":"全員正解。子プラス1ポイント、親マイナス1ポイント"):"一部の子が正解。正解した子に1ポイント";state.history.push({round:state.round,parentName:state.players[state.order[state.parentIndex]].name,image:state.card?.image||"",parentWord:state.parentWord,words:[...state.words],answers:{...state.answers},children:children.map(p=>({id:p.id,name:p.name})),summary});});
-function returnToTitle(){if(!confirm("ゲームを退出してタイトル画面に戻りますか？\n現在のゲーム内容は失われます。"))return;clearInterval(state.timer);state.gameSession++;clearPreparedCard();Object.assign(state,{playerCount:0,cardSet:state.cardSet,players:[],order:[],parentIndex:0,card:null,official:[],words:[],parentWord:"",answers:{},answerIndex:0,answerLocked:false,selectedAnswer:"",timer:null,usedCards:new Set(),round:0,handoffNext:"",howtoReturnScreen:"title"});show("title");}
+function returnToTitle(){if(!confirm("ゲームを退出してタイトル画面に戻りますか？\n現在のゲーム内容は失われます。"))return;rouletteController.cancel();clearInterval(state.timer);state.gameSession++;clearPreparedCard();Object.assign(state,{playerCount:0,cardSet:state.cardSet,players:[],order:[],parentIndex:0,card:null,official:[],words:[],parentWord:"",answers:{},answerIndex:0,answerLocked:false,selectedAnswer:"",timer:null,usedCards:new Set(),round:0,handoffNext:"",howtoReturnScreen:"title"});show("title");}
 document.querySelector("#next-round").onclick=()=>{if(document.querySelector("#next-round").dataset.action==="title"){returnToTitle();return;}state.parentIndex=(state.parentIndex+1)%state.order.length;startRound();};
 document.querySelector("#final-to-title").onclick=returnToTitle;
 const GAME_EXIT_MESSAGE="ゲームを終了してタイトル画面に戻りますか？\n現在のゲーム内容は失われます。";
 function stopGame(){clearInterval(state.timer);if(confirm(GAME_EXIT_MESSAGE)){location.reload();}}
 window.addEventListener("beforeunload",e=>{if(state.round){e.preventDefault();e.returnValue=GAME_EXIT_MESSAGE;}});
 history.pushState(null,"",location.href);window.addEventListener("popstate",()=>{history.pushState(null,"",location.href);stopGame();});
-loadCardSetCatalog().then(()=>show("title"));
+loadCardSetCatalog().catch(()=>{}).finally(()=>show("title"));
