@@ -1,4 +1,4 @@
-const CACHE_NAME = "kizoku-no-hisomegoto-v10";
+const CACHE_NAME = "kizoku-no-hisomegoto-v11";
 const APP_SHELL = [
   "./",
   "index.html",
@@ -44,4 +44,3 @@ self.addEventListener("fetch", event => {
     return response;
   })));
 });
-
