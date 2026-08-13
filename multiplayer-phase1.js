@@ -86,8 +86,8 @@ async function renderWaiting(room) {
   const discussionMinutes = room.discussionMinutes;
   $("#room-summary").innerHTML = `<p class="room-number-row"><strong>部屋番号：${escape(roomId)}</strong><button id="copy-room-id" class="copy-icon-button" type="button" aria-label="部屋番号をコピー" title="部屋番号をコピー"><span aria-hidden="true">⧉</span></button></p><p>カードセット：${escape(room.cardSetName)}</p><p>ワードセット：${escape(room.wordSetName)}</p><p>推理時間：${escape(discussionMinutes)}分</p>`;
   $("#room-players").innerHTML = entries.length ? entries.sort((a,b) => a.joinedAt - b.joinedAt).map(player => `<div class="player-item"><span>${escape(player.name)}${player.uid === room.hostUid ? "（主催）" : ""}</span></div>`).join("") : "";
-  $("#room-waiting-message").textContent = room.status === "waiting" ? `参加者 ${entries.length}人／2〜6人で開始できます。` : "宴を開始しました。";
-  $("#room-invitation").classList.toggle("is-hidden", !isHost);
+  $("#room-waiting-message").textContent = room.status === "waiting" ? `参加者 ${entries.length}人／2〜6人で開始できます。` : room.status === "closed" ? "主催者が宴を閉じました。" : "宴を開始しました。";
+  $("#room-invitation").classList.toggle("is-hidden", !isHost || room.status !== "waiting");
   const startButton = $("#start-multiplayer-game");
   const canStart = entries.length >= 2 && entries.length <= 6 && room.status === "waiting";
   startButton.classList.toggle("is-hidden", !isHost || room.status !== "waiting");
@@ -158,7 +158,7 @@ async function joinRoom() {
   const snapshot = await get(ref(context.database, roomPath(id)));
   const room = snapshot.val();
   if (!room) { error.textContent = "部屋番号が見つかりません。"; return; }
-  if (room.status !== "waiting") { error.textContent = "この宴はすでに開始されています。"; return; }
+  if (room.status !== "waiting") { error.textContent = room.status === "closed" ? "この宴は主催者により閉じられました。" : "この宴はすでに開始されています。"; return; }
   if (playerEntries(room).length >= 6) { error.textContent = "この宴は満席です。"; return; }
   const key = normalizedName(name);
   if (room.nameIndex?.[key] && room.nameIndex[key] !== context.user.uid) { error.textContent = "同じ名前の客人がすでに参加しています。別の名前を入力してください。"; return; }
@@ -181,6 +181,28 @@ async function startRoom() {
   const seats = [...players.map(player => player.uid)];
   for (let index = seats.length - 1; index > 0; index--) { const other = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1); [seats[index], seats[other]] = [seats[other], seats[index]]; }
   await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "started", startedAt: Date.now(), seats, parentUid: seats[0] });
+}
+
+async function leaveWaitingRoom() {
+  if (latestRoom?.hostUid === currentUser?.uid && latestRoom.status === "waiting") {
+    try {
+      await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "closed", closedAt: Date.now() });
+    } catch (cause) {
+      $("#room-waiting-message").textContent = `宴を閉じられませんでした。${cause.message || ""}`;
+      return;
+    }
+    roomUnsubscribe?.();
+    roomUnsubscribe = null;
+    latestRoom = null;
+    roomId = "";
+    openCreate();
+    return;
+  }
+  roomUnsubscribe?.();
+  roomUnsubscribe = null;
+  latestRoom = null;
+  roomId = "";
+  show("multiplayer-role");
 }
 
 function openJoinFromUrl() {
@@ -209,6 +231,7 @@ function initialize() {
   $("#create-room-button").onclick = createRoom;
   $("#join-room-button").onclick = joinRoom;
   $("#start-multiplayer-game").onclick = startRoom;
+  $("#waiting-back").onclick = leaveWaitingRoom;
   const copyWithNotice = async value => { await navigator.clipboard.writeText(value); $("#room-waiting-message").textContent = "コピーしました。"; setTimeout(() => { if (latestRoom?.status === "waiting") $("#room-waiting-message").textContent = `参加者 ${playerEntries(latestRoom).length}人／2〜6人で開始できます。`; }, 1500); };
   $("#copy-invite-url").onclick = () => copyWithNotice($("#invite-url").value);
   document.addEventListener("click", event => { if (event.target.closest("#copy-room-id")) copyWithNotice(roomId); });
