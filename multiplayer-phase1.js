@@ -235,7 +235,7 @@ async function leaveWaitingRoom() {
   const departure = removeCurrentPlayer();
   clearRoomSession();
   clearInviteUrl();
-  show("title");
+  show("multiplayer-role");
   await departure.catch(cause => console.error("[通信対戦の退出]", cause));
   leavingWaitingRoom = false;
 }
