@@ -90,7 +90,11 @@ async function renderWaiting(room) {
   if (isHost) {
     const url = inviteUrl(roomId);
     $("#invite-url").value = url;
-    await QRCode.toCanvas($("#invite-qr"), url, { width: 180, margin: 1, color: { dark: "#063b2b", light: "#fffdf4" } });
+    const qr = $("#invite-qr");
+    qr.replaceChildren();
+    const canvas = document.createElement("canvas");
+    qr.append(canvas);
+    await QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark: "#063b2b", light: "#fffdf4" } });
   }
   if (room.status === "started") enterDrawScreen(room);
 }
