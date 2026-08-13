@@ -86,7 +86,7 @@ async function renderWaiting(room) {
   const entries = playerEntries(room);
   const isHost = room.hostUid === currentUser?.uid;
   const discussionMinutes = room.discussionMinutesMode === "auto" ? defaultDiscussionMinutes(entries.length) : room.discussionMinutes;
-  $("#room-summary").innerHTML = `<p><strong>部屋番号：${escape(roomId)}</strong></p><p>カードセット：${escape(room.cardSetName)}</p><p>ワードセット：${escape(room.wordSetName)}</p><p>推理時間：${escape(discussionMinutes)}分</p>`;
+  $("#room-summary").innerHTML = `<p class="room-number-row"><strong>部屋番号：${escape(roomId)}</strong><button id="copy-room-id" class="copy-icon-button" type="button" aria-label="部屋番号をコピー" title="部屋番号をコピー"><span aria-hidden="true">⧉</span></button></p><p>カードセット：${escape(room.cardSetName)}</p><p>ワードセット：${escape(room.wordSetName)}</p><p>推理時間：${escape(discussionMinutes)}分</p>`;
   $("#room-players").innerHTML = entries.length ? entries.sort((a,b) => a.joinedAt - b.joinedAt).map(player => `<div class="player-item"><span>${escape(player.name)}${player.uid === room.hostUid ? "（主催）" : ""}</span></div>`).join("") : "";
   $("#room-waiting-message").textContent = room.status === "waiting" ? `参加者 ${entries.length}人／2〜6人で開始できます。` : "宴を開始しました。";
   $("#room-invitation").classList.toggle("is-hidden", !isHost);
@@ -195,7 +195,7 @@ function openJoinFromUrl() {
 function initialize() {
   if (!enabled()) return;
   const style = document.createElement("style");
-  style.textContent = ".multiplayer-summary{margin:14px 0;padding:12px;border:1px solid #68775c;border-radius:12px;background:#192623}.multiplayer-summary p{margin:5px 0}.invite-qr{display:grid;place-items:center;margin:12px auto}.invite-qr canvas{max-width:100%;height:auto;border-radius:8px}.multiplayer-player-bar{position:fixed;z-index:1500;top:0;left:0;right:0;display:flex;gap:5px;overflow-x:auto;padding:5px;background:#0d1c18ef;border-bottom:1px solid #68775c}.multiplayer-player{flex:0 0 min(130px,30vw);display:grid;gap:1px;padding:5px 7px;border:1px solid #46534d;border-radius:8px;color:#eee8dc;background:#192623;font-size:.72rem}.multiplayer-player.is-parent{border-color:#d39a55}.multiplayer-player strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.multiplayer-player small{color:#c2c1b5}.multiplayer-player-bar:not(.is-hidden)~.app-shell{padding-top:66px}";
+  style.textContent = ".multiplayer-choice-image{max-width:330px;margin:12px auto 18px}.multiplayer-choice-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.multiplayer-choice-buttons .button{width:100%;padding-inline:8px}.multiplayer-choice-back{margin-top:24px}.copy-field{display:flex;gap:8px;align-items:stretch}.copy-field input{min-width:0;flex:1}.copy-icon-button{flex:0 0 42px;width:42px;min-height:42px;border:0;border-radius:11px;background:#eceff1;color:#263238;font-size:1.3rem;line-height:1;display:grid;place-items:center;cursor:pointer}.room-number-row{display:flex;align-items:center;gap:8px}.room-number-row .copy-icon-button{flex-basis:34px;width:34px;min-height:34px;font-size:1.05rem}.multiplayer-summary{margin:14px 0;padding:12px;border:1px solid #68775c;border-radius:12px;background:#192623}.multiplayer-summary p{margin:5px 0}.invite-qr{display:grid;place-items:center;margin:12px auto}.invite-qr canvas{max-width:100%;height:auto;border-radius:8px}.multiplayer-player-bar{position:fixed;z-index:1500;top:0;left:0;right:0;display:flex;gap:5px;overflow-x:auto;padding:5px;background:#0d1c18ef;border-bottom:1px solid #68775c}.multiplayer-player{flex:0 0 min(130px,30vw);display:grid;gap:1px;padding:5px 7px;border:1px solid #46534d;border-radius:8px;color:#eee8dc;background:#192623;font-size:.72rem}.multiplayer-player.is-parent{border-color:#d39a55}.multiplayer-player strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.multiplayer-player small{color:#c2c1b5}.multiplayer-player-bar:not(.is-hidden)~.app-shell{padding-top:66px}";
   document.head.append(style);
   $("#single-device-mode").onclick = () => window.startSingleDeviceGame?.();
   $("#multiplayer-mode").onclick = () => show("multiplayer-role");
@@ -210,7 +210,9 @@ function initialize() {
   $("#create-room-button").onclick = createRoom;
   $("#join-room-button").onclick = joinRoom;
   $("#start-multiplayer-game").onclick = startRoom;
-  $("#copy-invite-url").onclick = async () => { await navigator.clipboard.writeText($("#invite-url").value); $("#copy-invite-url").textContent = "コピーしました"; setTimeout(() => { $("#copy-invite-url").textContent = "URLをコピー"; }, 1500); };
+  const copyWithNotice = async value => { await navigator.clipboard.writeText(value); $("#room-waiting-message").textContent = "コピーしました。"; setTimeout(() => { if (latestRoom?.status === "waiting") $("#room-waiting-message").textContent = `参加者 ${playerEntries(latestRoom).length}人／2〜6人で開始できます。`; }, 1500); };
+  $("#copy-invite-url").onclick = () => copyWithNotice($("#invite-url").value);
+  document.addEventListener("click", event => { if (event.target.closest("#copy-room-id")) copyWithNotice(roomId); });
   setTimeout(openJoinFromUrl, 0);
 }
 
