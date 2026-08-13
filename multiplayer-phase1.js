@@ -18,6 +18,7 @@ const normalizedName = name => name.trim().replace(/\s+/g, " ").toLocaleLowerCas
 const savedName = () => localStorage.getItem(NAME_STORAGE_KEY) || "";
 const saveName = name => localStorage.setItem(NAME_STORAGE_KEY, name);
 const enabled = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
+const defaultDiscussionMinutes = playerCount => playerCount >= 5 ? 3 : 2;
 
 async function ensureCatalog() {
   if (catalog.length) return catalog;
@@ -39,6 +40,8 @@ function setOptions(select, items, selected) {
 async function openCreate() {
   show("create-room");
   $("#host-name").value = savedName() || "客人1";
+  $("#host-discussion-time").value = String(defaultDiscussionMinutes(1));
+  $("#host-discussion-time").dataset.mode = "auto";
   try {
     const sets = await ensureCatalog();
     setOptions($("#host-card-set"), sets, sets[0]?.id);
@@ -82,7 +85,8 @@ async function renderWaiting(room) {
   if (!room) { $("#room-waiting-message").textContent = "この宴は見つかりません。"; return; }
   const entries = playerEntries(room);
   const isHost = room.hostUid === currentUser?.uid;
-  $("#room-summary").innerHTML = `<p><strong>部屋番号：${escape(roomId)}</strong></p><p>カードセット：${escape(room.cardSetName)}</p><p>ワードセット：${escape(room.wordSetName)}</p><p>推理時間：${escape(room.discussionMinutes)}分</p>`;
+  const discussionMinutes = room.discussionMinutesMode === "auto" ? defaultDiscussionMinutes(entries.length) : room.discussionMinutes;
+  $("#room-summary").innerHTML = `<p><strong>部屋番号：${escape(roomId)}</strong></p><p>カードセット：${escape(room.cardSetName)}</p><p>ワードセット：${escape(room.wordSetName)}</p><p>推理時間：${escape(discussionMinutes)}分</p>`;
   $("#room-players").innerHTML = entries.length ? entries.sort((a,b) => a.joinedAt - b.joinedAt).map(player => `<div class="player-item"><span>${escape(player.name)}${player.uid === room.hostUid ? "（主催）" : ""}</span></div>`).join("") : "";
   $("#room-waiting-message").textContent = room.status === "waiting" ? `参加者 ${entries.length}人／2〜6人で開始できます。` : "宴を開始しました。";
   $("#room-invitation").classList.toggle("is-hidden", !isHost);
@@ -134,6 +138,7 @@ async function createRoom() {
     hostUid: context.user.uid, status: "waiting", createdAt: Date.now(),
     cardSet: cardSet.id, cardSetName: cardSet.name, wordSet: wordSet.id, wordSetName: wordSet.name,
     discussionMinutes: Number($("#host-discussion-time").value),
+    discussionMinutesMode: $("#host-discussion-time").dataset.mode || "manual",
     players: { [context.user.uid]: { name, nameKey: key, joinedAt: Date.now() } },
     nameIndex: { [key]: context.user.uid }
   };
@@ -173,7 +178,9 @@ async function startRoom() {
   if (players.length < 2 || players.length > 6) return;
   const seats = [...players.map(player => player.uid)];
   for (let index = seats.length - 1; index > 0; index--) { const other = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1); [seats[index], seats[other]] = [seats[other], seats[index]]; }
-  await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "started", startedAt: Date.now(), seats, parentUid: seats[0] });
+  const startData = { status: "started", startedAt: Date.now(), seats, parentUid: seats[0] };
+  if (latestRoom.discussionMinutesMode === "auto") startData.discussionMinutes = defaultDiscussionMinutes(players.length);
+  await update(ref(window.__firebaseDatabase, roomPath(roomId)), startData);
 }
 
 function openJoinFromUrl() {
@@ -199,6 +206,7 @@ function initialize() {
   $("#create-room-back").onclick = () => show("multiplayer-role");
   $("#join-room-back").onclick = () => show("multiplayer-role");
   $("#host-card-set").onchange = refreshHostWordSets;
+  $("#host-discussion-time").onchange = () => { $("#host-discussion-time").dataset.mode = "manual"; };
   $("#create-room-button").onclick = createRoom;
   $("#join-room-button").onclick = joinRoom;
   $("#start-multiplayer-game").onclick = startRoom;
