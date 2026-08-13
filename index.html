@@ -27,8 +27,8 @@
 <p class="description">同じ端末を回して遊ぶか、通信で宴を開くかを選んでください。</p>
 <img class="seating-illustration multiplayer-choice-image" src="assets/seating-illustration.png" alt="貴族たちが卓を囲む宴の情景">
 <div class="multiplayer-choice-buttons">
-<button id="single-device-mode" class="button button-secondary">1台で遊ぶ</button>
-<button id="multiplayer-mode" class="button button-secondary">通信対戦</button>
+<button id="single-device-mode" class="button button-primary">1台で遊ぶ</button>
+<button id="multiplayer-mode" class="button button-primary">通信対戦</button>
 </div>
 <button id="mode-choice-back" class="button button-secondary multiplayer-choice-back">戻る</button>
 </section>
@@ -37,8 +37,8 @@
 <p class="description">宴を開くか、招かれた宴へ参加してください。</p>
 <img class="seating-illustration multiplayer-choice-image" src="assets/seating-illustration.png" alt="貴族たちが卓を囲む宴の情景">
 <div class="multiplayer-choice-buttons">
-<button id="create-room-choice" class="button button-secondary">宴を開く</button>
-<button id="join-room-choice" class="button button-secondary">宴に参加する</button>
+<button id="create-room-choice" class="button button-primary">宴を開く</button>
+<button id="join-room-choice" class="button button-primary">宴に参加する</button>
 </div>
 <button id="multiplayer-role-back" class="button button-secondary multiplayer-choice-back">戻る</button>
 </section>
@@ -147,18 +147,18 @@
 <div id="player-counts" class="count-grid">
 </div>
 <div class="set-selection">
+<label class="set-selection-label" for="card-set-select">カードセットの選択</label>
+<select id="card-set-select" class="set-select">
+</select>
+<label class="set-selection-label" for="word-set-select">ワードセットの選択</label>
+<select id="word-set-select" class="set-select">
+</select>
 <label class="set-selection-label" for="discussion-time-select">推理時間の選択</label>
 <select id="discussion-time-select" class="set-select">
 <option value="1">1分</option>
 <option value="2">2分</option>
 <option value="3">3分</option>
 <option value="5">5分</option>
-</select>
-<label class="set-selection-label" for="card-set-select">カードセットの選択</label>
-<select id="card-set-select" class="set-select">
-</select>
-<label class="set-selection-label" for="word-set-select">ワードセットの選択</label>
-<select id="word-set-select" class="set-select">
 </select>
 <p id="card-set-error" class="form-error" role="alert"></p>
 </div>
