@@ -16,6 +16,11 @@ async function configureIndex(path, development) {
     .replace('<script type="module" src="app.js"></script>', '<script src="environment.js"></script>\n<script type="module" src="app.js"></script>'));
 }
 
+async function configureDevelopmentApp(path) {
+  const app = await readFile(path, "utf8");
+  await writeFile(path, app.replace('document.title="貴族のひそめごと";', 'document.title="貴族のひそめごと DEV";'));
+}
+
 const prod = argument("--prod");
 const dev = argument("--dev");
 const output = argument("--output");
@@ -28,7 +33,8 @@ await cp(dev, `${output}/dev`, copyOptions);
 await cp(`${dev}/manifest.dev.webmanifest`, `${output}/dev/manifest.webmanifest`);
 await Promise.all([
   configureIndex(`${output}/index.html`, false),
-  configureIndex(`${output}/dev/index.html`, true)
+  configureIndex(`${output}/dev/index.html`, true),
+  configureDevelopmentApp(`${output}/dev/app.js`)
 ]);
 
 console.log(`Pages成果物を作成しました: ${output}`);
