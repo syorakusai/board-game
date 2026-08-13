@@ -90,7 +90,9 @@ async function renderWaiting(room) {
   $("#room-invitation").classList.toggle("is-hidden", !isHost || room.status !== "waiting");
   const startButton = $("#start-multiplayer-game");
   const canStart = entries.length >= 2 && entries.length <= 6 && room.status === "waiting";
-  startButton.classList.toggle("is-hidden", !isHost || room.status !== "waiting");
+  const showStartButton = isHost && room.status === "waiting";
+  startButton.hidden = !showStartButton;
+  startButton.classList.toggle("is-hidden", !showStartButton);
   startButton.disabled = !canStart;
   startButton.classList.toggle("button-primary", canStart);
   startButton.classList.toggle("button-secondary", !canStart);
@@ -122,6 +124,30 @@ function enterDrawScreen(room) {
 function subscribeRoom(id) {
   roomUnsubscribe?.();
   roomUnsubscribe = onValue(ref((window.__firebaseDatabase), roomPath(id)), snapshot => renderWaiting(snapshot.val()));
+}
+
+function clearInviteUrl() {
+  const url = new URL(location.href);
+  if (!url.searchParams.has("room")) return;
+  url.searchParams.delete("room");
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function clearRoomSession() {
+  roomUnsubscribe?.();
+  roomUnsubscribe = null;
+  latestRoom = null;
+  roomId = "";
+}
+
+async function removeCurrentPlayer() {
+  if (!roomId || !currentUser || !window.__firebaseDatabase) return;
+  const player = latestRoom?.players?.[currentUser.uid];
+  const nameKey = player?.nameKey || normalizedName(savedName());
+  await update(ref(window.__firebaseDatabase, roomPath(roomId)), {
+    [`players/${currentUser.uid}`]: null,
+    [`nameIndex/${nameKey}`]: null
+  });
 }
 
 async function createRoom() {
@@ -191,18 +217,19 @@ async function leaveWaitingRoom() {
       $("#room-waiting-message").textContent = `宴を閉じられませんでした。${cause.message || ""}`;
       return;
     }
-    roomUnsubscribe?.();
-    roomUnsubscribe = null;
-    latestRoom = null;
-    roomId = "";
+    clearRoomSession();
     openCreate();
     return;
   }
-  roomUnsubscribe?.();
-  roomUnsubscribe = null;
-  latestRoom = null;
-  roomId = "";
-  show("multiplayer-role");
+  try {
+    await removeCurrentPlayer();
+  } catch (cause) {
+    $("#room-waiting-message").textContent = `宴から退出できませんでした。${cause.message || ""}`;
+    return;
+  }
+  clearRoomSession();
+  clearInviteUrl();
+  show("title");
 }
 
 function openJoinFromUrl() {
@@ -226,7 +253,7 @@ function initialize() {
   $("#join-room-choice").onclick = () => { $("#join-room-id").value = ""; $("#join-name").value = savedName() || "客人"; show("join-room"); };
   $("#multiplayer-role-back").onclick = () => show("mode-choice");
   $("#create-room-back").onclick = () => show("multiplayer-role");
-  $("#join-room-back").onclick = () => show("multiplayer-role");
+  $("#join-room-back").onclick = () => { clearInviteUrl(); show("title"); };
   $("#host-card-set").onchange = refreshHostWordSets;
   $("#create-room-button").onclick = createRoom;
   $("#join-room-button").onclick = joinRoom;
@@ -235,6 +262,11 @@ function initialize() {
   const copyWithNotice = async value => { await navigator.clipboard.writeText(value); $("#room-waiting-message").textContent = "コピーしました。"; setTimeout(() => { if (latestRoom?.status === "waiting") $("#room-waiting-message").textContent = `参加者 ${playerEntries(latestRoom).length}人／2〜6人で開始できます。`; }, 1500); };
   $("#copy-invite-url").onclick = () => copyWithNotice($("#invite-url").value);
   document.addEventListener("click", event => { if (event.target.closest("#copy-room-id")) copyWithNotice(roomId); });
+  window.addEventListener("beforeunload", event => {
+    if (!roomId || !latestRoom || latestRoom.status === "closed") return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
 }
 
 window.multiplayerPhase1 = { isEnabled: enabled, openModeChoice: () => show("mode-choice"), openJoinFromUrl };
