@@ -227,6 +227,13 @@ async function startRoom() {
 async function leaveWaitingRoom() {
   if (leavingWaitingRoom) return;
   leavingWaitingRoom = true;
+  if (latestRoom?.status === "closed") {
+    clearRoomSession();
+    clearInviteUrl();
+    show("multiplayer-role");
+    leavingWaitingRoom = false;
+    return;
+  }
   if (openedRoom && latestRoom?.hostUid === currentUser?.uid && latestRoom.status === "waiting") {
     try {
       await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "closed", closedAt: Date.now() });
