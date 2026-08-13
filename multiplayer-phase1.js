@@ -12,6 +12,7 @@ let currentUser = null;
 let openedRoom = false;
 let pullToRefreshStartY = null;
 let pullToRefreshBlocked = false;
+let leavingWaitingRoom = false;
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -216,26 +217,27 @@ async function startRoom() {
 }
 
 async function leaveWaitingRoom() {
+  if (leavingWaitingRoom) return;
+  leavingWaitingRoom = true;
   if (openedRoom && latestRoom?.hostUid === currentUser?.uid && latestRoom.status === "waiting") {
     try {
       await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "closed", closedAt: Date.now() });
     } catch (cause) {
       $("#room-waiting-message").textContent = `宴を閉じられませんでした。${cause.message || ""}`;
+      leavingWaitingRoom = false;
       return;
     }
     clearRoomSession();
+    leavingWaitingRoom = false;
     openCreate();
     return;
   }
-  try {
-    await removeCurrentPlayer();
-  } catch (cause) {
-    $("#room-waiting-message").textContent = `宴から退出できませんでした。${cause.message || ""}`;
-    return;
-  }
+  const departure = removeCurrentPlayer();
   clearRoomSession();
   clearInviteUrl();
   show("title");
+  await departure.catch(cause => console.error("[通信対戦の退出]", cause));
+  leavingWaitingRoom = false;
 }
 
 function openJoinFromUrl() {
