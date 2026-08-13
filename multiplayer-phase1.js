@@ -256,7 +256,7 @@ function initialize() {
   $("#join-room-choice").onclick = () => { $("#join-room-id").value = ""; $("#join-name").value = savedName() || "客人"; show("join-room"); };
   $("#multiplayer-role-back").onclick = () => show("mode-choice");
   $("#create-room-back").onclick = () => show("multiplayer-role");
-  $("#join-room-back").onclick = () => { clearInviteUrl(); show("title"); };
+  $("#join-room-back").onclick = () => { clearInviteUrl(); show("multiplayer-role"); };
   $("#host-card-set").onchange = refreshHostWordSets;
   $("#create-room-button").onclick = createRoom;
   $("#join-room-button").onclick = joinRoom;
