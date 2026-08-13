@@ -38,15 +38,18 @@ function waitForRestoredUser(auth) {
   });
 }
 
-async function verifyFirebaseConnection() {
+export async function getFirebaseContext() {
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const restoredUser = await waitForRestoredUser(auth);
   const user = restoredUser || (await signInAnonymously(auth)).user;
-
   if (!user?.uid) throw Error("匿名認証後のUIDを取得できませんでした。");
+  return { app, auth, database: getDatabase(app), user, restored: Boolean(restoredUser) };
+}
 
-  const database = getDatabase(app);
+async function verifyFirebaseConnection() {
+  const { database, user, restored } = await getFirebaseContext();
+
   const connectedAt = new Date().toISOString();
   const verificationId = crypto.randomUUID();
   const testPath = `${FIREBASE_TEST_ROOT}/${user.uid}`;
@@ -60,7 +63,7 @@ async function verifyFirebaseConnection() {
     throw Error("Realtime Databaseの読み込み内容が書き込み内容と一致しませんでした。");
   }
 
-  return { uid: user.uid, restored: Boolean(restoredUser), testPath };
+  return { uid: user.uid, restored, testPath };
 }
 
 async function startFirebaseConnectionCheck() {

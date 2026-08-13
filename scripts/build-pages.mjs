@@ -11,7 +11,7 @@ async function configureIndex(path, development) {
   const html = await readFile(path, "utf8");
   const label = development ? "貴族のひそめごと DEV" : "貴族のひそめごと";
   const scripts = development
-    ? '<script src="environment.js?version=dev-1"></script>\n<script type="module" src="firebase-client.js"></script>\n<script type="module" src="app.js"></script>'
+    ? '<script src="environment.js?version=dev-1"></script>\n<script type="module" src="firebase-client.js"></script>\n<script type="module" src="multiplayer-phase1.js"></script>\n<script type="module" src="app.js"></script>'
     : '<script src="environment.js"></script>\n<script type="module" src="app.js"></script>';
   await writeFile(path, html
     .replace("<title>貴族のひそめごと</title>", `<title>${label}</title>`)

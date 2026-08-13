@@ -21,7 +21,7 @@ const APP_SHELL = [
   "assets/pwa-icon-512.png"
 ];
 
-if (development) APP_SHELL.push("firebase-config.js", "firebase-client.js");
+if (development) APP_SHELL.push("firebase-config.js", "firebase-client.js", "multiplayer-phase1.js");
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
