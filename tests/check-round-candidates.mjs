@@ -1,0 +1,1 @@
+import assert from "node:assert/strict";import {createRoundCandidates,isOfficialWord} from "../round-candidates.js";assert.deepEqual(createRoundCandidates(["A","B","C"],"P").map(x=>x.id),["official-0","official-1","official-2","parent"]);assert(isOfficialWord({officialWords:["A"],parentWord:"A"}));console.log("候補ID検査: OK");
