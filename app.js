@@ -115,7 +115,7 @@ for(let n=2;n<=6;n++){
 if(savedPlayerCount)restorePlayerCountSelection();
 updatePlayerCountNext();
 playerCountNext.onclick=()=>{if(state.playerCount)renderPlayerNames();};
-document.querySelector("#player-count-back").onclick=()=>show("title");
+document.querySelector("#player-count-back").onclick=()=>show(window.multiplayerPhase1?.isEnabled?.()?"mode-choice":"title");
 document.querySelector("#card-set-select").onchange=e=>{state.cardSet=e.target.value;state.wordSet=readWordSetSelections()[state.cardSet]||"standard-1";try{localStorage.setItem(CARD_SET_STORAGE_KEY,state.cardSet);}catch{}renderWordSetOptions();saveWordSetSelection();updatePlayerCountNext();};
 document.querySelector("#word-set-select").onchange=e=>{state.wordSet=e.target.value;saveWordSetSelection();updatePlayerCountNext();};
 document.querySelector("#discussion-time-select").onchange=e=>{state.discussionMinutes=Number(e.target.value);};
