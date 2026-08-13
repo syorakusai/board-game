@@ -7,6 +7,7 @@ const APP_SHELL = [
   "app.js",
   "app-version.js",
   "card-data.js",
+  "game-rules.js",
   "game-state.js",
   "round-candidates.js",
   "roulette.js",
@@ -36,7 +37,7 @@ self.addEventListener("fetch", event => {
     return;
   }
   const url = new URL(request.url);
-  const appShellFile = ["/board-game/index.html", "/board-game/app.js", "/board-game/app-version.js", "/board-game/card-data.js", "/board-game/game-state.js", "/board-game/round-candidates.js", "/board-game/roulette.js", "/board-game/styles.css", "/board-game/card-sets.json"].includes(url.pathname);
+  const appShellFile = ["/board-game/index.html", "/board-game/app.js", "/board-game/app-version.js", "/board-game/card-data.js", "/board-game/game-rules.js", "/board-game/game-state.js", "/board-game/round-candidates.js", "/board-game/roulette.js", "/board-game/styles.css", "/board-game/card-sets.json"].includes(url.pathname);
   if (appShellFile) {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
