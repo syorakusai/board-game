@@ -9,6 +9,7 @@ let roomId = "";
 let roomUnsubscribe = null;
 let latestRoom = null;
 let currentUser = null;
+let openedRoom = false;
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -82,7 +83,7 @@ async function renderWaiting(room) {
   latestRoom = room;
   if (!room) { $("#room-waiting-message").textContent = "この宴は見つかりません。"; return; }
   const entries = playerEntries(room);
-  const isHost = room.hostUid === currentUser?.uid;
+  const isHost = openedRoom && room.hostUid === currentUser?.uid;
   const discussionMinutes = room.discussionMinutes;
   $("#room-summary").innerHTML = `<p class="room-number-row"><strong>部屋番号：${escape(roomId)}</strong><button id="copy-room-id" class="copy-icon-button" type="button" aria-label="部屋番号をコピー" title="部屋番号をコピー"><span aria-hidden="true">⧉</span></button></p><p>カードセット：${escape(room.cardSetName)}</p><p>ワードセット：${escape(room.wordSetName)}</p><p>推理時間：${escape(discussionMinutes)}分</p>`;
   $("#room-players").innerHTML = entries.length ? entries.sort((a,b) => a.joinedAt - b.joinedAt).map(player => `<div class="player-item"><span>${escape(player.name)}${player.uid === room.hostUid ? "（主催）" : ""}</span></div>`).join("") : "";
@@ -138,6 +139,7 @@ function clearRoomSession() {
   roomUnsubscribe = null;
   latestRoom = null;
   roomId = "";
+  openedRoom = false;
 }
 
 async function removeCurrentPlayer() {
@@ -161,6 +163,7 @@ async function createRoom() {
   const context = await getFirebaseContext();
   currentUser = context.user;
   window.__firebaseDatabase = context.database;
+  openedRoom = true;
   roomId = makeRoomId();
   const key = normalizedName(name);
   const room = {
@@ -180,7 +183,7 @@ async function joinRoom() {
   const name = $("#join-name").value.trim();
   if (!id || !name) { error.textContent = "部屋番号と客人名を入力してください。"; return; }
   const context = await getFirebaseContext();
-  currentUser = context.user; window.__firebaseDatabase = context.database;
+  currentUser = context.user; window.__firebaseDatabase = context.database; openedRoom = false;
   const snapshot = await get(ref(context.database, roomPath(id)));
   const room = snapshot.val();
   if (!room) { error.textContent = "部屋番号が見つかりません。"; return; }
@@ -201,7 +204,7 @@ async function joinRoom() {
 }
 
 async function startRoom() {
-  if (!latestRoom || latestRoom.hostUid !== currentUser?.uid) return;
+  if (!openedRoom || !latestRoom || latestRoom.hostUid !== currentUser?.uid) return;
   const players = playerEntries(latestRoom);
   if (players.length < 2 || players.length > 6) return;
   const seats = [...players.map(player => player.uid)];
@@ -210,7 +213,7 @@ async function startRoom() {
 }
 
 async function leaveWaitingRoom() {
-  if (latestRoom?.hostUid === currentUser?.uid && latestRoom.status === "waiting") {
+  if (openedRoom && latestRoom?.hostUid === currentUser?.uid && latestRoom.status === "waiting") {
     try {
       await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "closed", closedAt: Date.now() });
     } catch (cause) {
