@@ -4,6 +4,8 @@ import { validateCardSetData } from "./card-data.js";
 import { createRoundCandidates, isOfficialWord } from "./round-candidates.js";
 import { evaluateRound, nextParentIndex, orderedChildren, scoreRound } from "./game-rules.js";
 
+const multiplayerReady = /\/board-game\/dev(?:\/|$)/.test(location.pathname) ? import("./multiplayer-phase1.js").catch(() => {}) : Promise.resolve();
+
 const rouletteController=createRouletteController();
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
@@ -204,4 +206,6 @@ const GAME_EXIT_MESSAGE="ゲームを終了してタイトル画面に戻りま�
 function stopGame(){clearInterval(state.timer);if(confirm(GAME_EXIT_MESSAGE)){location.reload();}}
 window.addEventListener("beforeunload",e=>{if(state.round){e.preventDefault();e.returnValue=GAME_EXIT_MESSAGE;}});
 history.pushState(null,"",location.href);window.addEventListener("popstate",()=>{history.pushState(null,"",location.href);stopGame();});
-loadCardSetCatalog().catch(error=>setCatalogError(error.message||"カードセットを読み込めませんでした。")).finally(()=>show("title"));
+loadCardSetCatalog().catch(error=>setCatalogError(error.message||"カードセットを読み込めませんでした。")).finally(()=>multiplayerReady.finally(()=>{
+  if (!window.multiplayerPhase1?.openJoinFromUrl?.()) show("title");
+}));

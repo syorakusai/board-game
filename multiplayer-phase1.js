@@ -235,8 +235,7 @@ function initialize() {
   const copyWithNotice = async value => { await navigator.clipboard.writeText(value); $("#room-waiting-message").textContent = "コピーしました。"; setTimeout(() => { if (latestRoom?.status === "waiting") $("#room-waiting-message").textContent = `参加者 ${playerEntries(latestRoom).length}人／2〜6人で開始できます。`; }, 1500); };
   $("#copy-invite-url").onclick = () => copyWithNotice($("#invite-url").value);
   document.addEventListener("click", event => { if (event.target.closest("#copy-room-id")) copyWithNotice(roomId); });
-  setTimeout(openJoinFromUrl, 0);
 }
 
-window.multiplayerPhase1 = { isEnabled: enabled, openModeChoice: () => show("mode-choice") };
+window.multiplayerPhase1 = { isEnabled: enabled, openModeChoice: () => show("mode-choice"), openJoinFromUrl };
 initialize();
