@@ -1,10 +1,14 @@
 importScripts("app-version.js");
-const CACHE_NAME = `kizoku-no-hisomegoto-${self.APP_VERSION || "dev"}`;
+const scopeUrl = new URL(self.registration.scope);
+const development = /\/board-game\/dev\/$/.test(scopeUrl.pathname);
+const CACHE_PREFIX = `kizoku-no-hisomegoto-${development ? "dev" : "prod"}-`;
+const CACHE_NAME = `${CACHE_PREFIX}${self.APP_VERSION || "dev"}`;
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css",
   "app.js",
+  "environment.js",
   "app-version.js",
   "card-data.js",
   "game-rules.js",
@@ -22,12 +26,14 @@ self.addEventListener("install", event => {
 });
 
 self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const request = event.request;
+  const url = new URL(request.url);
+  if (!development && url.pathname.startsWith(new URL("dev/", scopeUrl).pathname)) return;
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).then(response => {
       const copy = response.clone();
@@ -36,8 +42,7 @@ self.addEventListener("fetch", event => {
     }).catch(() => caches.match("./")));
     return;
   }
-  const url = new URL(request.url);
-  const appShellFile = ["/board-game/index.html", "/board-game/app.js", "/board-game/app-version.js", "/board-game/card-data.js", "/board-game/game-rules.js", "/board-game/game-state.js", "/board-game/round-candidates.js", "/board-game/roulette.js", "/board-game/styles.css", "/board-game/card-sets.json"].includes(url.pathname);
+  const appShellFile = APP_SHELL.map(file => new URL(file, scopeUrl).pathname).includes(url.pathname);
   if (appShellFile) {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
