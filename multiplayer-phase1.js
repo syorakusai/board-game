@@ -10,6 +10,8 @@ let roomUnsubscribe = null;
 let latestRoom = null;
 let currentUser = null;
 let openedRoom = false;
+let pullToRefreshStartY = null;
+let pullToRefreshBlocked = false;
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -93,6 +95,7 @@ async function renderWaiting(room) {
   const canStart = entries.length >= 2 && entries.length <= 6 && room.status === "waiting";
   const showStartButton = isHost && room.status === "waiting";
   startButton.hidden = !showStartButton;
+  startButton.style.display = showStartButton ? "" : "none";
   startButton.classList.toggle("is-hidden", !showStartButton);
   startButton.disabled = !canStart;
   startButton.classList.toggle("button-primary", canStart);
@@ -269,6 +272,24 @@ function initialize() {
     if (!roomId || !latestRoom || latestRoom.status === "closed") return;
     event.preventDefault();
     event.returnValue = "";
+  });
+  window.addEventListener("touchstart", event => {
+    if (!roomId || !latestRoom || latestRoom.status === "closed" || window.scrollY > 0) return;
+    pullToRefreshStartY = event.touches[0]?.clientY ?? null;
+    pullToRefreshBlocked = false;
+  }, { passive: true });
+  window.addEventListener("touchmove", event => {
+    if (pullToRefreshStartY === null || pullToRefreshBlocked) return;
+    const distance = (event.touches[0]?.clientY ?? pullToRefreshStartY) - pullToRefreshStartY;
+    if (distance <= 0) return;
+    event.preventDefault();
+    if (distance >= 72) pullToRefreshBlocked = true;
+  }, { passive: false });
+  window.addEventListener("touchend", () => {
+    if (!pullToRefreshBlocked) { pullToRefreshStartY = null; return; }
+    pullToRefreshStartY = null;
+    pullToRefreshBlocked = false;
+    if (confirm("通信対戦を中断してページを更新しますか？")) location.reload();
   });
 }
 
