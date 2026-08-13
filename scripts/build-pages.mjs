@@ -10,10 +10,11 @@ function argument(name) {
 async function configureIndex(path, development) {
   const html = await readFile(path, "utf8");
   const label = development ? "貴族のひそめごと DEV" : "貴族のひそめごと";
+  const environmentScript = development ? "environment.js?version=dev-1" : "environment.js";
   await writeFile(path, html
     .replace("<title>貴族のひそめごと</title>", `<title>${label}</title>`)
     .replace('content="貴族のひそめごと"', `content="${label}"`)
-    .replace('<script type="module" src="app.js"></script>', '<script src="environment.js"></script>\n<script type="module" src="app.js"></script>'));
+    .replace('<script type="module" src="app.js"></script>', `<script src="${environmentScript}"></script>\n<script type="module" src="app.js"></script>`));
 }
 
 async function configureDevelopmentApp(path) {
