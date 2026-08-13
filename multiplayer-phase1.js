@@ -4,6 +4,8 @@ import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
 
 const ROOM_PREFIX = "rooms";
 const NAME_STORAGE_KEY = "board-game:dev:multiplayer-name";
+const LEAVE_RETRY_COUNT = 3;
+const LEAVE_RETRY_DELAY_MS = 700;
 let catalog = [];
 let roomId = "";
 let roomUnsubscribe = null;
@@ -84,6 +86,7 @@ function renderPlayerBar(room) {
 
 async function renderWaiting(room) {
   latestRoom = room;
+  if (leavingWaitingRoom) return;
   if (!room) { $("#room-waiting-message").textContent = "この宴は見つかりません。"; return; }
   const entries = playerEntries(room);
   const isHost = openedRoom && room.hostUid === currentUser?.uid;
@@ -146,14 +149,19 @@ function clearRoomSession() {
   openedRoom = false;
 }
 
-async function removeCurrentPlayer() {
-  if (!roomId || !currentUser || !window.__firebaseDatabase) return;
-  const player = latestRoom?.players?.[currentUser.uid];
-  const nameKey = player?.nameKey || normalizedName(savedName());
-  await update(ref(window.__firebaseDatabase, roomPath(roomId)), {
-    [`players/${currentUser.uid}`]: null,
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function removeCurrentPlayer(id, uid, nameKey) {
+  await update(ref(window.__firebaseDatabase, roomPath(id)), {
+    [`players/${uid}`]: null,
     [`nameIndex/${nameKey}`]: null
   });
+}
+
+async function isCurrentPlayerRemoved(id, uid, nameKey) {
+  const snapshot = await get(ref(window.__firebaseDatabase, roomPath(id)));
+  const room = snapshot.val();
+  return !room?.players?.[uid] && !room?.nameIndex?.[nameKey];
 }
 
 async function createRoom() {
@@ -232,11 +240,29 @@ async function leaveWaitingRoom() {
     openCreate();
     return;
   }
-  const departure = removeCurrentPlayer();
-  clearRoomSession();
-  clearInviteUrl();
-  show("multiplayer-role");
-  await departure.catch(cause => console.error("[通信対戦の退出]", cause));
+  const id = roomId;
+  const uid = currentUser?.uid;
+  const player = latestRoom?.players?.[uid];
+  const nameKey = player?.nameKey || normalizedName(savedName());
+  let failure = null;
+  for (let attempt = 1; attempt <= LEAVE_RETRY_COUNT; attempt++) {
+    $("#room-waiting-message").textContent = `退出しています…（${attempt}/${LEAVE_RETRY_COUNT}）`;
+    try {
+      await removeCurrentPlayer(id, uid, nameKey);
+      if (await isCurrentPlayerRemoved(id, uid, nameKey)) {
+        clearRoomSession();
+        clearInviteUrl();
+        show("multiplayer-role");
+        leavingWaitingRoom = false;
+        return;
+      }
+      failure = Error("退出情報が残っています。");
+    } catch (cause) {
+      failure = cause;
+    }
+    if (attempt < LEAVE_RETRY_COUNT) await wait(LEAVE_RETRY_DELAY_MS);
+  }
+  $("#room-waiting-message").textContent = `退出できませんでした。もう一度戻るを押してください。${failure?.message ? ` ${failure.message}` : ""}`;
   leavingWaitingRoom = false;
 }
 
