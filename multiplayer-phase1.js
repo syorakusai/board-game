@@ -166,11 +166,12 @@ async function renderWaiting(room) {
 
 function enterDrawScreen(room) {
   const isParent = room.parentUid === currentUser?.uid;
+  const parentName = playerEntries(room).find(player => player.uid === room.parentUid)?.name || "親";
   renderPlayerBar(room);
-  $("#round-title").textContent = `親：${playerEntries(room).find(player => player.uid === room.parentUid)?.name || ""}`;
+  $("#round-title").textContent = `親：${parentName}`;
   const message = isParent ? "あなたが親です。次のフェーズで札を引けるようになります。" : "親が札を選んでいます。お待ちください。";
   $("#round-card-message").textContent = message;
-  setRoundMessage(message);
+  setRoundMessage(`ようこそ、宴がはじまりました。第一席の親は${parentName}さんです。${parentName}さん、伏せ札の山から１枚引いてください。`);
   $("#round-start-button").disabled = true;
   $("#draw-card").textContent = isParent ? "札選びは次のフェーズで開始します" : "親を待っています";
   $("#deck-stack-image").onclick = null;
