@@ -24,7 +24,7 @@
         },
         "seats": {
           ".write": "auth != null && data.parent().child('hostUid').val() === auth.uid && data.parent().child('status').val() === 'waiting' && newData.parent().child('status').val() === 'started' && !data.exists()",
-          ".validate": "newData.numChildren() >= 2"
+          ".validate": "newData.hasChildren(['0', '1'])"
         },
         "parentUid": {
           ".write": "auth != null && data.parent().child('hostUid').val() === auth.uid && data.parent().child('status').val() === 'waiting' && newData.parent().child('status').val() === 'started' && !data.exists()",
