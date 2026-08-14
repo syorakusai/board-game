@@ -130,7 +130,8 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .card-lightbox-close { position: absolute; z-index: 1; top: 12px; right: 14px; width: 48px; height: 48px; border: 0; border-radius: 50%; background: #eee8dc; color: #192321; font-size: 2.4rem; line-height: 1; cursor: pointer; }
 .card-lightbox-close:focus-visible { outline: 3px solid #eee8dc; outline-offset: 3px; }
 section[data-screen="title"] { text-align: center; }
-section[data-screen="howto"]:not(.is-hidden) { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 0; height: 100dvh; min-height: 100dvh; overflow: hidden; }
+section[data-screen="howto"]:not(.is-hidden) { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 0; height: 100dvh; min-height: 100dvh; padding-bottom: max(clamp(16px, 4vw, 28px), calc(env(safe-area-inset-bottom) + 12px)); overflow: hidden; }
+.app-shell.has-multiplayer-round-header section[data-screen="howto"]:not(.is-hidden) { height: calc(100dvh - var(--multiplayer-round-header-height, 0px)); min-height: calc(100dvh - var(--multiplayer-round-header-height, 0px)); }
 .title-heading { margin: 0 0 3px; color: #d4c6ad; font-size: clamp(.95rem, 4vw, 1.2rem); font-weight: 700; line-height: 1.35; letter-spacing: .08em; }
 .title-tagline { margin: 0 0 14px; color: #a89e8d; font-size: clamp(.72rem, 3.1vw, .9rem); font-weight: 600; line-height: 1.45; letter-spacing: .02em; }
 section[data-screen="title"] .button, section[data-screen="howto"] > .button { width: 100%; }
@@ -233,6 +234,20 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
   background: #0d1c18f5;
   border-bottom: 1px solid #68775c;
   box-shadow: 0 3px 12px #0006;
+}
+.multiplayer-round-title-slot {
+  min-height: 48px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #46534d;
+}
+.multiplayer-round-title-slot .screen-title-row {
+  min-height: 36px;
+}
+.multiplayer-round-title-slot [data-round-title] {
+  color: #eee8dc;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: normal;
 }
 .multiplayer-player-bar {
   display: flex;
