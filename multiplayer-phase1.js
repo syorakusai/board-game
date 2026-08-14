@@ -73,21 +73,69 @@ function inviteUrl(id) {
 
 function playerEntries(room) { return Object.entries(room?.players || {}).map(([uid, player]) => ({ uid, ...player })); }
 
+let messageTickerFrame = 0;
+let roundHeaderObserver = null;
+
+function refreshMessageTicker() {
+  const viewport = $("#multiplayer-message-bar");
+  const text = $("#multiplayer-message-text");
+  if (!viewport || !text) return;
+  cancelAnimationFrame(messageTickerFrame);
+  text.classList.remove("is-scrolling");
+  text.style.removeProperty("--multiplayer-message-duration");
+  messageTickerFrame = requestAnimationFrame(() => {
+    const textWidth = text.scrollWidth;
+    const viewportWidth = viewport.clientWidth;
+    if (textWidth <= viewportWidth + 1) return;
+    const duration = Math.max(10, (textWidth + viewportWidth) / 42);
+    text.style.setProperty("--multiplayer-message-duration", `${duration.toFixed(2)}s`);
+    text.classList.add("is-scrolling");
+  });
+}
+
+function updateRoundHeaderOffset() {
+  const header = $("#multiplayer-round-header");
+  const shell = $(".app-shell");
+  if (!header || !shell || header.classList.contains("is-hidden")) return;
+  shell.style.setProperty("--multiplayer-round-header-height", `${Math.ceil(header.getBoundingClientRect().height)}px`);
+  refreshMessageTicker();
+}
+
+function hideRoundHeader() {
+  const header = $("#multiplayer-round-header");
+  const shell = $(".app-shell");
+  header?.classList.add("is-hidden");
+  shell?.classList.remove("has-multiplayer-round-header");
+  shell?.style.removeProperty("--multiplayer-round-header-height");
+}
+
+function setRoundMessage(message) {
+  const text = $("#multiplayer-message-text");
+  if (!text) return;
+  text.textContent = message;
+  refreshMessageTicker();
+}
+
 function renderPlayerBar(room) {
+  const header = $("#multiplayer-round-header");
   const bar = $("#multiplayer-player-bar");
-  if (!room?.seats) { bar.classList.add("is-hidden"); return; }
+  const shell = $(".app-shell");
+  if (!header || !bar || !shell || !room?.seats) { hideRoundHeader(); return; }
   const entries = playerEntries(room);
-  bar.innerHTML = room.seats.map((uid, index) => {
+  bar.innerHTML = room.seats.map(uid => {
     const player = entries.find(item => item.uid === uid) || { name: "不明" };
     return `<div class="multiplayer-player${uid === room.parentUid ? " is-parent" : ""}"><strong>${uid === room.parentUid ? "親　" : ""}${escape(player.name)}</strong><span>0点</span><small>${uid === currentUser?.uid ? "あなた" : "待機中"}</small></div>`;
   }).join("");
-  bar.classList.remove("is-hidden");
+  header.classList.remove("is-hidden");
+  shell.classList.add("has-multiplayer-round-header");
+  requestAnimationFrame(updateRoundHeaderOffset);
 }
 
 async function renderWaiting(room) {
   latestRoom = room;
   if (leavingWaitingRoom) return;
-  if (!room) { $("#room-waiting-message").textContent = "この宴は見つかりません。"; return; }
+  if (!room) { hideRoundHeader(); $("#room-waiting-message").textContent = "この宴は見つかりません。"; return; }
+  if (room.status !== "started") hideRoundHeader();
   const entries = playerEntries(room);
   const isHost = openedRoom && room.hostUid === currentUser?.uid;
   const discussionMinutes = room.discussionMinutes;
@@ -120,7 +168,9 @@ function enterDrawScreen(room) {
   const isParent = room.parentUid === currentUser?.uid;
   renderPlayerBar(room);
   $("#round-title").textContent = `親：${playerEntries(room).find(player => player.uid === room.parentUid)?.name || ""}`;
-  $("#round-card-message").textContent = isParent ? "あなたが親です。次のフェーズで札を引けるようになります。" : "親が札を選んでいます。お待ちください。";
+  const message = isParent ? "あなたが親です。次のフェーズで札を引けるようになります。" : "親が札を選んでいます。お待ちください。";
+  $("#round-card-message").textContent = message;
+  setRoundMessage(message);
   $("#round-start-button").disabled = true;
   $("#draw-card").textContent = isParent ? "札選びは次のフェーズで開始します" : "親を待っています";
   $("#deck-stack-image").onclick = null;
@@ -147,6 +197,7 @@ function clearRoomSession() {
   latestRoom = null;
   roomId = "";
   openedRoom = false;
+  hideRoundHeader();
 }
 
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -285,8 +336,14 @@ function openJoinFromUrl() {
 function initialize() {
   if (!enabled()) return;
   const style = document.createElement("style");
-  style.textContent = ".multiplayer-choice-image{max-width:330px;margin:12px auto 18px}.multiplayer-choice-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.multiplayer-choice-buttons .button{width:100%;padding-inline:8px}.multiplayer-choice-back{margin-top:24px}.copy-field{display:flex;gap:8px;align-items:stretch}.copy-field input{min-width:0;flex:1}.copy-icon-button{flex:0 0 42px;width:42px;min-height:42px;border:0;border-radius:11px;background:#eceff1;color:#263238;font-size:1.3rem;line-height:1;display:grid;place-items:center;cursor:pointer}.room-number-row{display:flex;align-items:center;gap:8px}.room-number-row .copy-icon-button{flex-basis:34px;width:34px;min-height:34px;font-size:1.05rem}.multiplayer-summary{margin:14px 0;padding:12px;border:1px solid #68775c;border-radius:12px;background:#192623}.multiplayer-summary p{margin:5px 0}.invite-qr{display:grid;place-items:center;margin:12px auto}.invite-qr canvas{max-width:100%;height:auto;border-radius:8px}.multiplayer-player-bar{position:fixed;z-index:1500;top:0;left:0;right:0;display:flex;gap:5px;overflow-x:auto;padding:5px;background:#0d1c18ef;border-bottom:1px solid #68775c}.multiplayer-player{flex:0 0 min(130px,30vw);display:grid;gap:1px;padding:5px 7px;border:1px solid #46534d;border-radius:8px;color:#eee8dc;background:#192623;font-size:.72rem}.multiplayer-player.is-parent{border-color:#d39a55}.multiplayer-player strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.multiplayer-player small{color:#c2c1b5}.multiplayer-player-bar:not(.is-hidden)~.app-shell{padding-top:66px}";
+  style.textContent = ".multiplayer-choice-image{max-width:330px;margin:12px auto 18px}.multiplayer-choice-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.multiplayer-choice-buttons .button{width:100%;padding-inline:8px}.multiplayer-choice-back{margin-top:24px}.copy-field{display:flex;gap:8px;align-items:stretch}.copy-field input{min-width:0;flex:1}.copy-icon-button{flex:0 0 42px;width:42px;min-height:42px;border:0;border-radius:11px;background:#eceff1;color:#263238;font-size:1.3rem;line-height:1;display:grid;place-items:center;cursor:pointer}.room-number-row{display:flex;align-items:center;gap:8px}.room-number-row .copy-icon-button{flex-basis:34px;width:34px;min-height:34px;font-size:1.05rem}.multiplayer-summary{margin:14px 0;padding:12px;border:1px solid #68775c;border-radius:12px;background:#192623}.multiplayer-summary p{margin:5px 0}.invite-qr{display:grid;place-items:center;margin:12px auto}.invite-qr canvas{max-width:100%;height:auto;border-radius:8px}";
   document.head.append(style);
+  const roundHeader = $("#multiplayer-round-header");
+  if (roundHeader && "ResizeObserver" in window) {
+    roundHeaderObserver = new ResizeObserver(updateRoundHeaderOffset);
+    roundHeaderObserver.observe(roundHeader);
+  }
+  window.addEventListener("resize", updateRoundHeaderOffset);
   $("#single-device-mode").onclick = () => window.startSingleDeviceGame?.();
   $("#multiplayer-mode").onclick = () => show("multiplayer-role");
   $("#mode-choice-back").onclick = () => show("title");

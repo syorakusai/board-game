@@ -218,3 +218,70 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 @media (max-width: 420px) { .howto-tabs { gap: 6px; } .howto-tab { font-size: .8rem; } }
 .answer-screen .answer-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 18px 0 22px; }\n.answer-screen .card-area { margin: 0; }\n.answer-screen .compact-card img { max-height: min(25vh, calc(100dvh - 300px)); }\n.answer-screen .answer-guide { min-width: 0; }\n.answer-screen .answer-guide .screen-subtitle { margin: 0 0 12px; }\n.answer-screen .answer-guide .description { margin: 0; line-height: 1.45; }\n.answer-screen .word-list { margin-top: 0; }\n@media (max-width: 380px) { .discussion-screen .discussion-layout { gap: 8px; } .result-screen .compact-card img { max-height: 14vh; } }
 
+
+
+/* 通信対戦：ラウンド開始後の固定情報領域 */
+.multiplayer-round-header {
+  position: fixed;
+  z-index: 1500;
+  top: 0;
+  left: 50%;
+  width: min(100%, 520px);
+  transform: translateX(-50%);
+  padding-top: env(safe-area-inset-top);
+  background: #0d1c18f5;
+  border-bottom: 1px solid #68775c;
+  box-shadow: 0 3px 12px #0006;
+}
+.multiplayer-player-bar {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 5px;
+  scrollbar-width: thin;
+}
+.multiplayer-player {
+  flex: 0 0 min(130px, 30vw);
+  display: grid;
+  gap: 1px;
+  padding: 5px 7px;
+  border: 1px solid #46534d;
+  border-radius: 8px;
+  color: #eee8dc;
+  background: #192623;
+  font-size: .72rem;
+}
+.multiplayer-player.is-parent { border-color: #d39a55; }
+.multiplayer-player strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.multiplayer-player small { color: #c2c1b5; }
+.multiplayer-message-bar {
+  width: 100%;
+  overflow: hidden;
+  padding: 7px 10px 8px;
+  border-top: 1px solid #46534d;
+  color: #eee8dc;
+  background: #132521;
+  font-size: .82rem;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.multiplayer-message-text {
+  display: inline-block;
+  min-width: max-content;
+  white-space: nowrap;
+}
+.multiplayer-message-text.is-scrolling {
+  padding-inline-start: 100%;
+  animation: multiplayer-message-ticker var(--multiplayer-message-duration, 12s) linear infinite;
+}
+@keyframes multiplayer-message-ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+.app-shell.has-multiplayer-round-header .screen {
+  padding-top: calc(var(--multiplayer-round-header-height, 100px) + clamp(16px, 4vw, 28px));
+}

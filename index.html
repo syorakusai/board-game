@@ -75,7 +75,12 @@
 <button id="start-multiplayer-game" class="button button-primary is-hidden">宴を始める</button>
 </div>
 </section>
-<div id="multiplayer-player-bar" class="multiplayer-player-bar is-hidden" aria-label="参加者一覧"></div>
+<div id="multiplayer-round-header" class="multiplayer-round-header is-hidden">
+<div id="multiplayer-player-bar" class="multiplayer-player-bar" aria-label="参加者一覧"></div>
+<div id="multiplayer-message-bar" class="multiplayer-message-bar" role="status" aria-live="polite">
+<span id="multiplayer-message-text" class="multiplayer-message-text"></span>
+</div>
+</div>
 <section class="screen is-hidden" data-screen="howto">
 <h1>遊び方</h1>
 <nav class="howto-tabs" aria-label="遊び方の項目">
