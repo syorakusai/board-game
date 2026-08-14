@@ -17,9 +17,12 @@ let openedRoom = false;
 let leavingWaitingRoom = false;
 let presenceUnsubscribe = null;
 let activeConnectionRef = null;
+let secretUnsubscribe = null;
+let parentSecret = null;
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
+const secretPath = (id, roundNumber, uid) => `roomSecrets/${id}/rounds/${roundNumber}/${uid}`;
 const show = name => {
   if (window.showGameScreen) { window.showGameScreen(name); return; }
   document.querySelectorAll("[data-screen]").forEach(screen => screen.classList.toggle("is-hidden", screen.dataset.screen !== name));
@@ -142,20 +145,26 @@ function updateRoundHeaderOffset() {
   refreshMessageTicker();
 }
 
-function roundTitleRow() {
-  return $('[data-screen="round"] .screen-title-row') || $('#multiplayer-round-title-slot .screen-title-row');
+function roundTitleRow(screenName) {
+  return $(`[data-screen="${screenName}"] .screen-title-row`) || $('#multiplayer-round-title-slot .screen-title-row');
 }
 
-function placeRoundTitleInHeader() {
+function placeRoundTitleInHeader(screenName) {
   const slot = $("#multiplayer-round-title-slot");
-  const row = roundTitleRow();
+  const previous = slot?.querySelector(".screen-title-row");
+  if (previous && previous.dataset.multiplayerScreen) {
+    $(`[data-screen="${previous.dataset.multiplayerScreen}"]`)?.prepend(previous);
+  }
+  const row = roundTitleRow(screenName);
+  if (row && !row.dataset.multiplayerScreen) row.dataset.multiplayerScreen = screenName;
   if (slot && row && row.parentElement !== slot) slot.append(row);
 }
 
 function restoreRoundTitleToScreen() {
   const screen = $('[data-screen="round"]');
   const row = $('#multiplayer-round-title-slot .screen-title-row');
-  if (screen && row && row.parentElement !== screen) screen.prepend(row);
+  const target = row?.dataset.multiplayerScreen ? $(`[data-screen="${row.dataset.multiplayerScreen}"]`) : screen;
+  if (target && row && row.parentElement !== target) target.prepend(row);
 }
 
 function hideRoundHeader() {
@@ -177,12 +186,12 @@ function setRoundMessage(message) {
   refreshMessageTicker();
 }
 
-function renderPlayerBar(room) {
+function renderPlayerBar(room, screenName="round") {
   const header=$("#multiplayer-round-header"),bar=$("#multiplayer-player-bar"),shell=$(".app-shell");
   if(!header||!bar||!shell||!room?.seats){hideRoundHeader();return;}
   const entries=playerEntries(room),disconnected=new Set(disconnectedPlayers(room).map(player=>player.uid));
   bar.innerHTML=room.seats.map(uid=>{const player=entries.find(item=>item.uid===uid)||{name:"不明"};const label=uid===currentUser?.uid?"あなた":disconnected.has(uid)?"切断中":"待機中";return `<div class="multiplayer-player${uid===room.parentUid?" is-parent":""}"><strong>${uid===room.parentUid?"親　":""}${escape(player.name)}</strong><span>0点</span><small>${label}</small></div>`;}).join("");
-  placeRoundTitleInHeader();
+  placeRoundTitleInHeader(screenName);
   header.classList.remove("is-hidden");shell.classList.add("has-multiplayer-round-header");updateRoundHeaderOffset();
 }
 async function renderWaiting(room) {
@@ -225,16 +234,93 @@ async function renderWaiting(room) {
     qr.append(canvas);
     await QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark: "#063b2b", light: "#fffdf4" } });
   }
-  if (room.status === "started") enterDrawScreen(room);
+  if (room.status === "started") {
+    setSecretSubscription(room);
+    if (room.phase === "parent-word") enterParentWordScreen(room);
+    else enterDrawScreen(room);
+  }
 }
 
+function roundLabel(room) { return `第${["","一","二","三","四","五","六","七","八","九","十"][Number(room?.round?.number || 1)] || Number(room?.round?.number || 1)}席`; }
+function multiplayerCardMarkup(image) {
+  return image ? `<img class="card-zoom-trigger" src="${escape(image)}" alt="お題カード。タップで拡大表示">` : `<div class="missing-card">カード画像を読み込めません</div>`;
+}
+function canProgress(room) { return room?.status === "started" && !roomEnded(room) && !disconnectedPlayers(room).length; }
+function currentRoundNumber(room) { return Number(room?.round?.number || 1); }
+function setSecretSubscription(room) {
+  secretUnsubscribe?.(); secretUnsubscribe = null; parentSecret = null;
+  if (room?.parentUid !== currentUser?.uid || !room?.round?.number) return;
+  secretUnsubscribe = onValue(ref(window.__firebaseDatabase, secretPath(roomId, currentRoundNumber(room), currentUser.uid)), snapshot => {
+    parentSecret = snapshot.val();
+    if (latestRoom?.phase === "parent-word") enterParentWordScreen(latestRoom);
+  });
+}
 function enterDrawScreen(room) {
   const isParent=room.parentUid===currentUser?.uid,parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親",disconnected=disconnectedPlayers(room);
-  renderPlayerBar(room);const title=roundTitleRow()?.querySelector("[data-round-title]");if(title)title.textContent="第一席　札選び";$("#round-title").textContent="";$("#round-card-message").textContent=isParent?"あなたが親です。次のフェーズで札を引けるようになります。":"親が札を選んでいます。お待ちください。";
+  show("round"); renderPlayerBar(room, "round");const title=roundTitleRow("round")?.querySelector("[data-round-title]");if(title)title.textContent=`${roundLabel(room)}　札選び`;$("#round-title").textContent="";$("#round-card-message").textContent=isParent?"あなたが親です。伏せ札の山から1枚引いてください。":"親が札を選んでいます。お待ちください。";
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
   else setRoundMessage(`ようこそ、宴がはじまりました。第一席の親は${parentName}さんです。${parentName}さん、伏せ札の山から１枚引いてください。`);
-  $("#round-start-button").disabled=true;$("#draw-card").textContent=roomEnded(room)?"宴はお開きです":disconnected.length?"復帰を待っています":isParent?"札選びは次のフェーズで開始します":"親を待っています";$("#deck-stack-image").onclick=null;$("#deck-stack-image").onkeydown=null;$("#round-start-button").onclick=null;show("round");
+  const enabled=canProgress(room)&&isParent;
+  $("#round-start-button").disabled=!enabled;$("#draw-card").textContent=roomEnded(room)?"宴はお開きです":disconnected.length?"復帰を待っています":isParent?"伏せ札を引く":"親を待っています";
+  $("#round-start-button").onclick=drawMultiplayerCard;
+  $("#deck-stack-image").onclick=drawMultiplayerCard;
+  $("#deck-stack-image").onkeydown=event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();drawMultiplayerCard();}};
+}
+function enterParentWordScreen(room) {
+  const isParent=room.parentUid===currentUser?.uid, disconnected=disconnectedPlayers(room), card=room.round;
+  show("parent-input"); renderPlayerBar(room, "parent-input");
+  const title=roundTitleRow("parent-input")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　親のひそめごと`;
+  $("#parent-card-area").innerHTML=multiplayerCardMarkup(card?.cardImage);
+  $("#parent-secret-description").hidden=!isParent;
+  $("#official-preview").hidden=!isParent;
+  $("#parent-word").hidden=!isParent;
+  $("#parent-error").hidden=!isParent;
+  $("#parent-submit").hidden=!isParent;
+  $("#parent-word").value=parentSecret?.parentWord || "";
+  const ready=isParent&&Array.isArray(parentSecret?.officialWords);
+  $("#official-preview").innerHTML=ready?parentSecret.officialWords.map(word=>`<div class="word official">${escape(word)}</div>`).join(""):"";
+  $("#parent-submit").disabled=!ready||!canProgress(room)||Boolean(parentSecret?.parentWord);
+  $("#parent-submit").textContent=parentSecret?.parentWord?"ひそめました":"ひそめる";
+  $("#parent-redraw-button").disabled=!isParent||!canProgress(room);
+  $("#parent-redraw-button").hidden=!isParent;
+  $("#parent-error").textContent="";
+  if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
+  else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
+  else setRoundMessage(isParent?(ready?"公式ワード3個を確認し、親ワードをひそめてください。":"親専用の札情報を読み込んでいます。"):"親がひそめごとを考えています。お待ちください。");
+  $("#parent-submit").onclick=submitParentWord;
+  $("#parent-redraw-button").onclick=redrawMultiplayerCard;
+}
+async function drawMultiplayerCard() {
+  const room=latestRoom;
+  if(!room||room.parentUid!==currentUser?.uid||room.phase!=="draw"||!canProgress(room))return;
+  const button=$("#round-start-button"); button.disabled=true; $("#draw-card").textContent="お題を準備しています…";
+  try {
+    await ensureCatalog();
+    const cardSet=catalog.find(set=>set.id===room.cardSet), wordSet=cardSet?.wordSets?.find(set=>set.id===room.wordSet);
+    const available=(cardSet?.cards||[]).filter(card=>!room.usedCardIds?.[String(card.id)]);
+    if(!available.length)throw Error("引ける札がありません。");
+    const card=available[crypto.getRandomValues(new Uint32Array(1))[0]%available.length];
+    const official=[...(wordSet?.cards?.find(item=>String(item.cardId)===String(card.id))?.officialWords||[])].sort(()=>crypto.getRandomValues(new Uint32Array(1))[0]/0x100000000-.5).slice(0,3);
+    if(official.length!==3)throw Error("公式ワードを3個選べませんでした。");
+    const roundNumber=currentRoundNumber(room), secret={officialWords:official,cardId:card.id,createdAt:Date.now()};
+    await set(ref(window.__firebaseDatabase,secretPath(roomId,roundNumber,currentUser.uid)),secret);
+    await update(ref(window.__firebaseDatabase,roomPath(roomId)),{phase:"parent-word",round:{number:roundNumber,cardId:card.id,cardImage:`cards/${room.cardSet}/${card.image}`},[`usedCardIds/${card.id}`]:true});
+  } catch(error) { $("#round-card-message").textContent=`札を引けませんでした。${error.message||""}`; button.disabled=false; $("#draw-card").textContent="伏せ札を引く"; }
+}
+async function redrawMultiplayerCard() {
+  const room=latestRoom;
+  if(!room||room.parentUid!==currentUser?.uid||room.phase!=="parent-word"||!canProgress(room))return;
+  try { await update(ref(window.__firebaseDatabase,roomPath(roomId)),{phase:"draw",round:null}); }
+  catch(error) { $("#parent-error").textContent=`札を引き直せませんでした。${error.message||""}`; }
+}
+async function submitParentWord() {
+  const room=latestRoom, value=$("#parent-word").value.trim();
+  if(!room||room.parentUid!==currentUser?.uid||room.phase!=="parent-word"||!canProgress(room))return;
+  if(!value){$("#parent-error").textContent="親ワードを入力してください。";return;}
+  if(parentSecret?.officialWords?.includes(value)){$("#parent-error").textContent="公式ワードとは別の言葉を入力してください。";return;}
+  try { await update(ref(window.__firebaseDatabase,secretPath(roomId,currentRoundNumber(room),currentUser.uid)),{parentWord:value,parentWordConfirmedAt:Date.now()}); }
+  catch(error) { $("#parent-error").textContent=`親ワードをひそめられませんでした。${error.message||""}`; }
 }
 function subscribeRoom(id) {
   roomUnsubscribe?.();
@@ -251,6 +337,9 @@ function clearInviteUrl() {
 function clearRoomSession() {
   roomUnsubscribe?.();
   roomUnsubscribe = null;
+  secretUnsubscribe?.();
+  secretUnsubscribe = null;
+  parentSecret = null;
   stopPresence();
   latestRoom = null;
   roomId = "";
@@ -353,7 +442,7 @@ async function startRoom() {
   }
   const seats = [...players.map(player => player.uid)];
   for (let index = seats.length - 1; index > 0; index--) { const other = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1); [seats[index], seats[other]] = [seats[other], seats[index]]; }
-  await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "started", startedAt: Date.now(), phase: "draw", seats, parentUid: seats[0] });
+  await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "started", startedAt: Date.now(), phase: "draw", round: { number: 1 }, seats, parentUid: seats[0] });
 }
 
 async function leaveWaitingRoom() {
