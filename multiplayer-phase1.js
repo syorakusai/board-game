@@ -307,8 +307,16 @@ async function drawMultiplayerCard() {
     const official=[...(wordSet?.cards?.find(item=>String(item.cardId)===String(card.id))?.officialWords||[])].sort(()=>crypto.getRandomValues(new Uint32Array(1))[0]/0x100000000-.5).slice(0,3);
     if(official.length!==3)throw Error("公式ワードを3個選べませんでした。");
     const roundNumber=currentRoundNumber(room), secret={officialWords:official,cardId:card.id,createdAt:Date.now()};
-    await set(ref(window.__firebaseDatabase,secretPath(roomId,roundNumber,currentUser.uid)),secret);
-    await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"parent-word",cardId:card.id,cardImage:`cards/${room.cardSet}/${card.image}`,[`usedCardIds/${card.id}`]:true});
+    try {
+      await set(ref(window.__firebaseDatabase,secretPath(roomId,roundNumber,currentUser.uid)),secret);
+    } catch (error) {
+      throw Error(`親専用の札情報を保存できませんでした。${error.message||""}`);
+    }
+    try {
+      await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"parent-word",cardId:card.id,cardImage:`cards/${room.cardSet}/${card.image}`,[`usedCardIds/${card.id}`]:true});
+    } catch (error) {
+      throw Error(`札の公開状態を保存できませんでした。${error.message||""}`);
+    }
   } catch(error) { $("#round-card-message").textContent=`札を引けませんでした。${error.message||""}`; button.disabled=false; $("#draw-card").textContent="伏せ札を引く"; }
 }
 async function redrawMultiplayerCard() {
