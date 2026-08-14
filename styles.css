@@ -131,7 +131,7 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .card-lightbox-close:focus-visible { outline: 3px solid #eee8dc; outline-offset: 3px; }
 section[data-screen="title"] { text-align: center; }
 section[data-screen="howto"]:not(.is-hidden) { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 0; height: 100dvh; min-height: 100dvh; padding-bottom: max(clamp(16px, 4vw, 28px), calc(env(safe-area-inset-bottom) + 12px)); overflow: hidden; }
-.app-shell.has-multiplayer-round-header section[data-screen="howto"]:not(.is-hidden) { height: calc(100dvh - var(--multiplayer-round-header-height, 0px)); min-height: calc(100dvh - var(--multiplayer-round-header-height, 0px)); }
+.app-shell.has-multiplayer-round-header section[data-screen="howto"]:not(.is-hidden) { position: fixed; z-index: 2000; inset: 0; height: 100dvh; min-height: 100dvh; padding-top: max(clamp(16px, 4vw, 28px), calc(env(safe-area-inset-top) + 12px)); background: #14201e; }
 .title-heading { margin: 0 0 3px; color: #d4c6ad; font-size: clamp(.95rem, 4vw, 1.2rem); font-weight: 700; line-height: 1.35; letter-spacing: .08em; }
 .title-tagline { margin: 0 0 14px; color: #a89e8d; font-size: clamp(.72rem, 3.1vw, .9rem); font-weight: 600; line-height: 1.45; letter-spacing: .02em; }
 section[data-screen="title"] .button, section[data-screen="howto"] > .button { width: 100%; }
