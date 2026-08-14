@@ -1,9 +1,10 @@
 import { getFirebaseContext } from "./firebase-client.js";
-import { get, onValue, ref, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+import { get, onDisconnect, onValue, push, ref, remove, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
 
 const ROOM_PREFIX = "rooms";
 const NAME_STORAGE_KEY = "board-game:dev:multiplayer-name";
+const ROOM_SESSION_STORAGE_KEY = "board-game:dev:multiplayer-room-session";
 const LEAVE_RETRY_COUNT = 3;
 const LEAVE_RETRY_DELAY_MS = 700;
 let catalog = [];
@@ -16,6 +17,8 @@ let pullToRefreshStartX = null;
 let pullToRefreshStartY = null;
 let pullToRefreshBlocked = false;
 let leavingWaitingRoom = false;
+let presenceUnsubscribe = null;
+let activeConnectionRef = null;
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -28,7 +31,14 @@ const normalizedName = name => name.trim().replace(/\s+/g, " ").toLocaleLowerCas
 const savedName = () => localStorage.getItem(NAME_STORAGE_KEY) || "";
 const saveName = name => localStorage.setItem(NAME_STORAGE_KEY, name);
 const enabled = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
+const storedRoomSession=()=>{try{const s=JSON.parse(localStorage.getItem(ROOM_SESSION_STORAGE_KEY)||"null");return s&&typeof s==="object"?s:null;}catch{return null;}};
+const saveRoomSession=room=>{if(!roomId||!currentUser?.uid||!room?.feastId)return;localStorage.setItem(ROOM_SESSION_STORAGE_KEY,JSON.stringify({roomId,uid:currentUser.uid,name:room.players?.[currentUser.uid]?.name||savedName(),role:room.hostUid===currentUser.uid?"host":"guest",feastId:room.feastId}));};
+const forgetRoomSession=()=>localStorage.removeItem(ROOM_SESSION_STORAGE_KEY);
+const roomEnded=room=>Boolean(room?.endedBy);
+const disconnectedPlayers=room=>playerEntries(room).filter(player=>!Object.keys(room?.presence?.[player.uid]||{}).length);
 
+function stopPresence(){presenceUnsubscribe?.();presenceUnsubscribe=null;if(activeConnectionRef){onDisconnect(activeConnectionRef).cancel().catch(()=>{});remove(activeConnectionRef).catch(()=>{});activeConnectionRef=null;}}
+function startPresence(){if(!window.__firebaseDatabase||!roomId||!currentUser?.uid)return Promise.reject(Error("接続状態を開始できません。"));stopPresence();const connections=ref(window.__firebaseDatabase,`${roomPath(roomId)}/presence/${currentUser.uid}`);return new Promise((resolve,reject)=>{let first=true;presenceUnsubscribe=onValue(ref(window.__firebaseDatabase,".info/connected"),async snapshot=>{if(snapshot.val()!==true){activeConnectionRef=null;return;}const connection=push(connections);try{await onDisconnect(connection).remove();await set(connection,true);activeConnectionRef=connection;if(first){first=false;resolve();}}catch(error){if(first){first=false;reject(error);}else console.error("接続状態を再登録できませんでした。",error);}},error=>{if(first){first=false;reject(error);}});});}
 async function ensureCatalog() {
   if (catalog.length) return catalog;
   const listing = await (await fetch("card-sets.json")).json();
@@ -135,20 +145,12 @@ function setRoundMessage(message) {
 }
 
 function renderPlayerBar(room) {
-  const header = $("#multiplayer-round-header");
-  const bar = $("#multiplayer-player-bar");
-  const shell = $(".app-shell");
-  if (!header || !bar || !shell || !room?.seats) { hideRoundHeader(); return; }
-  const entries = playerEntries(room);
-  bar.innerHTML = room.seats.map(uid => {
-    const player = entries.find(item => item.uid === uid) || { name: "不明" };
-    return `<div class="multiplayer-player${uid === room.parentUid ? " is-parent" : ""}"><strong>${uid === room.parentUid ? "親　" : ""}${escape(player.name)}</strong><span>0点</span><small>${uid === currentUser?.uid ? "あなた" : "待機中"}</small></div>`;
-  }).join("");
-  header.classList.remove("is-hidden");
-  shell.classList.add("has-multiplayer-round-header");
-  updateRoundHeaderOffset();
+  const header=$("#multiplayer-round-header"),bar=$("#multiplayer-player-bar"),shell=$(".app-shell");
+  if(!header||!bar||!shell||!room?.seats){hideRoundHeader();return;}
+  const entries=playerEntries(room),disconnected=new Set(disconnectedPlayers(room).map(player=>player.uid));
+  bar.innerHTML=room.seats.map(uid=>{const player=entries.find(item=>item.uid===uid)||{name:"不明"};const label=uid===currentUser?.uid?"あなた":disconnected.has(uid)?"切断中":"待機中";return `<div class="multiplayer-player${uid===room.parentUid?" is-parent":""}"><strong>${uid===room.parentUid?"親　":""}${escape(player.name)}</strong><span>0点</span><small>${label}</small></div>`;}).join("");
+  header.classList.remove("is-hidden");shell.classList.add("has-multiplayer-round-header");updateRoundHeaderOffset();
 }
-
 async function renderWaiting(room) {
   latestRoom = room;
   if (leavingWaitingRoom) return;
@@ -183,22 +185,13 @@ async function renderWaiting(room) {
 }
 
 function enterDrawScreen(room) {
-  const isParent = room.parentUid === currentUser?.uid;
-  const parentName = playerEntries(room).find(player => player.uid === room.parentUid)?.name || "親";
-  renderPlayerBar(room);
-  $('[data-screen="round"] [data-round-title]').textContent = `親：${parentName}`;
-  $("#round-title").textContent = "";
-  const message = isParent ? "あなたが親です。次のフェーズで札を引けるようになります。" : "親が札を選んでいます。お待ちください。";
-  $("#round-card-message").textContent = message;
-  setRoundMessage(`ようこそ、宴がはじまりました。第一席の親は${parentName}さんです。${parentName}さん、伏せ札の山から１枚引いてください。`);
-  $("#round-start-button").disabled = true;
-  $("#draw-card").textContent = isParent ? "札選びは次のフェーズで開始します" : "親を待っています";
-  $("#deck-stack-image").onclick = null;
-  $("#deck-stack-image").onkeydown = null;
-  $("#round-start-button").onclick = null;
-  show("round");
+  const isParent=room.parentUid===currentUser?.uid,parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親",disconnected=disconnectedPlayers(room);
+  renderPlayerBar(room);$('[data-screen="round"] [data-round-title]').textContent=`親：${parentName}`;$("#round-title").textContent="";$("#round-card-message").textContent=isParent?"あなたが親です。次のフェーズで札を引けるようになります。":"親が札を選んでいます。お待ちください。";
+  if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
+  else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
+  else setRoundMessage(`ようこそ、宴がはじまりました。第一席の親は${parentName}さんです。${parentName}さん、伏せ札の山から１枚引いてください。`);
+  $("#round-start-button").disabled=true;$("#draw-card").textContent=roomEnded(room)?"宴はお開きです":disconnected.length?"復帰を待っています":isParent?"札選びは次のフェーズで開始します":"親を待っています";$("#deck-stack-image").onclick=null;$("#deck-stack-image").onkeydown=null;$("#round-start-button").onclick=null;show("round");
 }
-
 function subscribeRoom(id) {
   roomUnsubscribe?.();
   roomUnsubscribe = onValue(ref((window.__firebaseDatabase), roomPath(id)), snapshot => renderWaiting(snapshot.val()));
@@ -214,9 +207,11 @@ function clearInviteUrl() {
 function clearRoomSession() {
   roomUnsubscribe?.();
   roomUnsubscribe = null;
+  stopPresence();
   latestRoom = null;
   roomId = "";
   openedRoom = false;
+  forgetRoomSession();
   hideRoundHeader();
 }
 
@@ -250,13 +245,13 @@ async function createRoom() {
   roomId = makeRoomId();
   const key = normalizedName(name);
   const room = {
-    hostUid: context.user.uid, status: "waiting", createdAt: Date.now(),
+    hostUid: context.user.uid, feastId: crypto.randomUUID(), status: "waiting", createdAt: Date.now(),
     cardSet: cardSet.id, cardSetName: cardSet.name, wordSet: wordSet.id, wordSetName: wordSet.name,
     discussionMinutes: Number($("#host-discussion-time").value),
     players: { [context.user.uid]: { name, nameKey: key, joinedAt: Date.now() } },
     nameIndex: { [key]: context.user.uid }
   };
-  try { await update(ref(context.database, roomPath(roomId)), room); saveName(name); subscribeRoom(roomId); show("multiplayer-waiting"); }
+  try { await update(ref(context.database, roomPath(roomId)), room); saveName(name); saveRoomSession(room); await startPresence(); subscribeRoom(roomId); show("multiplayer-waiting"); }
   catch (cause) { error.textContent = `部屋を作成できませんでした。${cause.message || ""}`; }
 }
 
@@ -283,7 +278,7 @@ async function joinRoom() {
     error.textContent = "同じ名前の客人がすでに参加しています。別の名前を入力してください。";
     return;
   }
-  roomId = id; saveName(name); subscribeRoom(roomId); show("multiplayer-waiting");
+  roomId = id; saveName(name); saveRoomSession(room); await startPresence(); subscribeRoom(roomId); show("multiplayer-waiting");
 }
 
 async function startRoom() {
@@ -292,7 +287,7 @@ async function startRoom() {
   if (players.length < 2 || players.length > 6) return;
   const seats = [...players.map(player => player.uid)];
   for (let index = seats.length - 1; index > 0; index--) { const other = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1); [seats[index], seats[other]] = [seats[other], seats[index]]; }
-  await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "started", startedAt: Date.now(), seats, parentUid: seats[0] });
+  await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "started", startedAt: Date.now(), phase: "draw", seats, parentUid: seats[0] });
 }
 
 async function leaveWaitingRoom() {
@@ -344,6 +339,14 @@ async function leaveWaitingRoom() {
   leavingWaitingRoom = false;
 }
 
+async function exitStartedFeast(){if(!latestRoom||roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();show("multiplayer-role");return;}await set(ref(window.__firebaseDatabase,`${roomPath(roomId)}/endedBy`),{uid:currentUser.uid,name:latestRoom.players?.[currentUser.uid]?.name||savedName(),at:Date.now()});clearRoomSession();clearInviteUrl();show("multiplayer-role");}
+function requestExit(){if(!roomId||!latestRoom||latestRoom.status!=="started")return false;if(roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();show("multiplayer-role");return true;}if(confirm("退出すると、この宴は全員終了となります。退出しますか？"))exitStartedFeast().catch(error=>alert(`退出できませんでした。 ${error.message||""}`));return true;}
+function showRecoveryError(message){$("#recovery-title").textContent="宴を確認できません";$("#recovery-message").textContent=message;$("#recovery-resume").hidden=true;$("#recovery-retry").hidden=false;show("multiplayer-recovery");}
+function showRecoveryPrompt(room){latestRoom=room;$("#recovery-title").textContent=roomEnded(room)?"お開きとなった宴があります":"宴に復帰しますか";$("#recovery-message").textContent=roomEnded(room)?"終了時点の画面と戦績を確認できます。":room.status==="waiting"?"待機室へ復帰できます。":"中断した宴へ復帰できます。";$("#recovery-resume").hidden=false;$("#recovery-retry").hidden=true;show("multiplayer-recovery");}
+async function checkStoredRoomSession(){const saved=storedRoomSession();if(!saved)return false;try{const context=await getFirebaseContext();currentUser=context.user;window.__firebaseDatabase=context.database;if(context.user.uid!==saved.uid){showRecoveryError("保存されている参加情報と、この端末の認証情報が一致しません。もう一度確認してください。");return true;}const room=(await get(ref(context.database,roomPath(saved.roomId)))).val();const valid=room&&room.feastId===saved.feastId&&room.players?.[context.user.uid]&&(saved.role==="host")===(room.hostUid===context.user.uid)&&(room.status==="waiting"||room.status==="started");if(!valid){showRecoveryError("復帰できる宴を確認できませんでした。通信状態を確認して、もう一度確認してください。");return true;}roomId=saved.roomId;openedRoom=saved.role==="host";showRecoveryPrompt(room);return true;}catch(error){showRecoveryError(`状態を確認できませんでした。 ${error.message||""}`);return true;}}
+async function resumeStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;await startPresence();subscribeRoom(roomId);show(latestRoom.status==="waiting"?"multiplayer-waiting":"round");}
+async function exitStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;if(latestRoom.status==="started"){if(roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();show("multiplayer-role");return;}if(!confirm("退出すると、この宴は全員終了となります。退出しますか？"))return;await exitStartedFeast();return;}if(latestRoom.status==="waiting"){await startPresence();await leaveWaitingRoom();}}
+
 function openJoinFromUrl() {
   const id = new URLSearchParams(location.search).get("room");
   if (!id) return false;
@@ -355,6 +358,9 @@ function openJoinFromUrl() {
 
 function initialize() {
   if (!enabled()) return;
+  $("#recovery-resume").onclick=()=>resumeStoredRoom().catch(error=>{$("#recovery-message").textContent=`復帰できませんでした。 ${error.message||""}`;});
+  $("#recovery-exit").onclick=()=>exitStoredRoom().catch(error=>{$("#recovery-message").textContent=`退出できませんでした。 ${error.message||""}`;});
+  $("#recovery-retry").onclick=()=>checkStoredRoomSession();
   const style = document.createElement("style");
   style.textContent = ".multiplayer-choice-image{max-width:330px;margin:12px auto 18px}.multiplayer-choice-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.multiplayer-choice-buttons .button{width:100%;padding-inline:8px}.multiplayer-choice-back{margin-top:24px}.copy-field{display:flex;gap:8px;align-items:stretch}.copy-field input{min-width:0;flex:1}.copy-icon-button{flex:0 0 42px;width:42px;min-height:42px;border:0;border-radius:11px;background:#eceff1;color:#263238;font-size:1.3rem;line-height:1;display:grid;place-items:center;cursor:pointer}.room-number-row{display:flex;align-items:center;gap:8px}.room-number-row .copy-icon-button{flex-basis:34px;width:34px;min-height:34px;font-size:1.05rem}.multiplayer-summary{margin:14px 0;padding:12px;border:1px solid #68775c;border-radius:12px;background:#192623}.multiplayer-summary p{margin:5px 0}.invite-qr{display:grid;place-items:center;margin:12px auto}.invite-qr canvas{max-width:100%;height:auto;border-radius:8px}";
   document.head.append(style);
@@ -422,5 +428,5 @@ function initialize() {
   window.addEventListener("touchcancel", resetPullToRefresh);
 }
 
-window.multiplayerPhase1 = { isEnabled: enabled, openModeChoice: () => show("mode-choice"), openJoinFromUrl };
+window.multiplayerPhase1 = { isEnabled: enabled, openModeChoice: () => show("mode-choice"), openJoinFromUrl, checkStoredRoomSession, requestExit };
 initialize();
