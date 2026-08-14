@@ -78,18 +78,26 @@ let roundHeaderObserver = null;
 
 function refreshMessageTicker() {
   const viewport = $("#multiplayer-message-bar");
-  const text = $("#multiplayer-message-text");
-  if (!viewport || !text) return;
+  const track = $("#multiplayer-message-text");
+  if (!viewport || !track) return;
   cancelAnimationFrame(messageTickerFrame);
-  text.classList.remove("is-scrolling");
-  text.style.removeProperty("--multiplayer-message-duration");
+  track.classList.remove("is-scrolling");
+  track.style.removeProperty("--multiplayer-message-duration");
+  track.style.removeProperty("--multiplayer-message-distance");
+  track.querySelectorAll("[data-ticker-copy]").forEach(copy => copy.remove());
   messageTickerFrame = requestAnimationFrame(() => {
-    const textWidth = text.scrollWidth;
-    const viewportWidth = viewport.clientWidth;
-    if (textWidth <= viewportWidth + 1) return;
-    const duration = Math.max(10, (textWidth + viewportWidth) / 42);
-    text.style.setProperty("--multiplayer-message-duration", `${duration.toFixed(2)}s`);
-    text.classList.add("is-scrolling");
+    const primary = track.firstElementChild;
+    if (!primary || primary.scrollWidth <= viewport.clientWidth + 1) return;
+    const duplicate = primary.cloneNode(true);
+    duplicate.dataset.tickerCopy = "";
+    duplicate.setAttribute("aria-hidden", "true");
+    track.append(duplicate);
+    const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+    const distance = primary.getBoundingClientRect().width + gap;
+    const duration = Math.max(6, distance / 63);
+    track.style.setProperty("--multiplayer-message-duration", `${duration.toFixed(2)}s`);
+    track.style.setProperty("--multiplayer-message-distance", `${-distance.toFixed(2)}px`);
+    track.classList.add("is-scrolling");
   });
 }
 
@@ -110,9 +118,12 @@ function hideRoundHeader() {
 }
 
 function setRoundMessage(message) {
-  const text = $("#multiplayer-message-text");
-  if (!text) return;
-  text.textContent = message;
+  const track = $("#multiplayer-message-text");
+  if (!track) return;
+  const primary = document.createElement("span");
+  primary.className = "multiplayer-message-copy";
+  primary.textContent = message;
+  track.replaceChildren(primary);
   refreshMessageTicker();
 }
 
@@ -128,7 +139,7 @@ function renderPlayerBar(room) {
   }).join("");
   header.classList.remove("is-hidden");
   shell.classList.add("has-multiplayer-round-header");
-  requestAnimationFrame(updateRoundHeaderOffset);
+  updateRoundHeaderOffset();
 }
 
 async function renderWaiting(room) {
@@ -168,7 +179,8 @@ function enterDrawScreen(room) {
   const isParent = room.parentUid === currentUser?.uid;
   const parentName = playerEntries(room).find(player => player.uid === room.parentUid)?.name || "親";
   renderPlayerBar(room);
-  $("#round-title").textContent = `親：${parentName}`;
+  $('[data-screen="round"] [data-round-title]').textContent = `親：${parentName}`;
+  $("#round-title").textContent = "";
   const message = isParent ? "あなたが親です。次のフェーズで札を引けるようになります。" : "親が札を選んでいます。お待ちください。";
   $("#round-card-message").textContent = message;
   setRoundMessage(`ようこそ、宴がはじまりました。第一席の親は${parentName}さんです。${parentName}さん、伏せ札の山から１枚引いてください。`);

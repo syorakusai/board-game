@@ -270,18 +270,32 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
   white-space: nowrap;
 }
 .multiplayer-message-text {
-  display: inline-block;
+  display: inline-flex;
+  width: max-content;
   min-width: max-content;
+  column-gap: clamp(32px, 8vw, 56px);
+  white-space: nowrap;
+  transform: translateX(0);
+}
+.multiplayer-message-copy {
+  display: inline-block;
+  flex: 0 0 auto;
   white-space: nowrap;
 }
 .multiplayer-message-text.is-scrolling {
-  padding-inline-start: 100%;
-  animation: multiplayer-message-ticker var(--multiplayer-message-duration, 12s) linear infinite;
+  animation: multiplayer-message-ticker var(--multiplayer-message-duration, 10s) linear infinite;
 }
 @keyframes multiplayer-message-ticker {
   from { transform: translateX(0); }
-  to { transform: translateX(-100%); }
+  to { transform: translateX(var(--multiplayer-message-distance)); }
 }
 .app-shell.has-multiplayer-round-header .screen {
   padding-top: calc(var(--multiplayer-round-header-height, 100px) + clamp(16px, 4vw, 28px));
+}
+.app-shell.has-multiplayer-round-header #round-title:empty { display: none; }
+.app-shell.has-multiplayer-round-header [data-screen="round"] [data-round-title] {
+  color: #eee8dc;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: normal;
 }
