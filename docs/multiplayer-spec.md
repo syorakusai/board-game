@@ -228,6 +228,7 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 復帰基盤（待機室〜札選び）用のRealtime Databaseルールを2026-08-14に反映済みです。
 
 - 各プレイヤーは、開始後も自分の `presence/{uid}/{connectionId}` だけを追加・削除できる
+- 主催者は待機室を閉じる際に、`status: closed` と `closedAt` を同時に記録できる
 - 同一UIDの複数タブ・複数接続は、接続IDごとに管理する
 - 開始後、参加者本人は `endedBy` を最初の1件だけ作成できる
 - 待機室で参加者が戻る場合、`players/{uid}` と対応する `nameIndex/{nameKey}` を同一更新で削除できる

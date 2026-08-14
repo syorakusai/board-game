@@ -14,6 +14,10 @@
           ".write": "auth != null && data.parent().child('hostUid').val() === auth.uid && ((data.val() === 'waiting' && (newData.val() === 'started' || newData.val() === 'closed')))",
           ".validate": "newData.val() === 'waiting' || newData.val() === 'started' || newData.val() === 'closed'"
         },
+        "closedAt": {
+          ".write": "auth != null && data.parent().child('hostUid').val() === auth.uid && data.parent().child('status').val() === 'waiting' && newData.parent().child('status').val() === 'closed'",
+          ".validate": "newData.isNumber()"
+        },
         "startedAt": {
           ".write": "auth != null && data.parent().child('hostUid').val() === auth.uid && data.parent().child('status').val() === 'waiting' && newData.parent().child('status').val() === 'started'",
           ".validate": "newData.isNumber()"
