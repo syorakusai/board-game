@@ -28,6 +28,7 @@ function show(name){
   document.body.scrollTop=0;
   requestAnimationFrame(()=>window.scrollTo(0,0));
 }
+window.showGameScreen = show;
 function cardImagePath(image){if(!image)return "";return image.startsWith("cards/")?image:`cards/${state.cardSet}/${image}`;}
 function cardMarkup(card){const src=cardImagePath(card?.image);return src?`<img class="card-zoom-trigger" src="${esc(src)}" alt="お題カード。タップで拡大表示" tabindex="0" role="button" onerror="this.parentElement.innerHTML='<div class=&quot;missing-card&quot;>カード画像を読み込めませんでした</div>'">`:`<div class="missing-card">カード画像を読み込めません</div>`;}
 const cardLightbox=document.querySelector("#card-lightbox"),cardLightboxContent=document.querySelector("#card-lightbox-content");

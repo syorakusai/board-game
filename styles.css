@@ -286,8 +286,8 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
   animation: multiplayer-message-ticker var(--multiplayer-message-duration, 10s) linear infinite;
 }
 @keyframes multiplayer-message-ticker {
-  from { transform: translateX(0); }
-  to { transform: translateX(var(--multiplayer-message-distance)); }
+  from { transform: translateX(var(--multiplayer-message-start, 50%)); }
+  to { transform: translateX(calc(var(--multiplayer-message-start, 50%) + var(--multiplayer-message-distance))); }
 }
 .app-shell.has-multiplayer-round-header .screen {
   padding-top: calc(var(--multiplayer-round-header-height, 100px) + clamp(16px, 4vw, 28px));

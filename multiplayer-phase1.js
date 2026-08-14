@@ -18,7 +18,10 @@ let leavingWaitingRoom = false;
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
-const show = name => document.querySelectorAll("[data-screen]").forEach(screen => screen.classList.toggle("is-hidden", screen.dataset.screen !== name));
+const show = name => {
+  if (window.showGameScreen) { window.showGameScreen(name); return; }
+  document.querySelectorAll("[data-screen]").forEach(screen => screen.classList.toggle("is-hidden", screen.dataset.screen !== name));
+};
 const escape = value => String(value).replace(/[&<>"']/g, character => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[character]));
 const normalizedName = name => name.trim().replace(/\s+/g, " ").toLocaleLowerCase("ja-JP");
 const savedName = () => localStorage.getItem(NAME_STORAGE_KEY) || "";
@@ -84,6 +87,7 @@ function refreshMessageTicker() {
   track.classList.remove("is-scrolling");
   track.style.removeProperty("--multiplayer-message-duration");
   track.style.removeProperty("--multiplayer-message-distance");
+  track.style.removeProperty("--multiplayer-message-start");
   track.querySelectorAll("[data-ticker-copy]").forEach(copy => copy.remove());
   messageTickerFrame = requestAnimationFrame(() => {
     const primary = track.firstElementChild;
@@ -94,8 +98,10 @@ function refreshMessageTicker() {
     track.append(duplicate);
     const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
     const distance = primary.getBoundingClientRect().width + gap;
+    const startOffset = viewport.clientWidth / 2;
     const duration = Math.max(6, distance / 63);
     track.style.setProperty("--multiplayer-message-duration", `${duration.toFixed(2)}s`);
+    track.style.setProperty("--multiplayer-message-start", `${startOffset.toFixed(2)}px`);
     track.style.setProperty("--multiplayer-message-distance", `${-distance.toFixed(2)}px`);
     track.classList.add("is-scrolling");
   });
