@@ -7,6 +7,7 @@ const NAME_STORAGE_KEY = "board-game:dev:multiplayer-name";
 const ROOM_SESSION_STORAGE_KEY = "board-game:dev:multiplayer-room-session";
 const LEAVE_RETRY_COUNT = 3;
 const LEAVE_RETRY_DELAY_MS = 700;
+const CONNECTION_TIMEOUT_MS = 8000;
 let catalog = [];
 let roomId = "";
 let roomUnsubscribe = null;
@@ -36,6 +37,24 @@ const saveRoomSession=room=>{if(!roomId||!currentUser?.uid||!room?.feastId)retur
 const forgetRoomSession=()=>localStorage.removeItem(ROOM_SESSION_STORAGE_KEY);
 const roomEnded=room=>Boolean(room?.endedBy);
 const disconnectedPlayers=room=>playerEntries(room).filter(player=>!Object.keys(room?.presence?.[player.uid]||{}).length);
+function waitForDatabaseConnection(database, timeoutMs=CONNECTION_TIMEOUT_MS){
+  if(!navigator.onLine)return Promise.reject(Error("オフラインのため、通信に接続してから参加してください。"));
+  return new Promise((resolve,reject)=>{
+    let settled=false;
+    let unsubscribe=()=>{};
+    const finish=(callback,value)=>{if(settled)return;settled=true;clearTimeout(timer);unsubscribe();callback(value);};
+    const timer=setTimeout(()=>finish(reject,Error("Firebaseへ接続できません。通信状態を確認してください。")),timeoutMs);
+    unsubscribe=onValue(ref(database,".info/connected"),snapshot=>{
+      if(snapshot.val()===true)finish(resolve);
+    },error=>finish(reject,error));
+  });
+}
+async function verifyJoinedRoom(id,uid,nameKey){
+  const snapshot=await get(ref(window.__firebaseDatabase,roomPath(id)));
+  const room=snapshot.val();
+  if(room?.status==="waiting"&&room.players?.[uid]?.nameKey===nameKey&&room.nameIndex?.[nameKey]===uid&&Object.keys(room.presence?.[uid]||{}).length)return room;
+  throw Error("参加状態を確認できません。");
+}
 
 function stopPresence(){presenceUnsubscribe?.();presenceUnsubscribe=null;if(activeConnectionRef){onDisconnect(activeConnectionRef).cancel().catch(()=>{});remove(activeConnectionRef).catch(()=>{});activeConnectionRef=null;}}
 function startPresence(){if(!window.__firebaseDatabase||!roomId||!currentUser?.uid)return Promise.reject(Error("接続状態を開始できません。"));stopPresence();const connections=ref(window.__firebaseDatabase,`${roomPath(roomId)}/presence/${currentUser.uid}`);return new Promise((resolve,reject)=>{let first=true;presenceUnsubscribe=onValue(ref(window.__firebaseDatabase,".info/connected"),async snapshot=>{if(snapshot.val()!==true){activeConnectionRef=null;return;}const connection=push(connections);try{await onDisconnect(connection).remove();await set(connection,true);activeConnectionRef=connection;if(first){first=false;resolve();}}catch(error){if(first){first=false;reject(error);}else console.error("接続状態を再登録できませんでした。",error);}},error=>{if(first){first=false;reject(error);}});});}
@@ -270,25 +289,41 @@ async function joinRoom() {
   const id = $("#join-room-id").value.trim().toUpperCase();
   const name = $("#join-name").value.trim();
   if (!id || !name) { error.textContent = "部屋番号と客人名を入力してください。"; return; }
-  const context = await getFirebaseContext();
-  currentUser = context.user; window.__firebaseDatabase = context.database; openedRoom = false;
-  const snapshot = await get(ref(context.database, roomPath(id)));
-  const room = snapshot.val();
-  if (!room) { error.textContent = "部屋番号が見つかりません。"; return; }
-  if (room.status !== "waiting") { error.textContent = room.status === "closed" ? "この宴は主催者により閉じられました。" : "この宴はすでに開始されています。"; return; }
-  if (playerEntries(room).length >= 6) { error.textContent = "この宴は満席です。"; return; }
-  const key = normalizedName(name);
-  if (room.nameIndex?.[key] && room.nameIndex[key] !== context.user.uid) { error.textContent = "同じ名前の客人がすでに参加しています。別の名前を入力してください。"; return; }
+  let joined=false;
+  let key="";
   try {
+    const context = await getFirebaseContext();
+    currentUser = context.user; window.__firebaseDatabase = context.database; openedRoom = false;
+    await waitForDatabaseConnection(context.database);
+    const snapshot = await get(ref(context.database, roomPath(id)));
+    const room = snapshot.val();
+    if (!room) throw Error("部屋番号が見つかりません。");
+    if (room.status !== "waiting") throw Error(room.status === "closed" ? "この宴は主催者により閉じられました。" : "この宴はすでに開始されています。");
+    if (playerEntries(room).length >= 6) throw Error("この宴は満席です。");
+    key = normalizedName(name);
+    if (room.nameIndex?.[key] && room.nameIndex[key] !== context.user.uid) throw Error("同じ名前の客人がすでに参加しています。別の名前を入力してください。");
     await update(ref(context.database, roomPath(id)), {
       [`players/${context.user.uid}`]: { name, nameKey: key, joinedAt: Date.now() },
       [`nameIndex/${key}`]: context.user.uid
     });
+    joined=true;
+    roomId = id;
+    await startPresence();
+    const confirmedRoom=await verifyJoinedRoom(id,context.user.uid,key);
+    saveName(name);
+    saveRoomSession(confirmedRoom);
+    subscribeRoom(roomId);
+    show("multiplayer-waiting");
   } catch (cause) {
-    error.textContent = "同じ名前の客人がすでに参加しています。別の名前を入力してください。";
-    return;
+    if(joined&&roomId===id&&currentUser?.uid&&key){
+      stopPresence();
+      try{await removeCurrentPlayer(id,currentUser.uid,key);}catch{}
+    }
+    roomId="";
+    latestRoom=null;
+    openedRoom=false;
+    error.textContent = cause?.message || "宴に参加できませんでした。";
   }
-  roomId = id; saveName(name); saveRoomSession(room); await startPresence(); subscribeRoom(roomId); show("multiplayer-waiting");
 }
 
 async function startRoom() {
