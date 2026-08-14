@@ -306,7 +306,15 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
   to { transform: translateX(calc(var(--multiplayer-message-start, 50%) + var(--multiplayer-message-distance))); }
 }
 .app-shell.has-multiplayer-round-header {
+  height: 100dvh;
   padding-top: var(--multiplayer-round-header-height, 100px);
+  overflow: hidden;
+}
+.app-shell.has-multiplayer-round-header > .screen:not(.is-hidden) {
+  height: calc(100dvh - var(--multiplayer-round-header-height, 100px));
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .app-shell.has-multiplayer-round-header #round-title:empty { display: none; }
 .app-shell.has-multiplayer-round-header [data-screen="round"] [data-round-title] {
