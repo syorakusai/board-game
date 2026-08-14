@@ -145,9 +145,26 @@ function updateRoundHeaderOffset() {
   refreshMessageTicker();
 }
 
+function roundTitleRow() {
+  return $('[data-screen="round"] .screen-title-row') || $('#multiplayer-round-title-slot .screen-title-row');
+}
+
+function placeRoundTitleInHeader() {
+  const slot = $("#multiplayer-round-title-slot");
+  const row = roundTitleRow();
+  if (slot && row && row.parentElement !== slot) slot.append(row);
+}
+
+function restoreRoundTitleToScreen() {
+  const screen = $('[data-screen="round"]');
+  const row = $('#multiplayer-round-title-slot .screen-title-row');
+  if (screen && row && row.parentElement !== screen) screen.prepend(row);
+}
+
 function hideRoundHeader() {
   const header = $("#multiplayer-round-header");
   const shell = $(".app-shell");
+  restoreRoundTitleToScreen();
   header?.classList.add("is-hidden");
   shell?.classList.remove("has-multiplayer-round-header");
   shell?.style.removeProperty("--multiplayer-round-header-height");
@@ -168,6 +185,7 @@ function renderPlayerBar(room) {
   if(!header||!bar||!shell||!room?.seats){hideRoundHeader();return;}
   const entries=playerEntries(room),disconnected=new Set(disconnectedPlayers(room).map(player=>player.uid));
   bar.innerHTML=room.seats.map(uid=>{const player=entries.find(item=>item.uid===uid)||{name:"不明"};const label=uid===currentUser?.uid?"あなた":disconnected.has(uid)?"切断中":"待機中";return `<div class="multiplayer-player${uid===room.parentUid?" is-parent":""}"><strong>${uid===room.parentUid?"親　":""}${escape(player.name)}</strong><span>0点</span><small>${label}</small></div>`;}).join("");
+  placeRoundTitleInHeader();
   header.classList.remove("is-hidden");shell.classList.add("has-multiplayer-round-header");updateRoundHeaderOffset();
 }
 async function renderWaiting(room) {
@@ -215,7 +233,7 @@ async function renderWaiting(room) {
 
 function enterDrawScreen(room) {
   const isParent=room.parentUid===currentUser?.uid,parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親",disconnected=disconnectedPlayers(room);
-  renderPlayerBar(room);$('[data-screen="round"] [data-round-title]').textContent=`親：${parentName}`;$("#round-title").textContent="";$("#round-card-message").textContent=isParent?"あなたが親です。次のフェーズで札を引けるようになります。":"親が札を選んでいます。お待ちください。";
+  renderPlayerBar(room);const title=roundTitleRow()?.querySelector("[data-round-title]");if(title)title.textContent="第一席　札選び";$("#round-title").textContent="";$("#round-card-message").textContent=isParent?"あなたが親です。次のフェーズで札を引けるようになります。":"親が札を選んでいます。お待ちください。";
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
   else setRoundMessage(`ようこそ、宴がはじまりました。第一席の親は${parentName}さんです。${parentName}さん、伏せ札の山から１枚引いてください。`);
