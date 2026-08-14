@@ -42,6 +42,7 @@ input { width: 100%; border: 1px solid #46534d; border-radius: 12px; padding: 13
 input:focus { border-color: #a05b37; outline: 3px solid #a05b3722; }
 .form-error { min-height: 24px; margin: 12px 0 0; color: #b42318; font-size: .9rem; }
 .button-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }
+.button[hidden] { display: none !important; }
 .button { display: flex; align-items: center; justify-content: center; width: 100%; height: 48px; min-height: 48px; flex: 1; border: 0; border-radius: 12px; padding: 0 20px; font: inherit; font-weight: 800; line-height: 1.2; cursor: pointer; }
 .button-primary { background: #a45d38; color: #fff8ed; }
 .button-secondary { background: #2b3733; color: #eee8dc; }
