@@ -198,7 +198,10 @@ async function renderWaiting(room) {
   latestRoom = room;
   if (leavingWaitingRoom) return;
   if (!room) { hideRoundHeader(); $("#room-waiting-message").textContent = "この宴は見つかりません。"; return; }
-  if (room.status !== "started") hideRoundHeader();
+  if (room.status !== "started") {
+    hideRoundHeader();
+    if ($('[data-screen="round"]:not(.is-hidden)') || $('[data-screen="parent-input"]:not(.is-hidden)')) show("multiplayer-waiting");
+  }
   const entries = playerEntries(room);
   const disconnected = new Set(disconnectedPlayers(room).map(player => player.uid));
   const allConnected = entries.length > 0 && disconnected.size === 0;
@@ -252,7 +255,7 @@ function setSecretSubscription(room) {
   if (room?.parentUid !== currentUser?.uid || !room?.round?.number) return;
   secretUnsubscribe = onValue(ref(window.__firebaseDatabase, secretPath(roomId, currentRoundNumber(room), currentUser.uid)), snapshot => {
     parentSecret = snapshot.val();
-    if (latestRoom?.phase === "parent-word") enterParentWordScreen(latestRoom);
+    if (latestRoom?.round?.phase === "parent-word") enterParentWordScreen(latestRoom);
   });
 }
 function enterDrawScreen(room) {
@@ -324,7 +327,17 @@ async function submitParentWord() {
 }
 function subscribeRoom(id) {
   roomUnsubscribe?.();
-  roomUnsubscribe = onValue(ref((window.__firebaseDatabase), roomPath(id)), snapshot => renderWaiting(snapshot.val()));
+  roomUnsubscribe = onValue(
+    ref((window.__firebaseDatabase), roomPath(id)),
+    snapshot => renderWaiting(snapshot.val()).catch(error => {
+      show("multiplayer-waiting");
+      $("#room-waiting-message").textContent = `宴の状態を表示できませんでした。${error.message || ""}`;
+    }),
+    error => {
+      show("multiplayer-waiting");
+      $("#room-waiting-message").textContent = `宴の状態を受信できませんでした。${error.message || ""}`;
+    }
+  );
 }
 
 function clearInviteUrl() {
@@ -442,7 +455,18 @@ async function startRoom() {
   }
   const seats = [...players.map(player => player.uid)];
   for (let index = seats.length - 1; index > 0; index--) { const other = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1); [seats[index], seats[other]] = [seats[other], seats[index]]; }
-  await update(ref(window.__firebaseDatabase, roomPath(roomId)), { status: "started", startedAt: Date.now(), round: { number: 1, phase: "draw", usedCardIds: {} }, seats, parentUid: seats[0] });
+  try {
+    await update(ref(window.__firebaseDatabase, roomPath(roomId)), {
+      status: "started",
+      startedAt: Date.now(),
+      round: { number: 1, phase: "draw" },
+      seats,
+      parentUid: seats[0]
+    });
+  } catch (error) {
+    show("multiplayer-waiting");
+    $("#room-waiting-message").textContent = `宴を開始できませんでした。${error.message || ""}`;
+  }
 }
 
 async function leaveWaitingRoom() {
@@ -499,7 +523,7 @@ function requestExit(){if(!roomId||!latestRoom||latestRoom.status!=="started")re
 function showRecoveryError(message){$("#recovery-title").textContent="宴を確認できません";$("#recovery-message").textContent=message;$("#recovery-resume").hidden=true;$("#recovery-retry").hidden=false;show("multiplayer-recovery");}
 function showRecoveryPrompt(room){latestRoom=room;const closed=room.status==="closed";$("#recovery-title").textContent=closed?"主催者が宴を閉じました":roomEnded(room)?"お開きとなった宴があります":"宴に復帰しますか";$("#recovery-message").textContent=closed?"この宴には復帰できません。退出してください。":roomEnded(room)?"終了時点の画面と戦績を確認できます。":room.status==="waiting"?"待機室へ復帰できます。":"中断した宴へ復帰できます。";$("#recovery-resume").hidden=closed;$("#recovery-retry").hidden=true;show("multiplayer-recovery");}
 async function checkStoredRoomSession(){const saved=storedRoomSession();if(!saved)return false;try{const context=await getFirebaseContext();currentUser=context.user;window.__firebaseDatabase=context.database;if(context.user.uid!==saved.uid){showRecoveryError("保存されている参加情報と、この端末の認証情報が一致しません。もう一度確認してください。");return true;}const room=(await get(ref(context.database,roomPath(saved.roomId)))).val();const valid=room&&room.feastId===saved.feastId&&room.players?.[context.user.uid]&&(saved.role==="host")===(room.hostUid===context.user.uid)&&(room.status==="waiting"||room.status==="started"||room.status==="closed");if(!valid){showRecoveryError("復帰できる宴を確認できませんでした。通信状態を確認して、もう一度確認してください。");return true;}roomId=saved.roomId;openedRoom=saved.role==="host";showRecoveryPrompt(room);return true;}catch(error){showRecoveryError(`状態を確認できませんでした。 ${error.message||""}`);return true;}}
-async function resumeStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;await startPresence();subscribeRoom(roomId);show(latestRoom.status==="waiting"?"multiplayer-waiting":"round");}
+async function resumeStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;await startPresence();subscribeRoom(roomId);await renderWaiting(latestRoom);}
 async function exitStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;if(latestRoom.status==="closed"){clearRoomSession();clearInviteUrl();show("multiplayer-role");return;}if(latestRoom.status==="started"){if(roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();show("multiplayer-role");return;}if(!confirm("退出すると、この宴は全員終了となります。退出しますか？"))return;await exitStartedFeast();return;}if(latestRoom.status==="waiting"){await startPresence();await leaveWaitingRoom();}}
 
 function openJoinFromUrl() {
