@@ -12,6 +12,7 @@ let roomUnsubscribe = null;
 let latestRoom = null;
 let currentUser = null;
 let openedRoom = false;
+let pullToRefreshStartX = null;
 let pullToRefreshStartY = null;
 let pullToRefreshBlocked = false;
 let leavingWaitingRoom = false;
@@ -384,24 +385,41 @@ function initialize() {
     event.preventDefault();
     event.returnValue = "";
   });
-  window.addEventListener("touchstart", event => {
-    if (!roomId || !latestRoom || latestRoom.status === "closed" || window.scrollY > 0) return;
-    pullToRefreshStartY = event.touches[0]?.clientY ?? null;
-    pullToRefreshBlocked = false;
-  }, { passive: true });
-  window.addEventListener("touchmove", event => {
-    if (pullToRefreshStartY === null || pullToRefreshBlocked) return;
-    const distance = (event.touches[0]?.clientY ?? pullToRefreshStartY) - pullToRefreshStartY;
-    if (distance <= 0) return;
-    event.preventDefault();
-    if (distance >= 72) pullToRefreshBlocked = true;
-  }, { passive: false });
-  window.addEventListener("touchend", () => {
-    if (!pullToRefreshBlocked) { pullToRefreshStartY = null; return; }
+  const resetPullToRefresh = () => {
+    pullToRefreshStartX = null;
     pullToRefreshStartY = null;
     pullToRefreshBlocked = false;
-    if (confirm("通信対戦を中断してページを更新しますか？")) location.reload();
+  };
+  window.addEventListener("touchstart", event => {
+    const overlayOpen = !$("#history-lightbox")?.classList.contains("is-hidden") || !$("#card-lightbox")?.classList.contains("is-hidden");
+    const excludedTarget = event.target.closest("button, a, input, select, textarea, .multiplayer-round-header, .game-menu, .history-lightbox, .card-lightbox");
+    if (!roomId || !latestRoom || latestRoom.status === "closed" || window.scrollY > 0 || overlayOpen || excludedTarget) {
+      resetPullToRefresh();
+      return;
+    }
+    pullToRefreshStartX = event.touches[0]?.clientX ?? null;
+    pullToRefreshStartY = event.touches[0]?.clientY ?? null;
+  }, { passive: true });
+  window.addEventListener("touchmove", event => {
+    if (pullToRefreshStartX === null || pullToRefreshStartY === null || pullToRefreshBlocked) return;
+    const currentX = event.touches[0]?.clientX ?? pullToRefreshStartX;
+    const currentY = event.touches[0]?.clientY ?? pullToRefreshStartY;
+    const horizontalDistance = Math.abs(currentX - pullToRefreshStartX);
+    const verticalDistance = currentY - pullToRefreshStartY;
+    if (horizontalDistance > Math.max(verticalDistance, 18)) {
+      resetPullToRefresh();
+      return;
+    }
+    if (verticalDistance <= 24) return;
+    event.preventDefault();
+    if (verticalDistance >= 140) pullToRefreshBlocked = true;
+  }, { passive: false });
+  window.addEventListener("touchend", () => {
+    const shouldConfirm = pullToRefreshBlocked;
+    resetPullToRefresh();
+    if (shouldConfirm && confirm("通信対戦を中断してページを更新しますか？")) location.reload();
   });
+  window.addEventListener("touchcancel", resetPullToRefresh);
 }
 
 window.multiplayerPhase1 = { isEnabled: enabled, openModeChoice: () => show("mode-choice"), openJoinFromUrl };

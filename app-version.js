@@ -1,1 +1,1 @@
-globalThis.APP_VERSION = "20260814-25";
+globalThis.APP_VERSION = "20260814-26";
