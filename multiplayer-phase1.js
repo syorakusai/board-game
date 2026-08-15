@@ -21,6 +21,9 @@ let secretUnsubscribe = null;
 let parentSecret = null;
 let discussionTimer = null;
 let discussionTimerRound = "";
+let serverTimeOffset = 0;
+let serverTimeOffsetUnsubscribe = null;
+let serverTimeOffsetDatabase = null;
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -267,6 +270,16 @@ function stopDiscussionTimer() {
   discussionTimer = null;
   discussionTimerRound = "";
 }
+function subscribeServerClock(database) {
+  if (!database || serverTimeOffsetDatabase === database) return;
+  serverTimeOffsetUnsubscribe?.();
+  serverTimeOffsetDatabase = database;
+  serverTimeOffsetUnsubscribe = onValue(ref(database, ".info/serverTimeOffset"), snapshot => {
+    const offset = Number(snapshot.val());
+    serverTimeOffset = Number.isFinite(offset) ? offset : 0;
+  });
+}
+const serverNow = () => Date.now() + serverTimeOffset;
 function discussionTimeLabel(seconds) {
   const safeSeconds=Math.max(0,Math.ceil(seconds));
   return `${Math.floor(safeSeconds/60)}:${String(safeSeconds%60).padStart(2,"0")}`;
@@ -331,7 +344,7 @@ function enterDiscussionScreen(room) {
   show("discussion"); renderPlayerBar(room, "discussion");
   const title=roundTitleRow("discussion")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　宴の推理`;
   $("#discussion-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
-  $("#public-words").innerHTML=words.map((word,index)=>`<div class="word"><span>${index+1}.</span>${escape(word)}</div>`).join("");
+  $("#public-words").innerHTML=words.map((word,index)=>`<div class="word"><span class="word-number" aria-hidden="true">${index+1}</span><span class="word-text">${escape(word)}</span></div>`).join("");
   $("#discussion-end").hidden=true;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnectedPlayers(room).length)setRoundMessage(`${disconnectedPlayers(room).map(player=>player.name).join("、")}が切断中。復帰待ち`);
@@ -341,7 +354,7 @@ function enterDiscussionScreen(room) {
   if(discussionTimerRound===timerKey)return;
   stopDiscussionTimer(); discussionTimerRound=timerKey;
   const tick=()=>{
-    const remaining=startedAt&&duration?startedAt+duration*1000-Date.now():0;
+    const remaining=startedAt&&duration?startedAt+duration*1000-serverNow():0;
     $("#timer").textContent=discussionTimeLabel(remaining/1000);
     if(remaining<=0){
       stopDiscussionTimer();
@@ -349,7 +362,7 @@ function enterDiscussionScreen(room) {
     }
   };
   tick();
-  if(startedAt&&duration)discussionTimer=setInterval(tick,250);
+  if(startedAt&&duration)discussionTimer=setInterval(tick,100);
 }
 async function drawMultiplayerCard() {
   const room=latestRoom;
@@ -412,6 +425,7 @@ async function publishParentWords() {
   } catch(error) { $("#parent-error").textContent=`言葉をお披露目できませんでした。${error.message||""}`; }
 }
 function subscribeRoom(id) {
+  subscribeServerClock(window.__firebaseDatabase);
   roomUnsubscribe?.();
   roomUnsubscribe = onValue(
     ref((window.__firebaseDatabase), roomPath(id)),
