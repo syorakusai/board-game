@@ -1,5 +1,5 @@
 import { getFirebaseContext } from "./firebase-client.js";
-import { get, onDisconnect, onValue, push, ref, remove, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+import { get, onDisconnect, onValue, push, ref, remove, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
 
 const ROOM_PREFIX = "rooms";
@@ -19,6 +19,8 @@ let presenceUnsubscribe = null;
 let activeConnectionRef = null;
 let secretUnsubscribe = null;
 let parentSecret = null;
+let discussionTimer = null;
+let discussionTimerRound = "";
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -239,7 +241,8 @@ async function renderWaiting(room) {
   }
   if (room.status === "started") {
     setSecretSubscription(room);
-    if (room.round?.phase === "word-open") enterWordOpenScreen(room);
+    if (room.round?.phase === "discussion") enterDiscussionScreen(room);
+    else if (room.round?.phase === "word-open") enterWordOpenScreen(room);
     else if (room.round?.phase === "parent-word") enterParentWordScreen(room);
     else enterDrawScreen(room);
   }
@@ -258,6 +261,15 @@ function shuffledWords(words) {
     [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
   }
   return result;
+}
+function stopDiscussionTimer() {
+  clearInterval(discussionTimer);
+  discussionTimer = null;
+  discussionTimerRound = "";
+}
+function discussionTimeLabel(seconds) {
+  const safeSeconds=Math.max(0,Math.ceil(seconds));
+  return `${Math.floor(safeSeconds/60)}:${String(safeSeconds%60).padStart(2,"0")}`;
 }
 function setSecretSubscription(room) {
   secretUnsubscribe?.(); secretUnsubscribe = null; parentSecret = null;
@@ -313,6 +325,32 @@ function enterWordOpenScreen(room) {
   $("#word-open-button").hidden=true;
   setRoundMessage("親が4つの言葉をお披露目しました。宴の推理は次の工程で開始します。");
 }
+function enterDiscussionScreen(room) {
+  const round=room.round||{}, words=Array.isArray(round.publicWords)?round.publicWords:[];
+  const isChild=room.parentUid!==currentUser?.uid;
+  show("discussion"); renderPlayerBar(room, "discussion");
+  const title=roundTitleRow("discussion")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　宴の推理`;
+  $("#discussion-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
+  $("#public-words").innerHTML=words.map((word,index)=>`<div class="word"><span>${index+1}.</span>${escape(word)}</div>`).join("");
+  $("#discussion-end").hidden=true;
+  if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
+  else if(disconnectedPlayers(room).length)setRoundMessage(`${disconnectedPlayers(room).map(player=>player.name).join("、")}が切断中。復帰待ち`);
+  else setRoundMessage(isChild?"親がひそめたワードはどれでしょう。会話しながら推理してください。":"子が親ワードを推理しています。質問には答えられますが、親ワードは明かせません。");
+  const startedAt=Number(round.discussionStartedAt), duration=Number(round.discussionDurationSeconds);
+  const timerKey=`${round.number}:${startedAt}:${duration}`;
+  if(discussionTimerRound===timerKey)return;
+  stopDiscussionTimer(); discussionTimerRound=timerKey;
+  const tick=()=>{
+    const remaining=startedAt&&duration?startedAt+duration*1000-Date.now():0;
+    $("#timer").textContent=discussionTimeLabel(remaining/1000);
+    if(remaining<=0){
+      stopDiscussionTimer();
+      if(!roomEnded(latestRoom)&&!disconnectedPlayers(latestRoom).length)setRoundMessage("推理時間が終了しました。推理結果の記帳は次の実装で開始します。");
+    }
+  };
+  tick();
+  if(startedAt&&duration)discussionTimer=setInterval(tick,250);
+}
 async function drawMultiplayerCard() {
   const room=latestRoom;
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="draw"||!canProgress(room))return;
@@ -361,8 +399,16 @@ async function publishParentWords() {
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="parent-word"||!canProgress(room))return;
   if(!Array.isArray(secret?.officialWords)||!secret?.parentWord){$("#parent-error").textContent="親ワードを確認できません。";return;}
   try {
-    const publicWords=shuffledWords([...secret.officialWords,secret.parentWord]);
-    await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"word-open",publicWords});
+    const publicWords=Array.isArray(secret.publicWords)?secret.publicWords:shuffledWords([...secret.officialWords,secret.parentWord]);
+    const parentCandidateIndex=Number.isInteger(secret.parentCandidateIndex)?secret.parentCandidateIndex:publicWords.indexOf(secret.parentWord);
+    const discussionDurationSeconds=Number(room.discussionMinutes)*60;
+    if(parentCandidateIndex<0)throw Error("親ワードの候補位置を作成できませんでした。");
+    if(!Number.isInteger(discussionDurationSeconds)||discussionDurationSeconds<=0)throw Error("推理時間を確認できませんでした。");
+    if(!Array.isArray(secret.publicWords)||!Number.isInteger(secret.parentCandidateIndex)){
+      await update(ref(window.__firebaseDatabase,secretPath(roomId,currentRoundNumber(room),currentUser.uid)),{publicWords,parentCandidateIndex});
+      parentSecret={...secret,publicWords,parentCandidateIndex};
+    }
+    await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"discussion",publicWords,discussionStartedAt:serverTimestamp(),discussionDurationSeconds});
   } catch(error) { $("#parent-error").textContent=`言葉をお披露目できませんでした。${error.message||""}`; }
 }
 function subscribeRoom(id) {
