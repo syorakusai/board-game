@@ -239,7 +239,8 @@ async function renderWaiting(room) {
   }
   if (room.status === "started") {
     setSecretSubscription(room);
-    if (room.round?.phase === "parent-word") enterParentWordScreen(room);
+    if (room.round?.phase === "word-open") enterWordOpenScreen(room);
+    else if (room.round?.phase === "parent-word") enterParentWordScreen(room);
     else enterDrawScreen(room);
   }
 }
@@ -250,6 +251,14 @@ function multiplayerCardMarkup(image) {
 }
 function canProgress(room) { return room?.status === "started" && !roomEnded(room) && !disconnectedPlayers(room).length; }
 function currentRoundNumber(room) { return Number(room?.round?.number || 1); }
+function shuffledWords(words) {
+  const result = [...words];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1);
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
 function setSecretSubscription(room) {
   secretUnsubscribe?.(); secretUnsubscribe = null; parentSecret = null;
   if (room?.parentUid !== currentUser?.uid || !room?.round?.number) return;
@@ -282,17 +291,27 @@ function enterParentWordScreen(room) {
   $("#parent-submit").hidden=!isParent;
   $("#parent-word").value=parentSecret?.parentWord || "";
   const ready=isParent&&Array.isArray(parentSecret?.officialWords);
+  const hasConfirmedWord=Boolean(parentSecret?.parentWord);
   $("#official-preview").innerHTML=ready?parentSecret.officialWords.map(word=>`<div class="word official">${escape(word)}</div>`).join(""):"";
-  $("#parent-submit").disabled=!ready||!canProgress(room)||Boolean(parentSecret?.parentWord);
-  $("#parent-submit").textContent=parentSecret?.parentWord?"ひそめました":"ひそめる";
+  $("#parent-submit").disabled=!ready||!canProgress(room);
+  $("#parent-submit").textContent=hasConfirmedWord?"言葉をお披露目する":"ひそめる";
   $("#parent-redraw-button").disabled=!isParent||!canProgress(room);
   $("#parent-redraw-button").hidden=!isParent;
   $("#parent-error").textContent="";
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
-  else setRoundMessage(isParent?(ready?"公式ワード3個を確認し、親ワードをひそめてください。":"親専用の札情報を読み込んでいます。"):"親がひそめごとを考えています。お待ちください。");
-  $("#parent-submit").onclick=submitParentWord;
+  else setRoundMessage(isParent?(hasConfirmedWord?"親ワードをひそめました。4つの言葉をお披露目してください。":ready?"公式ワード3個を確認し、親ワードをひそめてください。":"親専用の札情報を読み込んでいます。 "):"親がひそめごとを考えています。お待ちください。");
+  $("#parent-submit").onclick=hasConfirmedWord?publishParentWords:submitParentWord;
   $("#parent-redraw-button").onclick=redrawMultiplayerCard;
+}
+function enterWordOpenScreen(room) {
+  const words=Array.isArray(room.round?.publicWords)?room.round.publicWords:[];
+  show("word-open"); renderPlayerBar(room, "word-open");
+  const title=roundTitleRow("word-open")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　言葉のお披露目`;
+  $("#public-card-area").innerHTML=multiplayerCardMarkup(room.round?.cardImage);
+  $("#word-open-words").innerHTML=words.map(word=>`<div class="word">${escape(word)}</div>`).join("");
+  $("#word-open-button").hidden=true;
+  setRoundMessage("親が4つの言葉をお披露目しました。宴の推理は次の工程で開始します。");
 }
 async function drawMultiplayerCard() {
   const room=latestRoom;
@@ -330,8 +349,21 @@ async function submitParentWord() {
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="parent-word"||!canProgress(room))return;
   if(!value){$("#parent-error").textContent="親ワードを入力してください。";return;}
   if(parentSecret?.officialWords?.includes(value)){$("#parent-error").textContent="公式ワードとは別の言葉を入力してください。";return;}
-  try { await update(ref(window.__firebaseDatabase,secretPath(roomId,currentRoundNumber(room),currentUser.uid)),{parentWord:value,parentWordConfirmedAt:Date.now()}); }
+  try {
+    await update(ref(window.__firebaseDatabase,secretPath(roomId,currentRoundNumber(room),currentUser.uid)),{parentWord:value,parentWordConfirmedAt:Date.now()});
+    parentSecret={...(parentSecret||{}),parentWord:value};
+    await publishParentWords();
+  }
   catch(error) { $("#parent-error").textContent=`親ワードをひそめられませんでした。${error.message||""}`; }
+}
+async function publishParentWords() {
+  const room=latestRoom, secret=parentSecret;
+  if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="parent-word"||!canProgress(room))return;
+  if(!Array.isArray(secret?.officialWords)||!secret?.parentWord){$("#parent-error").textContent="親ワードを確認できません。";return;}
+  try {
+    const publicWords=shuffledWords([...secret.officialWords,secret.parentWord]);
+    await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"word-open",publicWords});
+  } catch(error) { $("#parent-error").textContent=`言葉をお披露目できませんでした。${error.message||""}`; }
 }
 function subscribeRoom(id) {
   roomUnsubscribe?.();
