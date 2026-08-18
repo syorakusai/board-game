@@ -207,7 +207,8 @@ function renderPlayerBar(room, screenName="round") {
   bar.innerHTML=room.seats.map(uid=>{
     const player=entries.find(item=>item.uid===uid)||{name:"不明"};
     const state=playerPanelState(room,uid,disconnected);
-    return `<div class="multiplayer-player${uid===room.parentUid?" is-parent":""}"><strong>${uid===room.parentUid?"親　":""}${escape(player.name)}</strong><span>${Number(player.score)||0}点</span><small class="${state.className}">${state.label}</small></div>`;
+    const isParent = uid === room.parentUid;
+    return `<div class="multiplayer-player${isParent?" is-parent":""}"><strong>${escape(player.name)}</strong><span class="multiplayer-player-score">${Number(player.score)||0}点</span>${isParent?'<b class="multiplayer-player-role">親</b>':""}<small class="${state.className}">${state.label}</small></div>`;
   }).join("");
   placeRoundTitleInHeader(screenName);
   header.classList.remove("is-hidden");shell.classList.add("has-multiplayer-round-header");updateRoundHeaderOffset();
