@@ -353,3 +353,21 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .deck-stack-image.is-passive:focus { outline: none; }
 #discussion-guide[hidden], #answer-guide-text[hidden] { display: none; }
 .word-button.is-selected { border-color: var(--color-accent, #d77622); box-shadow: 0 0 0 2px rgba(215,118,34,.24); }
+
+/* 通信対戦：固定ヘッダー下では、本文の先頭に残る余白を詰める */
+.app-shell.has-multiplayer-round-header > .screen:not(.is-hidden) {
+  padding-top: 8px;
+  padding-bottom: 12px;
+}
+.app-shell.has-multiplayer-round-header > .screen:not(.is-hidden) .card-area {
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+.app-shell.has-multiplayer-round-header > .discussion-screen:not(.is-hidden) .discussion-layout {
+  margin-top: 4px;
+  margin-bottom: 10px;
+}
+.app-shell.has-multiplayer-round-header > .answer-screen:not(.is-hidden) .answer-overview {
+  margin-top: 4px;
+  margin-bottom: 12px;
+}

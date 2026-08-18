@@ -399,13 +399,14 @@ function enterDiscussionScreen(room) {
   $("#discussion-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
   $("#public-words").innerHTML=words.map((word,index)=>`<div class="word"><span class="word-number" aria-hidden="true">${index+1}</span><span class="word-text">${escape(word)}</span></div>`).join("");
   const completed=Boolean(roundProgress?.discussion?.[currentUser?.uid]);
+  $("#discussion-guide").textContent="心が決まりましたら「推理完了」を押してください。";
   $("#discussion-guide").hidden=!isChild||completed;
   $("#discussion-end").hidden=!isChild||completed;
   $("#discussion-end").disabled=!canProgress(room);
   $("#discussion-end").onclick=completeDiscussion;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnectedPlayers(room).length)setRoundMessage(`${disconnectedPlayers(room).map(player=>player.name).join("、")}が切断中。復帰待ち`);
-  else setRoundMessage("会話しながら、親がひそめたワードを推理してください。");
+  else setRoundMessage(isChild?"会話しながら、親がひそめたワードを推理してください。":"子が親ワードを推理しています。高貴に振る舞いましょう。");
   const startedAt=Number(round.discussionStartedAt), duration=Number(round.discussionDurationSeconds);
   const timerKey=`${round.number}:${startedAt}:${duration}`;
   if(discussionTimerRound===timerKey)return;
@@ -447,15 +448,17 @@ function enterAnswerScreen(room) {
   $("#answer-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
   $("#answer-title").textContent="";
   const guide=$("#answer-guide-text"), submit=$("#answer-submit");
+  guide.textContent="選択が終わりましたら「決定」を押してください。";
   guide.hidden=isParent||Boolean(ownAnswer);
   submit.hidden=isParent||Boolean(ownAnswer);
   submit.disabled=selectedCandidateIndex===null||!canProgress(room);
   $("#answer-words").innerHTML=words.map((word,index)=>{
+    if(isParent)return `<div class="word"><span class="word-number" aria-hidden="true">${index+1}</span><span class="word-text">${escape(word)}</span></div>`;
     const chosen=ownAnswer?Number(ownAnswer.candidateIndex)===index:selectedCandidateIndex===index;
-    const interactive=!isParent&&!ownAnswer;
+    const interactive=!ownAnswer;
     return `<button class="word word-button${chosen?" is-selected":""}" type="button" data-answer-index="${index}" ${interactive?"":"disabled"}><span class="word-number" aria-hidden="true">${index+1}</span><span class="word-text">${escape(word)}</span></button>`;
   }).join("");
-  $("#answer-words").querySelectorAll("[data-answer-index]").forEach(button=>button.onclick=()=>{selectedCandidateIndex=Number(button.dataset.answerIndex);enterAnswerScreen(latestRoom);});
+  if(!isParent)$("#answer-words").querySelectorAll("[data-answer-index]").forEach(button=>button.onclick=()=>{selectedCandidateIndex=Number(button.dataset.answerIndex);enterAnswerScreen(latestRoom);});
   submit.onclick=submitAnswer;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnectedPlayers(room).length)setRoundMessage(`${disconnectedPlayers(room).map(player=>player.name).join("、")}が切断中。復帰待ち`);
