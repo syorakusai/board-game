@@ -359,7 +359,7 @@ function enterParentWordScreen(room) {
   const isParent=room.parentUid===currentUser?.uid, disconnected=disconnectedPlayers(room), card=room.round;
   show("parent-input"); renderPlayerBar(room, "parent-input");
   const title=roundTitleRow("parent-input")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　親のひそめごと`;
-  $("#parent-input .screen-subtitle").hidden=true;
+  const parentSubtitle=$('[data-screen="parent-input"] .screen-subtitle'); if(parentSubtitle)parentSubtitle.hidden=true;
   $("#parent-card-area").innerHTML=multiplayerCardMarkup(card?.cardImage);
   $("#parent-secret-description").textContent="4つ目にあなたのワードを入力してください。";
   $("#parent-secret-description").hidden=!isParent;
