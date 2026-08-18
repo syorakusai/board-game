@@ -191,11 +191,24 @@ function setRoundMessage(message) {
   refreshMessageTicker();
 }
 
+function playerPanelState(room, uid, disconnected) {
+  if (disconnected.has(uid)) return { label: "切断中", className: "is-disconnected" };
+  const phase = room?.round?.phase;
+  const isParent = uid === room?.parentUid;
+  if (phase === "draw" && isParent) return { label: "札選び中", className: "is-action-needed" };
+  if (phase === "parent-word" && isParent) return { label: "ひそめ中", className: "is-action-needed" };
+  if (phase === "discussion" && !isParent) return { label: "推理中", className: "is-action-needed" };
+  return { label: "", className: "" };
+}
 function renderPlayerBar(room, screenName="round") {
   const header=$("#multiplayer-round-header"),bar=$("#multiplayer-player-bar"),shell=$(".app-shell");
   if(!header||!bar||!shell||!room?.seats){hideRoundHeader();return;}
   const entries=playerEntries(room),disconnected=new Set(disconnectedPlayers(room).map(player=>player.uid));
-  bar.innerHTML=room.seats.map(uid=>{const player=entries.find(item=>item.uid===uid)||{name:"不明"};const label=uid===currentUser?.uid?"あなた":disconnected.has(uid)?"切断中":"待機中";return `<div class="multiplayer-player${uid===room.parentUid?" is-parent":""}"><strong>${uid===room.parentUid?"親　":""}${escape(player.name)}</strong><span>0点</span><small>${label}</small></div>`;}).join("");
+  bar.innerHTML=room.seats.map(uid=>{
+    const player=entries.find(item=>item.uid===uid)||{name:"不明"};
+    const state=playerPanelState(room,uid,disconnected);
+    return `<div class="multiplayer-player${uid===room.parentUid?" is-parent":""}"><strong>${uid===room.parentUid?"親　":""}${escape(player.name)}</strong><span>${Number(player.score)||0}点</span><small class="${state.className}">${state.label}</small></div>`;
+  }).join("");
   placeRoundTitleInHeader(screenName);
   header.classList.remove("is-hidden");shell.classList.add("has-multiplayer-round-header");updateRoundHeaderOffset();
 }
@@ -294,10 +307,11 @@ function setSecretSubscription(room) {
 }
 function enterDrawScreen(room) {
   const isParent=room.parentUid===currentUser?.uid,parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親",disconnected=disconnectedPlayers(room);
-  show("round"); renderPlayerBar(room, "round");const title=roundTitleRow("round")?.querySelector("[data-round-title]");if(title)title.textContent=`${roundLabel(room)}　札選び`;$("#round-title").textContent="";$("#round-card-message").textContent=isParent?"あなたが親です。伏せ札の山から1枚引いてください。":"親が札を選んでいます。お待ちください。";
+  show("round"); renderPlayerBar(room, "round");const title=roundTitleRow("round")?.querySelector("[data-round-title]");if(title)title.textContent=`${roundLabel(room)}　札選び`;$("#round-title").textContent="";
+  $("#round-card-message").textContent="";$("#round-card-message").hidden=true;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
-  else setRoundMessage(`ようこそ、宴がはじまりました。第一席の親は${parentName}さんです。${parentName}さん、伏せ札の山から１枚引いてください。`);
+  else setRoundMessage(isParent?`${parentName}さん、伏せ札の山から1枚引いてください。`:`${parentName}さんが札を選んでいます。`);
   const enabled=canProgress(room)&&isParent;
   $("#round-start-button").disabled=!enabled;$("#draw-card").textContent=roomEnded(room)?"宴はお開きです":disconnected.length?"復帰を待っています":isParent?"伏せ札を引く":"親を待っています";
   $("#round-start-button").onclick=drawMultiplayerCard;
@@ -309,6 +323,7 @@ function enterParentWordScreen(room) {
   show("parent-input"); renderPlayerBar(room, "parent-input");
   const title=roundTitleRow("parent-input")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　親のひそめごと`;
   $("#parent-card-area").innerHTML=multiplayerCardMarkup(card?.cardImage);
+  $("#parent-secret-description").textContent="4つ目にあなたのワードを入力してください。";
   $("#parent-secret-description").hidden=!isParent;
   $("#official-preview").hidden=!isParent;
   $("#parent-word").hidden=!isParent;
@@ -325,7 +340,7 @@ function enterParentWordScreen(room) {
   $("#parent-error").textContent="";
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
-  else setRoundMessage(isParent?(hasConfirmedWord?"親ワードをひそめました。4つの言葉をお披露目してください。":ready?"公式ワード3個を確認し、親ワードをひそめてください。":"親専用の札情報を読み込んでいます。 "):"親がひそめごとを考えています。お待ちください。");
+  else setRoundMessage(isParent?(ready?"公式ワード3つを確認し、親ワードをひそめてください。":"親専用の札情報を読み込んでいます。"):`${playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親"}さんがひそめごとを考えています。`);
   $("#parent-submit").onclick=hasConfirmedWord?publishParentWords:submitParentWord;
   $("#parent-redraw-button").onclick=redrawMultiplayerCard;
 }
@@ -348,7 +363,7 @@ function enterDiscussionScreen(room) {
   $("#discussion-end").hidden=true;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnectedPlayers(room).length)setRoundMessage(`${disconnectedPlayers(room).map(player=>player.name).join("、")}が切断中。復帰待ち`);
-  else setRoundMessage(isChild?"親がひそめたワードはどれでしょう。会話しながら推理してください。":"子が親ワードを推理しています。質問には答えられますが、親ワードは明かせません。");
+  else setRoundMessage("会話しながら、親がひそめたワードを推理してください。");
   const startedAt=Number(round.discussionStartedAt), duration=Number(round.discussionDurationSeconds);
   const timerKey=`${round.number}:${startedAt}:${duration}`;
   if(discussionTimerRound===timerKey)return;
@@ -387,7 +402,7 @@ async function drawMultiplayerCard() {
     } catch (error) {
       throw Error(`札の公開状態を保存できませんでした。${error.message||""}`);
     }
-  } catch(error) { $("#round-card-message").textContent=`札を引けませんでした。${error.message||""}`; button.disabled=false; $("#draw-card").textContent="伏せ札を引く"; }
+  } catch(error) { $("#round-card-message").hidden=false; $("#round-card-message").textContent=`札を引けませんでした。${error.message||""}`; button.disabled=false; $("#draw-card").textContent="伏せ札を引く"; }
 }
 async function redrawMultiplayerCard() {
   const room=latestRoom;

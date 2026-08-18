@@ -323,3 +323,9 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
   font-weight: 800;
   letter-spacing: normal;
 }
+
+/* 通信対戦：名前パネルの下段状態 */
+.multiplayer-player small { min-height: 1.2em; }
+.multiplayer-player small.is-action-needed { color: #f0a14a; }
+.multiplayer-player small.is-complete { color: #eee8dc; }
+.multiplayer-player small.is-disconnected { color: #ef6b61; }
