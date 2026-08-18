@@ -348,3 +348,8 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .multiplayer-player small.is-action-needed { color: #f0a14a; }
 .multiplayer-player small.is-complete { color: #eee8dc; }
 .multiplayer-player small.is-disconnected { color: #ef6b61; }
+
+.deck-stack-image.is-passive { cursor: default; opacity: .78; }
+.deck-stack-image.is-passive:focus { outline: none; }
+#discussion-guide[hidden], #answer-guide-text[hidden] { display: none; }
+.word-button.is-selected { border-color: var(--color-accent, #d77622); box-shadow: 0 0 0 2px rgba(215,118,34,.24); }

@@ -24,10 +24,20 @@ let discussionTimerRound = "";
 let serverTimeOffset = 0;
 let serverTimeOffsetUnsubscribe = null;
 let serverTimeOffsetDatabase = null;
+let progressUnsubscribe = null;
+let progressSubscriptionKey = "";
+let roundProgress = {};
+let answerUnsubscribe = null;
+let answerSubscriptionKey = "";
+let ownAnswer = null;
+let selectedCandidateIndex = null;
+let phaseTransitionPending = false;
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
 const secretPath = (id, roundNumber, uid) => `roomSecrets/${id}/rounds/${roundNumber}/${uid}`;
+const progressPath = (id, roundNumber) => `roomProgress/${id}/rounds/${roundNumber}`;
+const answerPath = (id, roundNumber, uid) => `roomAnswers/${id}/rounds/${roundNumber}/${uid}`;
 const show = name => {
   if (window.showGameScreen) { window.showGameScreen(name); return; }
   document.querySelectorAll("[data-screen]").forEach(screen => screen.classList.toggle("is-hidden", screen.dataset.screen !== name));
@@ -197,7 +207,8 @@ function playerPanelState(room, uid, disconnected) {
   const isParent = uid === room?.parentUid;
   if (phase === "draw" && isParent) return { label: "札選び中", className: "is-action-needed" };
   if (phase === "parent-word" && isParent) return { label: "ひそめ中", className: "is-action-needed" };
-  if (phase === "discussion" && !isParent) return { label: "推理中", className: "is-action-needed" };
+  if (phase === "discussion" && !isParent) return roundProgress?.discussion?.[uid] ? { label: "推理完了", className: "is-complete" } : { label: "推理中", className: "is-action-needed" };
+  if (phase === "answer" && !isParent) return roundProgress?.answers?.[uid] ? { label: "完了", className: "is-complete" } : { label: "回答中", className: "is-action-needed" };
   return { label: "", className: "" };
 }
 function renderPlayerBar(room, screenName="round") {
@@ -258,8 +269,9 @@ async function renderWaiting(room) {
   }
   if (room.status === "started") {
     setSecretSubscription(room);
+    setProgressSubscription(room);
     if (room.round?.phase === "discussion") enterDiscussionScreen(room);
-    else if (room.round?.phase === "word-open") enterWordOpenScreen(room);
+    else if (room.round?.phase === "answer") enterAnswerScreen(room);
     else if (room.round?.phase === "parent-word") enterParentWordScreen(room);
     else enterDrawScreen(room);
   }
@@ -306,6 +318,25 @@ function setSecretSubscription(room) {
     if (latestRoom?.round?.phase === "parent-word") enterParentWordScreen(latestRoom);
   });
 }
+function setProgressSubscription(room) {
+  const roundNumber=currentRoundNumber(room), key=`${roomId}:${roundNumber}`;
+  if(progressSubscriptionKey===key)return;
+  progressUnsubscribe?.(); progressSubscriptionKey=key; roundProgress={};
+  progressUnsubscribe=onValue(ref(window.__firebaseDatabase,progressPath(roomId,roundNumber)),snapshot=>{
+    roundProgress=snapshot.val()||{};
+    if(latestRoom?.round?.phase==="discussion") { enterDiscussionScreen(latestRoom); maybeAdvanceToAnswer(latestRoom); }
+    if(latestRoom?.round?.phase==="answer") enterAnswerScreen(latestRoom);
+  });
+}
+function setAnswerSubscription(room) {
+  const roundNumber=currentRoundNumber(room), key=`${roomId}:${roundNumber}:${currentUser?.uid||""}`;
+  if(answerSubscriptionKey===key)return;
+  answerUnsubscribe?.(); answerSubscriptionKey=key; ownAnswer=null;
+  answerUnsubscribe=onValue(ref(window.__firebaseDatabase,answerPath(roomId,roundNumber,currentUser.uid)),snapshot=>{
+    ownAnswer=snapshot.val();
+    if(latestRoom?.round?.phase==="answer") enterAnswerScreen(latestRoom);
+  });
+}
 function enterDrawScreen(room) {
   const isParent=room.parentUid===currentUser?.uid,parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親",disconnected=disconnectedPlayers(room);
   show("round"); renderPlayerBar(room, "round");const title=roundTitleRow("round")?.querySelector("[data-round-title]");if(title)title.textContent=`${roundLabel(room)}　札選び`;$("#round-title").textContent="";
@@ -313,16 +344,22 @@ function enterDrawScreen(room) {
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
   else setRoundMessage(isParent?`${parentName}さん、伏せ札の山から1枚引いてください。`:`${parentName}さんが札を選んでいます。`);
-  const enabled=canProgress(room)&&isParent;
-  $("#round-start-button").disabled=!enabled;$("#draw-card").textContent=roomEnded(room)?"宴はお開きです":disconnected.length?"復帰を待っています":isParent?"伏せ札を引く":"親を待っています";
-  $("#round-start-button").onclick=drawMultiplayerCard;
-  $("#deck-stack-image").onclick=drawMultiplayerCard;
-  $("#deck-stack-image").onkeydown=event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();drawMultiplayerCard();}};
+  const enabled=canProgress(room)&&isParent, deck=$("#deck-stack-image"), button=$("#round-start-button");
+  button.hidden=!isParent;
+  button.disabled=!enabled;
+  $("#draw-card").textContent=roomEnded(room)?"宴はお開きです":disconnected.length?"復帰を待っています":"伏せ札を引く";
+  button.onclick=isParent?drawMultiplayerCard:null;
+  deck.classList.toggle("is-passive",!isParent);
+  deck.setAttribute("aria-disabled",String(!enabled));
+  deck.tabIndex=isParent?0:-1;
+  deck.onclick=isParent?drawMultiplayerCard:null;
+  deck.onkeydown=isParent?(event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();drawMultiplayerCard();}}):null;
 }
 function enterParentWordScreen(room) {
   const isParent=room.parentUid===currentUser?.uid, disconnected=disconnectedPlayers(room), card=room.round;
   show("parent-input"); renderPlayerBar(room, "parent-input");
   const title=roundTitleRow("parent-input")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　親のひそめごと`;
+  $("#parent-input .screen-subtitle").hidden=true;
   $("#parent-card-area").innerHTML=multiplayerCardMarkup(card?.cardImage);
   $("#parent-secret-description").textContent="4つ目にあなたのワードを入力してください。";
   $("#parent-secret-description").hidden=!isParent;
@@ -335,7 +372,7 @@ function enterParentWordScreen(room) {
   const hasConfirmedWord=Boolean(parentSecret?.parentWord);
   $("#official-preview").innerHTML=ready?parentSecret.officialWords.map(word=>`<div class="word official">${escape(word)}</div>`).join(""):"";
   $("#parent-submit").disabled=!ready||!canProgress(room);
-  $("#parent-submit").textContent=hasConfirmedWord?"言葉をお披露目する":"ひそめる";
+  $("#parent-submit").textContent="ひそめる";
   $("#parent-redraw-button").disabled=!isParent||!canProgress(room);
   $("#parent-redraw-button").hidden=!isParent;
   $("#parent-error").textContent="";
@@ -361,7 +398,11 @@ function enterDiscussionScreen(room) {
   const title=roundTitleRow("discussion")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　宴の推理`;
   $("#discussion-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
   $("#public-words").innerHTML=words.map((word,index)=>`<div class="word"><span class="word-number" aria-hidden="true">${index+1}</span><span class="word-text">${escape(word)}</span></div>`).join("");
-  $("#discussion-end").hidden=true;
+  const completed=Boolean(roundProgress?.discussion?.[currentUser?.uid]);
+  $("#discussion-guide").hidden=!isChild||completed;
+  $("#discussion-end").hidden=!isChild||completed;
+  $("#discussion-end").disabled=!canProgress(room);
+  $("#discussion-end").onclick=completeDiscussion;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else if(disconnectedPlayers(room).length)setRoundMessage(`${disconnectedPlayers(room).map(player=>player.name).join("、")}が切断中。復帰待ち`);
   else setRoundMessage("会話しながら、親がひそめたワードを推理してください。");
@@ -374,11 +415,61 @@ function enterDiscussionScreen(room) {
     $("#timer").textContent=discussionTimeLabel(remaining/1000);
     if(remaining<=0){
       stopDiscussionTimer();
-      if(!roomEnded(latestRoom)&&!disconnectedPlayers(latestRoom).length)setRoundMessage("推理時間が終了しました。推理結果の記帳は次の実装で開始します。");
+      if(!roomEnded(latestRoom)&&!disconnectedPlayers(latestRoom).length)maybeAdvanceToAnswer(latestRoom);
     }
   };
   tick();
   if(startedAt&&duration)discussionTimer=setInterval(tick,100);
+}
+async function completeDiscussion() {
+  const room=latestRoom;
+  if(!room||room.parentUid===currentUser?.uid||room.round?.phase!=="discussion"||!canProgress(room)||roundProgress?.discussion?.[currentUser.uid])return;
+  const button=$("#discussion-end"); button.disabled=true;
+  try {
+    await set(ref(window.__firebaseDatabase,`${progressPath(roomId,currentRoundNumber(room))}/discussion/${currentUser.uid}`),true);
+  } catch(error) { button.disabled=false; setRoundMessage(`推理完了を保存できませんでした。${error.message||""}`); }
+}
+async function maybeAdvanceToAnswer(room) {
+  if(phaseTransitionPending||!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="discussion"||!canProgress(room))return;
+  const children=playerEntries(room).filter(player=>player.uid!==room.parentUid);
+  const allComplete=children.length>0&&children.every(player=>roundProgress?.discussion?.[player.uid]===true);
+  const timedOut=Number(room.round?.discussionStartedAt)&&Number(room.round?.discussionDurationSeconds)&&Number(room.round.discussionStartedAt)+Number(room.round.discussionDurationSeconds)*1000<=serverNow();
+  if(!allComplete&&!timedOut)return;
+  phaseTransitionPending=true;
+  try { await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"answer",answerStartedAt:serverTimestamp()}); }
+  catch(error) { setRoundMessage(`推理結果の記帳を開始できませんでした。${error.message||""}`); }
+  finally { phaseTransitionPending=false; }
+}
+function enterAnswerScreen(room) {
+  const round=room.round||{},words=Array.isArray(round.publicWords)?round.publicWords:[],isParent=room.parentUid===currentUser?.uid;
+  show("answer"); renderPlayerBar(room,"answer"); setAnswerSubscription(room);
+  const title=roundTitleRow("answer")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　推理結果の記帳`;
+  $("#answer-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
+  $("#answer-title").textContent="";
+  const guide=$("#answer-guide-text"), submit=$("#answer-submit");
+  guide.hidden=isParent||Boolean(ownAnswer);
+  submit.hidden=isParent||Boolean(ownAnswer);
+  submit.disabled=selectedCandidateIndex===null||!canProgress(room);
+  $("#answer-words").innerHTML=words.map((word,index)=>{
+    const chosen=ownAnswer?Number(ownAnswer.candidateIndex)===index:selectedCandidateIndex===index;
+    const interactive=!isParent&&!ownAnswer;
+    return `<button class="word word-button${chosen?" is-selected":""}" type="button" data-answer-index="${index}" ${interactive?"":"disabled"}><span class="word-number" aria-hidden="true">${index+1}</span><span class="word-text">${escape(word)}</span></button>`;
+  }).join("");
+  $("#answer-words").querySelectorAll("[data-answer-index]").forEach(button=>button.onclick=()=>{selectedCandidateIndex=Number(button.dataset.answerIndex);enterAnswerScreen(latestRoom);});
+  submit.onclick=submitAnswer;
+  if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
+  else if(disconnectedPlayers(room).length)setRoundMessage(`${disconnectedPlayers(room).map(player=>player.name).join("、")}が切断中。復帰待ち`);
+  else setRoundMessage(isParent?"子が推理結果を記帳しています。":"親ワードだと思う言葉を1つ選んでください。");
+}
+async function submitAnswer() {
+  const room=latestRoom;
+  if(!room||room.parentUid===currentUser?.uid||room.round?.phase!=="answer"||!canProgress(room)||selectedCandidateIndex===null||ownAnswer)return;
+  const submit=$("#answer-submit"); submit.disabled=true;
+  try {
+    const answer={candidateIndex:selectedCandidateIndex,createdAt:Date.now()};
+    await set(ref(window.__firebaseDatabase,answerPath(roomId,currentRoundNumber(room),currentUser.uid)),answer);
+    await set(ref(window.__firebaseDatabase,`${progressPath(roomId,currentRoundNumber(room))}/answers/${currentUser.uid}`),true);
+  } catch(error) { submit.disabled=false; setRoundMessage(`推理結果を保存できませんでした。${error.message||""}`); }
 }
 async function drawMultiplayerCard() {
   const room=latestRoom;
