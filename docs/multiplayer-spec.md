@@ -314,7 +314,7 @@ Firebase Rulesの正本は、ルートの `firebase-rules.json` だけとする�
           "publicAnswers": {
             "$candidateIndex": {
               "$uid": {
-                ".validate": "($candidateIndex == '0' || $candidateIndex == '1' || $candidateIndex == '2' || $candidateIndex == '3') && newData.val() == true && root.child('rooms').child($roomId).child('players').child($uid).exists() && $uid !== root.child('rooms').child($roomId).child('parentUid').val() && (root.child('roomAnswers').child($roomId).child(root.child('rooms').child($roomId).child('round').child('number').val() + '').child($uid).child('candidateIndex').val() + '') == $candidateIndex"
+                ".validate": "($candidateIndex == '0' || $candidateIndex == '1' || $candidateIndex == '2' || $candidateIndex == '3') && newData.val() == true && root.child('rooms').child($roomId).child('players').child($uid).exists() && $uid != root.child('rooms').child($roomId).child('parentUid').val() && (root.child('roomAnswers').child($roomId).child(root.child('rooms').child($roomId).child('round').child('number').val() + '').child($uid).child('candidateIndex').val() + '') == $candidateIndex"
               },
               ".validate": "($candidateIndex == '0' || $candidateIndex == '1' || $candidateIndex == '2' || $candidateIndex == '3') && newData.hasChildren()"
             }
@@ -385,13 +385,13 @@ Firebase Rulesの正本は、ルートの `firebase-rules.json` だけとする�
             ".read": "auth != null && root.child('rooms').child($roomId).child('players').child(auth.uid).exists()",
             "discussion": {
               "$uid": {
-                ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() == 'discussion' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
+                ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() == 'discussion' && root.child('rooms').child($roomId).child('parentUid').val() != auth.uid",
                 ".validate": "newData.val() == true"
               }
             },
             "answers": {
               "$uid": {
-                ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() == 'answer' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
+                ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() == 'answer' && root.child('rooms').child($roomId).child('parentUid').val() != auth.uid",
                 ".validate": "newData.val() == true"
               }
             }
@@ -405,7 +405,7 @@ Firebase Rulesの正本は、ルートの `firebase-rules.json` だけとする�
           "$roundNumber": {
             "$uid": {
               ".read": "auth != null && (auth.uid == $uid || root.child('rooms').child($roomId).child('parentUid').val() == auth.uid)",
-              ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() == 'answer' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
+              ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() == 'answer' && root.child('rooms').child($roomId).child('parentUid').val() != auth.uid",
               ".validate": "newData.hasChildren(['candidateIndex', 'createdAt']) && newData.child('candidateIndex').isNumber() && newData.child('candidateIndex').val() >= 0 && newData.child('candidateIndex').val() <= 3 && newData.child('createdAt').isNumber()"
             },
             ".read": "auth != null && root.child('rooms').child($roomId).child('parentUid').val() == auth.uid && root.child('rooms').child($roomId).child('round').child('phase').val() == 'answer'"
