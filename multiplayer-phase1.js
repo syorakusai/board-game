@@ -567,9 +567,9 @@ function multiplayerResultSummary(room) {
   return "<strong>一部の子が正解</strong><span>正解した子：各+1ポイント</span>";
 }
 function renderMultiplayerResultVotes(room) {
-  const parentIndex=Number(room.round?.parentCandidateIndex);
+  const parentIndex=Number(room.round?.parentCandidateIndex), finished=resultPresentationFinished(room);
   $("#result-votes").innerHTML=multiplayerVoteData(room).map(({word,index,voters})=>{
-    return '<div class="vote-card'+(index===parentIndex?" parent-answer":"")+'" data-parent-word="'+(index===parentIndex?"true":"false")+'"><div class="word">'+escape(word)+'</div><div class="vote-count">'+voters.length+'票</div><div class="voters">'+(voters.length?voters.map(player=>escape(player.name)).join("、"):"選択者なし")+'</div></div>';
+    return '<div class="vote-card'+(finished&&index===parentIndex?" parent-answer":"")+'" data-parent-word="'+(index===parentIndex?"true":"false")+'"><div class="word">'+escape(word)+'</div><div class="vote-count">'+voters.length+'票</div><div class="voters">'+(voters.length?voters.map(player=>escape(player.name)).join("、"):"選択者なし")+'</div></div>';
   }).join("");
 }
 function enterResultScreen(room) {
