@@ -29,6 +29,8 @@ let progressSubscriptionKey = "";
 let roundProgress = {};
 let answerUnsubscribe = null;
 let answerSubscriptionKey = "";
+let answerSummaryUnsubscribe = null;
+let answerSummarySubscriptionKey = "";
 let ownAnswer = null;
 let selectedCandidateIndex = null;
 let phaseTransitionPending = false;
@@ -41,7 +43,8 @@ const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
 const secretPath = (id, roundNumber, uid) => `roomSecrets/${id}/rounds/${roundNumber}/${uid}`;
 const progressPath = (id, roundNumber) => `roomProgress/${id}/rounds/${roundNumber}`;
-const answerPath = (id, roundNumber, uid) => `roomAnswers/${id}/rounds/${roundNumber}/${uid}`;
+const answerRoundPath = (id, roundNumber) => `roomAnswers/${id}/rounds/${roundNumber}`;
+const answerPath = (id, roundNumber, uid) => `${answerRoundPath(id, roundNumber)}/${uid}`;
 const show = name => {
   if (window.showGameScreen) { window.showGameScreen(name); return; }
   document.querySelectorAll("[data-screen]").forEach(screen => screen.classList.toggle("is-hidden", screen.dataset.screen !== name));
@@ -216,6 +219,7 @@ function playerPanelState(room, uid, disconnected) {
   if (phase === "parent-word" && isParent) return { label: "ひそめ中", className: "is-action-needed" };
   if (phase === "discussion" && !isParent) return roundProgress?.discussion?.[uid] ? { label: "推理完了", className: "is-complete" } : { label: "推理中", className: "is-action-needed" };
   if (phase === "answer" && !isParent) return roundProgress?.answers?.[uid] ? { label: "完了", className: "is-complete" } : { label: "回答中", className: "is-action-needed" };
+  if ((phase === "reveal" || phase === "result") && isParent) return { label: "開帳", className: "is-action-needed" };
   return { label: "", className: "" };
 }
 function renderPlayerBar(room, screenName="round") {
@@ -279,6 +283,7 @@ async function renderWaiting(room) {
     setProgressSubscription(room);
     if (room.round?.phase === "discussion") enterDiscussionScreen(room);
     else if (room.round?.phase === "answer") enterAnswerScreen(room);
+    else if (room.round?.phase === "reveal" || room.round?.phase === "result") enterRevealScreen(room);
     else if (room.round?.phase === "parent-word") enterParentWordScreen(room);
     else enterDrawScreen(room);
   }
@@ -326,23 +331,36 @@ function setSecretSubscription(room) {
   });
 }
 function setProgressSubscription(room) {
-  const roundNumber=currentRoundNumber(room), key=`${roomId}:${roundNumber}`;
+  const roundNumber=currentRoundNumber(room), key=roomId+":"+roundNumber;
   if(progressSubscriptionKey===key)return;
   progressUnsubscribe?.(); progressSubscriptionKey=key; roundProgress={};
   progressUnsubscribe=onValue(ref(window.__firebaseDatabase,progressPath(roomId,roundNumber)),snapshot=>{
     roundProgress=snapshot.val()||{};
     if(latestRoom?.round?.phase==="discussion") { enterDiscussionScreen(latestRoom); maybeAdvanceToAnswer(latestRoom); }
-    if(latestRoom?.round?.phase==="answer") enterAnswerScreen(latestRoom);
+    if(latestRoom?.round?.phase==="answer") { enterAnswerScreen(latestRoom); maybeAdvanceToReveal(latestRoom); }
+    if(latestRoom?.round?.phase==="reveal"||latestRoom?.round?.phase==="result") enterRevealScreen(latestRoom);
   });
 }
 function setAnswerSubscription(room) {
-  const roundNumber=currentRoundNumber(room), key=`${roomId}:${roundNumber}:${currentUser?.uid||""}`;
-  if(answerSubscriptionKey===key)return;
-  answerUnsubscribe?.(); answerSubscriptionKey=key; ownAnswer=null;
-  answerUnsubscribe=onValue(ref(window.__firebaseDatabase,answerPath(roomId,roundNumber,currentUser.uid)),snapshot=>{
-    ownAnswer=snapshot.val();
-    if(latestRoom?.round?.phase==="answer") enterAnswerScreen(latestRoom);
-  });
+  const roundNumber=currentRoundNumber(room), key=roomId+":"+roundNumber+":"+(currentUser?.uid||"");
+  if(answerSubscriptionKey!==key){
+    answerUnsubscribe?.(); answerSubscriptionKey=key; ownAnswer=null;
+    answerUnsubscribe=onValue(ref(window.__firebaseDatabase,answerPath(roomId,roundNumber,currentUser.uid)),snapshot=>{
+      ownAnswer=snapshot.val();
+      if(latestRoom?.round?.phase==="answer") enterAnswerScreen(latestRoom);
+    });
+  }
+  const summaryKey=roomId+":"+roundNumber+":"+(room.parentUid===currentUser?.uid?"parent":"other");
+  if(answerSummarySubscriptionKey!==summaryKey){
+    answerSummaryUnsubscribe?.(); answerSummarySubscriptionKey=summaryKey;
+    if(room.parentUid===currentUser?.uid){
+      answerSummaryUnsubscribe=onValue(ref(window.__firebaseDatabase,answerRoundPath(roomId,roundNumber)),snapshot=>{
+        if(latestRoom?.round?.phase==="answer") maybeAdvanceToReveal(latestRoom,snapshot.val()||{});
+      });
+    } else {
+      answerSummaryUnsubscribe=null;
+    }
+  }
 }
 function enterDrawScreen(room) {
   const isParent=room.parentUid===currentUser?.uid,parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親",disconnected=disconnectedPlayers(room);
@@ -467,6 +485,62 @@ function enterAnswerScreen(room) {
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else setRoundMessage(isParent?"子が推理結果を記帳しています。":"親ワードだと思う言葉を1つ選んでください。");
 }
+async function maybeAdvanceToReveal(room, answersSnapshot=null) {
+  if(phaseTransitionPending||!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="answer"||!canProgress(room))return;
+  const children=playerEntries(room).filter(player=>player.uid!==room.parentUid);
+  const progress=roundProgress?.answers||{};
+  if(!children.length||!children.every(player=>progress[player.uid]===true))return;
+  phaseTransitionPending=true;
+  try {
+    const answers=answersSnapshot||((await get(ref(window.__firebaseDatabase,answerRoundPath(roomId,currentRoundNumber(room)))).val())||{});
+    const publicAnswers={"0":{},"1":{},"2":{},"3":{}};
+    for(const child of children){
+      const candidateIndex=Number(answers?.[child.uid]?.candidateIndex);
+      if(!Number.isInteger(candidateIndex)||candidateIndex<0||candidateIndex>3)return;
+      publicAnswers[String(candidateIndex)][child.uid]=true;
+    }
+    await update(ref(window.__firebaseDatabase,roomPath(roomId)+"/round"),{
+      phase:"reveal",
+      publicAnswers,
+      revealStartedAt:serverTimestamp()
+    });
+  } catch(error) {
+    setRoundMessage("ひそめごと開帳の準備に失敗しました。"+(error.message||""));
+  } finally {
+    phaseTransitionPending=false;
+  }
+}
+function enterRevealScreen(room) {
+  const round=room.round||{}, words=Array.isArray(room.round?.publicWords)?room.round.publicWords:[], isParent=room.parentUid===currentUser?.uid;
+  const parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親";
+  show("result-open"); renderPlayerBar(room,"result-open");
+  const title=roundTitleRow("result-open")?.querySelector("[data-round-title]");
+  if(title)title.textContent=roundLabel(room)+"　ひそめごと開帳";
+  $("#result-open-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
+  $("#result-open-description").hidden=true;
+  const publicAnswers=round.publicAnswers||{};
+  $("#selection-summary").innerHTML=words.map((word,index)=>{
+    const voters=Object.keys(publicAnswers[String(index)]||{}).map(uid=>playerEntries(room).find(player=>player.uid===uid)?.name||"不明");
+    return '<div class="vote-card"><div class="word">'+escape(word)+'</div><div class="vote-count">'+voters.length+'票</div><div class="voters">'+(voters.length?voters.map(escape).join("、"):"選択者なし")+'</div></div>';
+  }).join("");
+  const button=$("#result-open-button");
+  button.hidden=!isParent;
+  button.disabled=!isParent||!canProgress(room)||Boolean(round.revealCompletedAt);
+  button.onclick=isParent?completeReveal:null;
+  if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。");
+  else setRoundMessage("全員の記帳が完了しました。"+parentName+"さん、ひそめごとを開帳してください。");
+}
+async function completeReveal() {
+  const room=latestRoom;
+  if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="reveal"||!canProgress(room)||room.round?.revealCompletedAt)return;
+  const button=$("#result-open-button"); button.disabled=true;
+  try {
+    await update(ref(window.__firebaseDatabase,roomPath(roomId)+"/round"),{phase:"result",revealCompletedAt:serverTimestamp()});
+  } catch(error) {
+    button.disabled=false;
+    setRoundMessage("ひそめごと開帳を完了できませんでした。"+(error.message||""));
+  }
+}
 async function submitAnswer() {
   const room=latestRoom;
   if(!room||room.parentUid===currentUser?.uid||room.round?.phase!=="answer"||!canProgress(room)||selectedCandidateIndex===null||ownAnswer)return;
@@ -474,8 +548,8 @@ async function submitAnswer() {
   try {
     const answer={candidateIndex:selectedCandidateIndex,createdAt:Date.now()};
     await set(ref(window.__firebaseDatabase,answerPath(roomId,currentRoundNumber(room),currentUser.uid)),answer);
-    await set(ref(window.__firebaseDatabase,`${progressPath(roomId,currentRoundNumber(room))}/answers/${currentUser.uid}`),true);
-  } catch(error) { submit.disabled=false; setRoundMessage(`推理結果を保存できませんでした。${error.message||""}`); }
+    await set(ref(window.__firebaseDatabase,progressPath(roomId,currentRoundNumber(room))+"/answers/"+currentUser.uid),true);
+  } catch(error) { submit.disabled=false; setRoundMessage("推理結果を保存できませんでした。"+(error.message||"")); }
 }
 async function drawMultiplayerCard() {
   const room=latestRoom;
@@ -565,6 +639,12 @@ function clearRoomSession() {
   roomUnsubscribe = null;
   secretUnsubscribe?.();
   secretUnsubscribe = null;
+  answerUnsubscribe?.();
+  answerUnsubscribe = null;
+  answerSummaryUnsubscribe?.();
+  answerSummaryUnsubscribe = null;
+  answerSubscriptionKey = "";
+  answerSummarySubscriptionKey = "";
   parentSecret = null;
   stopPresence();
   latestRoom = null;

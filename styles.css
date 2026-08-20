@@ -398,3 +398,32 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 }
 #multiplayer-name { margin-bottom: 14px; }
 #host-form[hidden], #join-form[hidden], #single-device-setup[hidden], #multiplayer-setup[hidden] { display: none; }
+
+/* 通信対戦：ひそめごと開帳 */
+.result-screen[data-screen="result-open"] {
+  padding-top: clamp(18px, 5vw, 30px);
+  padding-bottom: clamp(18px, 5vw, 30px);
+}
+.result-screen[data-screen="result-open"] #result-open-card-area {
+  margin: 4px 0 12px;
+}
+.result-screen[data-screen="result-open"] #result-open-card-area img {
+  max-height: min(25vh, calc(100dvh - 300px));
+}
+.result-screen[data-screen="result-open"] #selection-summary {
+  gap: 7px;
+  margin: 0 0 14px;
+}
+.result-screen[data-screen="result-open"] #selection-summary .vote-card {
+  padding: 7px 9px;
+  border-radius: 10px;
+}
+.result-screen[data-screen="result-open"] #selection-summary .vote-card .word {
+  padding: 10px 12px;
+  font-size: .95rem;
+}
+.result-screen[data-screen="result-open"] #selection-summary .vote-count,
+.result-screen[data-screen="result-open"] #selection-summary .voters {
+  display: inline;
+  font-size: .85rem;
+}
