@@ -376,11 +376,25 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 #setup-mode-choice { margin-bottom: 14px; }
 #multiplayer-setup > .multiplayer-choice-buttons { margin: 14px 0 10px; }
 #resume-stored-room-choice { width: 100%; margin: 0 0 14px; }
-#setup-mode-choice .button.is-selected,
-#multiplayer-setup .multiplayer-choice-buttons .button.is-selected {
+#setup-mode-choice .button {
+  background: #2b3733;
+  color: #c2c1b5;
+  box-shadow: inset 0 0 0 1px #46534d;
+}
+#setup-mode-choice .button.is-selected {
   background: #063b2b;
   color: #fffdf4;
   box-shadow: inset 0 0 0 3px #d77622, 0 0 0 1px #f0c879;
+}
+#multiplayer-setup .multiplayer-choice-buttons .button {
+  background: #1d2b28;
+  color: #eee8dc;
+  box-shadow: inset 0 0 0 1px #46534d;
+}
+#multiplayer-setup .multiplayer-choice-buttons .button.is-selected {
+  background: #a45d38;
+  color: #fff8ed;
+  box-shadow: inset 0 0 0 3px #f0c879, 0 0 0 1px #7a3d20;
 }
 #multiplayer-name { margin-bottom: 14px; }
 #host-form[hidden], #join-form[hidden], #single-device-setup[hidden], #multiplayer-setup[hidden] { display: none; }
