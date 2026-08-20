@@ -295,28 +295,28 @@ Firebase Rulesの正本は、ルートの `firebase-rules.json` だけとする�
   "rules": {
     "firebase-test": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
       }
     },
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
-        ".write": "auth != null && (!data.exists() ? newData.child('hostUid').val() === auth.uid : data.child('hostUid').val() === auth.uid)",
+        ".write": "auth != null && (!data.exists() ? newData.child('hostUid').val() == auth.uid : data.child('hostUid').val() == auth.uid)",
         "round": {
-          ".write": "auth != null && data.parent().child('status').val() === 'started' && data.parent().child('parentUid').val() === auth.uid",
-          ".validate": "newData.hasChildren(['number', 'phase']) && ((!data.exists() && newData.parent().child('hostUid').val() === auth.uid && newData.parent().child('status').val() === 'started' && newData.child('phase').val() === 'draw' && !newData.child('cardId').exists() && !newData.child('cardImage').exists() && !newData.child('usedCardIds').exists()) || (data.exists() && newData.child('number').val() === data.child('number').val() && ((data.child('phase').val() === 'draw' && newData.child('phase').val() === 'parent-word' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage']) && newData.child('cardImage').isString() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() === true) || (data.child('phase').val() === 'parent-word' && newData.child('phase').val() === 'draw' && !newData.child('cardId').exists() && !newData.child('cardImage').exists()) || (data.child('phase').val() === 'parent-word' && newData.child('phase').val() === 'discussion' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'discussionStartedAt', 'discussionDurationSeconds']) && newData.child('cardId').val() === data.child('cardId').val() && newData.child('cardImage').val() === data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() === true && newData.child('publicWords').hasChildren(['0', '1', '2', '3']) && !newData.child('publicWords').child('4').exists() && newData.child('publicWords').child('0').isString() && newData.child('publicWords').child('1').isString() && newData.child('publicWords').child('2').isString() && newData.child('publicWords').child('3').isString() && newData.child('discussionStartedAt').isNumber() && newData.child('discussionDurationSeconds').val() === newData.parent().child('discussionMinutes').val() * 60) || (data.child('phase').val() === 'discussion' && newData.child('phase').val() === 'answer' && newData.child('cardId').val() === data.child('cardId').val() && newData.child('cardImage').val() === data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() === true && newData.child('publicWords').hasChildren(['0', '1', '2', '3']) && !newData.child('publicWords').child('4').exists() && newData.child('publicWords').child('0').isString() && newData.child('publicWords').child('1').isString() && newData.child('publicWords').child('2').isString() && newData.child('publicWords').child('3').isString() && newData.child('answerStartedAt').isNumber()) || (data.child('phase').val() === 'answer' && newData.child('phase').val() === 'reveal' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'answerStartedAt', 'publicAnswers', 'revealStartedAt']) && newData.child('cardId').val() === data.child('cardId').val() && newData.child('cardImage').val() === data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() === true && newData.child('publicWords').hasChildren(['0', '1', '2', '3']) && newData.child('publicAnswers').hasChildren() && !newData.child('publicAnswers').child('4').exists() && !newData.child('parentCandidateIndex').exists() && !newData.child('roulettePlan').exists() && !newData.child('revealCompletedAt').exists() && newData.child('revealStartedAt').isNumber()) || (data.child('phase').val() === 'reveal' && newData.child('phase').val() === 'result' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'publicAnswers', 'parentCandidateIndex', 'roulettePlan', 'revealCompletedAt']) && newData.child('cardId').val() === data.child('cardId').val() && newData.child('cardImage').val() === data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() === true && newData.child('publicWords').val() === data.child('publicWords').val() && newData.child('publicAnswers').val() === data.child('publicAnswers').val() && newData.child('parentCandidateIndex').isNumber() && newData.child('parentCandidateIndex').val() >= 0 && newData.child('parentCandidateIndex').val() <= 3 && newData.child('parentCandidateIndex').val() === root.child('roomSecrets').child($roomId).child('rounds').child(data.child('number').val() + '').child(data.parent().child('parentUid').val()).child('parentCandidateIndex').val() && newData.child('roulettePlan').hasChildren(['sequence', 'delays', 'durationMs']) && newData.child('roulettePlan').child('sequence').hasChildren() && newData.child('roulettePlan').child('delays').hasChildren() && newData.child('roulettePlan').child('sequence').numChildren() === newData.child('roulettePlan').child('delays').numChildren() + 1 && newData.child('roulettePlan').child('durationMs').isNumber() && newData.child('roulettePlan').child('durationMs').val() > 0 && newData.child('roulettePlan').child('durationMs').val() <= 60000 && newData.child('revealCompletedAt').isNumber()) || (data.child('phase').val() === 'result' && newData.child('phase').val() === 'score' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'publicAnswers', 'parentCandidateIndex', 'roulettePlan', 'revealCompletedAt']) && newData.child('cardId').val() === data.child('cardId').val() && newData.child('cardImage').val() === data.child('cardImage').val() && newData.child('usedCardIds').val() === data.child('usedCardIds').val() && newData.child('publicWords').val() === data.child('publicWords').val() && newData.child('publicAnswers').val() === data.child('publicAnswers').val() && newData.child('parentCandidateIndex').val() === data.child('parentCandidateIndex').val() && newData.child('roulettePlan').val() === data.child('roulettePlan').val() && newData.child('revealCompletedAt').val() === data.child('revealCompletedAt').val() && now >= data.child('revealCompletedAt').val() + data.child('roulettePlan').child('durationMs').val()))))))",
+          ".write": "auth != null && data.parent().child('status').val() == 'started' && data.parent().child('parentUid').val() == auth.uid",
+          ".validate": "newData.hasChildren(['number', 'phase']) && ((!data.exists() && newData.parent().child('hostUid').val() == auth.uid && newData.parent().child('status').val() == 'started' && newData.child('phase').val() == 'draw' && !newData.child('cardId').exists() && !newData.child('cardImage').exists() && !newData.child('usedCardIds').exists()) || (data.exists() && newData.child('number').val() == data.child('number').val() && ((data.child('phase').val() == 'draw' && newData.child('phase').val() == 'parent-word' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage']) && newData.child('cardImage').isString() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() == true) || (data.child('phase').val() == 'parent-word' && newData.child('phase').val() == 'draw' && !newData.child('cardId').exists() && !newData.child('cardImage').exists()) || (data.child('phase').val() == 'parent-word' && newData.child('phase').val() == 'discussion' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'discussionStartedAt', 'discussionDurationSeconds']) && newData.child('cardId').val() == data.child('cardId').val() && newData.child('cardImage').val() == data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() == true && newData.child('publicWords').hasChildren(['0', '1', '2', '3']) && !newData.child('publicWords').child('4').exists() && newData.child('publicWords').child('0').isString() && newData.child('publicWords').child('1').isString() && newData.child('publicWords').child('2').isString() && newData.child('publicWords').child('3').isString() && newData.child('discussionStartedAt').isNumber() && newData.child('discussionDurationSeconds').val() == newData.parent().child('discussionMinutes').val() * 60) || (data.child('phase').val() == 'discussion' && newData.child('phase').val() == 'answer' && newData.child('cardId').val() == data.child('cardId').val() && newData.child('cardImage').val() == data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() == true && newData.child('publicWords').hasChildren(['0', '1', '2', '3']) && !newData.child('publicWords').child('4').exists() && newData.child('publicWords').child('0').isString() && newData.child('publicWords').child('1').isString() && newData.child('publicWords').child('2').isString() && newData.child('publicWords').child('3').isString() && newData.child('answerStartedAt').isNumber()) || (data.child('phase').val() == 'answer' && newData.child('phase').val() == 'reveal' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'answerStartedAt', 'publicAnswers', 'revealStartedAt']) && newData.child('cardId').val() == data.child('cardId').val() && newData.child('cardImage').val() == data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() == true && newData.child('publicWords').hasChildren(['0', '1', '2', '3']) && newData.child('publicAnswers').hasChildren() && !newData.child('publicAnswers').child('4').exists() && !newData.child('parentCandidateIndex').exists() && !newData.child('roulettePlan').exists() && !newData.child('revealCompletedAt').exists() && newData.child('revealStartedAt').isNumber()) || (data.child('phase').val() == 'reveal' && newData.child('phase').val() == 'result' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'publicAnswers', 'parentCandidateIndex', 'roulettePlan', 'revealCompletedAt']) && newData.child('cardId').val() == data.child('cardId').val() && newData.child('cardImage').val() == data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() == true && newData.child('publicWords').val() == data.child('publicWords').val() && newData.child('publicAnswers').val() == data.child('publicAnswers').val() && newData.child('parentCandidateIndex').isNumber() && newData.child('parentCandidateIndex').val() >= 0 && newData.child('parentCandidateIndex').val() <= 3 && newData.child('parentCandidateIndex').val() == root.child('roomSecrets').child($roomId).child('rounds').child(data.child('number').val() + '').child(data.parent().child('parentUid').val()).child('parentCandidateIndex').val() && newData.child('roulettePlan').hasChildren(['sequence', 'delays', 'durationMs']) && newData.child('roulettePlan').child('sequence').hasChildren() && newData.child('roulettePlan').child('delays').hasChildren() && newData.child('roulettePlan').child('sequence').numChildren() == newData.child('roulettePlan').child('delays').numChildren() + 1 && newData.child('roulettePlan').child('durationMs').isNumber() && newData.child('roulettePlan').child('durationMs').val() > 0 && newData.child('roulettePlan').child('durationMs').val() <= 60000 && newData.child('revealCompletedAt').isNumber()) || (data.child('phase').val() == 'result' && newData.child('phase').val() == 'score' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'publicAnswers', 'parentCandidateIndex', 'roulettePlan', 'revealCompletedAt']) && newData.child('cardId').val() == data.child('cardId').val() && newData.child('cardImage').val() == data.child('cardImage').val() && newData.child('usedCardIds').val() == data.child('usedCardIds').val() && newData.child('publicWords').val() == data.child('publicWords').val() && newData.child('publicAnswers').val() == data.child('publicAnswers').val() && newData.child('parentCandidateIndex').val() == data.child('parentCandidateIndex').val() && newData.child('roulettePlan').val() == data.child('roulettePlan').val() && newData.child('revealCompletedAt').val() == data.child('revealCompletedAt').val() && now >= data.child('revealCompletedAt').val() + data.child('roulettePlan').child('durationMs').val()))))))",
           "publicWords": {
             "$index": {
-              ".validate": "($index === '0' || $index === '1' || $index === '2' || $index === '3') && newData.isString()"
+              ".validate": "($index == '0' || $index == '1' || $index == '2' || $index == '3') && newData.isString()"
             }
           },
           "publicAnswers": {
             "$candidateIndex": {
               "$uid": {
-                ".validate": "($candidateIndex === '0' || $candidateIndex === '1' || $candidateIndex === '2' || $candidateIndex === '3') && newData.val() === true && root.child('rooms').child($roomId).child('players').child($uid).exists() && $uid !== root.child('rooms').child($roomId).child('parentUid').val() && (root.child('roomAnswers').child($roomId).child(root.child('rooms').child($roomId).child('round').child('number').val() + '').child($uid).child('candidateIndex').val() + '') === $candidateIndex"
+                ".validate": "($candidateIndex == '0' || $candidateIndex == '1' || $candidateIndex == '2' || $candidateIndex == '3') && newData.val() == true && root.child('rooms').child($roomId).child('players').child($uid).exists() && $uid !== root.child('rooms').child($roomId).child('parentUid').val() && (root.child('roomAnswers').child($roomId).child(root.child('rooms').child($roomId).child('round').child('number').val() + '').child($uid).child('candidateIndex').val() + '') == $candidateIndex"
               },
-              ".validate": "($candidateIndex === '0' || $candidateIndex === '1' || $candidateIndex === '2' || $candidateIndex === '3') && newData.hasChildren()"
+              ".validate": "($candidateIndex == '0' || $candidateIndex == '1' || $candidateIndex == '2' || $candidateIndex == '3') && newData.hasChildren()"
             }
           },
           "roulettePlan": {
@@ -341,27 +341,27 @@ Firebase Rulesの正本は、ルートの `firebase-rules.json` だけとする�
         },
         "players": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('status').val() === 'waiting' && ((!data.exists() && newData.exists()) || (data.exists() && !newData.exists() && !newData.parent().parent().child('nameIndex').child(data.child('nameKey').val()).exists()))",
-            ".validate": "newData.hasChildren(['name', 'nameKey', 'joinedAt']) && newData.parent().parent().child('nameIndex').child(newData.child('nameKey').val()).val() === auth.uid"
+            ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'waiting' && ((!data.exists() && newData.exists()) || (data.exists() && !newData.exists() && !newData.parent().parent().child('nameIndex').child(data.child('nameKey').val()).exists()))",
+            ".validate": "newData.hasChildren(['name', 'nameKey', 'joinedAt']) && newData.parent().parent().child('nameIndex').child(newData.child('nameKey').val()).val() == auth.uid"
           }
         },
         "nameIndex": {
           "$nameKey": {
-            ".write": "auth != null && root.child('rooms').child($roomId).child('status').val() === 'waiting' && ((!data.exists() && newData.val() === auth.uid && newData.parent().parent().child('players').child(auth.uid).child('nameKey').val() === $nameKey) || (data.exists() && data.val() === auth.uid && !newData.exists() && !newData.parent().parent().child('players').child(auth.uid).exists()))",
-            ".validate": "newData.parent().parent().child('players').child(auth.uid).child('nameKey').val() === $nameKey"
+            ".write": "auth != null && root.child('rooms').child($roomId).child('status').val() == 'waiting' && ((!data.exists() && newData.val() == auth.uid && newData.parent().parent().child('players').child(auth.uid).child('nameKey').val() == $nameKey) || (data.exists() && data.val() == auth.uid && !newData.exists() && !newData.parent().parent().child('players').child(auth.uid).exists()))",
+            ".validate": "newData.parent().parent().child('players').child(auth.uid).child('nameKey').val() == $nameKey"
           }
         },
         "presence": {
           "$uid": {
             "$connectionId": {
-              ".write": "auth != null && auth.uid === $uid && (!newData.exists() || root.child('rooms').child($roomId).child('players').child(auth.uid).exists())",
-              ".validate": "newData.val() === true"
+              ".write": "auth != null && auth.uid == $uid && (!newData.exists() || root.child('rooms').child($roomId).child('players').child(auth.uid).exists())",
+              ".validate": "newData.val() == true"
             }
           }
         },
         "endedBy": {
-          ".write": "auth != null && !data.exists() && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('players').child(auth.uid).exists() && newData.child('uid').val() === auth.uid && newData.child('name').val() === root.child('rooms').child($roomId).child('players').child(auth.uid).child('name').val()",
-          ".validate": "newData.hasChildren(['uid', 'name', 'at']) && newData.child('uid').val() === auth.uid && newData.child('name').val() === root.child('rooms').child($roomId).child('players').child(auth.uid).child('name').val() && newData.child('at').isNumber()"
+          ".write": "auth != null && !data.exists() && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('players').child(auth.uid).exists() && newData.child('uid').val() == auth.uid && newData.child('name').val() == root.child('rooms').child($roomId).child('players').child(auth.uid).child('name').val()",
+          ".validate": "newData.hasChildren(['uid', 'name', 'at']) && newData.child('uid').val() == auth.uid && newData.child('name').val() == root.child('rooms').child($roomId).child('players').child(auth.uid).child('name').val() && newData.child('at').isNumber()"
         }
       }
     },
@@ -370,8 +370,8 @@ Firebase Rulesの正本は、ルートの `firebase-rules.json` だけとする�
         "rounds": {
           "$roundNumber": {
             "$parentUid": {
-              ".read": "auth != null && auth.uid === $parentUid",
-              ".write": "auth != null && auth.uid === $parentUid && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('parentUid').val() === auth.uid",
+              ".read": "auth != null && auth.uid == $parentUid",
+              ".write": "auth != null && auth.uid == $parentUid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('parentUid').val() == auth.uid",
               ".validate": "newData.hasChildren(['officialWords', 'cardId', 'createdAt']) && newData.child('createdAt').isNumber() && (!newData.child('parentCandidateIndex').exists() || (newData.child('parentCandidateIndex').isNumber() && newData.child('parentCandidateIndex').val() >= 0 && newData.child('parentCandidateIndex').val() <= 3))"
             }
           }
@@ -385,14 +385,14 @@ Firebase Rulesの正本は、ルートの `firebase-rules.json` だけとする�
             ".read": "auth != null && root.child('rooms').child($roomId).child('players').child(auth.uid).exists()",
             "discussion": {
               "$uid": {
-                ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() === 'discussion' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
-                ".validate": "newData.val() === true"
+                ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() == 'discussion' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
+                ".validate": "newData.val() == true"
               }
             },
             "answers": {
               "$uid": {
-                ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() === 'answer' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
-                ".validate": "newData.val() === true"
+                ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() == 'answer' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
+                ".validate": "newData.val() == true"
               }
             }
           }
@@ -404,11 +404,11 @@ Firebase Rulesの正本は、ルートの `firebase-rules.json` だけとする�
         "rounds": {
           "$roundNumber": {
             "$uid": {
-              ".read": "auth != null && (auth.uid === $uid || root.child('rooms').child($roomId).child('parentUid').val() === auth.uid)",
-              ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() === 'answer' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
+              ".read": "auth != null && (auth.uid == $uid || root.child('rooms').child($roomId).child('parentUid').val() == auth.uid)",
+              ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('status').val() == 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() == 'answer' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
               ".validate": "newData.hasChildren(['candidateIndex', 'createdAt']) && newData.child('candidateIndex').isNumber() && newData.child('candidateIndex').val() >= 0 && newData.child('candidateIndex').val() <= 3 && newData.child('createdAt').isNumber()"
             },
-            ".read": "auth != null && root.child('rooms').child($roomId).child('parentUid').val() === auth.uid && root.child('rooms').child($roomId).child('round').child('phase').val() === 'answer'"
+            ".read": "auth != null && root.child('rooms').child($roomId).child('parentUid').val() == auth.uid && root.child('rooms').child($roomId).child('round').child('phase').val() == 'answer'"
           }
         }
       }
