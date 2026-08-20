@@ -33,6 +33,7 @@ let answerSummaryUnsubscribe = null;
 let answerSummarySubscriptionKey = "";
 let ownAnswer = null;
 let selectedCandidateIndex = null;
+let resultRouletteKey = "";
 let phaseTransitionPending = false;
 let storedResumeAvailable = false;
 let setupMode = "single";
@@ -219,7 +220,8 @@ function playerPanelState(room, uid, disconnected) {
   if (phase === "parent-word" && isParent) return { label: "ひそめ中", className: "is-action-needed" };
   if (phase === "discussion" && !isParent) return roundProgress?.discussion?.[uid] ? { label: "推理完了", className: "is-complete" } : { label: "推理中", className: "is-action-needed" };
   if (phase === "answer" && !isParent) return roundProgress?.answers?.[uid] ? { label: "完了", className: "is-complete" } : { label: "回答中", className: "is-action-needed" };
-  if ((phase === "reveal" || phase === "result") && isParent) return { label: "開帳", className: "is-action-needed" };
+  if (phase === "reveal" && isParent) return { label: "開帳", className: "is-action-needed" };
+  if (phase === "result" && isParent && resultPresentationFinished(room)) return { label: "得点確認", className: "is-action-needed" };
   return { label: "", className: "" };
 }
 function renderPlayerBar(room, screenName="round") {
@@ -283,7 +285,8 @@ async function renderWaiting(room) {
     setProgressSubscription(room);
     if (room.round?.phase === "discussion") enterDiscussionScreen(room);
     else if (room.round?.phase === "answer") enterAnswerScreen(room);
-    else if (room.round?.phase === "reveal" || room.round?.phase === "result") enterRevealScreen(room);
+    else if (room.round?.phase === "reveal") enterRevealScreen(room);
+    else if (room.round?.phase === "result") enterResultScreen(room);
     else if (room.round?.phase === "parent-word") enterParentWordScreen(room);
     else enterDrawScreen(room);
     reevaluateAutomaticTransition(room);
@@ -293,6 +296,15 @@ async function renderWaiting(room) {
 function roundLabel(room) { return `第${["","一","二","三","四","五","六","七","八","九","十"][Number(room?.round?.number || 1)] || Number(room?.round?.number || 1)}席`; }
 function multiplayerCardMarkup(image) {
   return image ? `<img class="card-zoom-trigger" src="${escape(image)}" alt="お題カード。タップで拡大表示">` : `<div class="missing-card">カード画像を読み込めません</div>`;
+}
+function resultPresentationFinished(room) {
+  const round=room?.round||{}, plan=round.roulettePlan;
+  const started=Number(round.revealCompletedAt), duration=Number(plan?.durationMs);
+  return Number.isFinite(started)&&started>0&&Number.isFinite(duration)&&duration>=0&&serverNow()>=started+duration;
+}
+function resultElapsedMs(room) {
+  const started=Number(room?.round?.revealCompletedAt);
+  return Number.isFinite(started)&&started>0 ? Math.max(0,serverNow()-started) : 0;
 }
 function canProgress(room) { return room?.status === "started" && !roomEnded(room) && !disconnectedPlayers(room).length; }
 function currentRoundNumber(room) { return Number(room?.round?.number || 1); }
@@ -339,7 +351,8 @@ function setProgressSubscription(room) {
     roundProgress=snapshot.val()||{};
     if(latestRoom?.round?.phase==="discussion") { enterDiscussionScreen(latestRoom); maybeAdvanceToAnswer(latestRoom); }
     if(latestRoom?.round?.phase==="answer") { enterAnswerScreen(latestRoom); maybeAdvanceToReveal(latestRoom); }
-    if(latestRoom?.round?.phase==="reveal"||latestRoom?.round?.phase==="result") enterRevealScreen(latestRoom);
+    if(latestRoom?.round?.phase==="reveal") enterRevealScreen(latestRoom);
+    if(latestRoom?.round?.phase==="result") enterResultScreen(latestRoom);
   });
 }
 function setAnswerSubscription(room) {
@@ -514,7 +527,7 @@ async function maybeAdvanceToReveal(room, answersSnapshot=null) {
   }
 }
 function enterRevealScreen(room) {
-  const round=room.round||{}, words=Array.isArray(room.round?.publicWords)?room.round.publicWords:[], isParent=room.parentUid===currentUser?.uid;
+  const round=room.round||{}, isParent=room.parentUid===currentUser?.uid;
   const parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親";
   const revealScreen=document.querySelector('[data-screen="result-open"]');
   revealScreen?.classList.add("is-multiplayer-reveal");
@@ -524,6 +537,7 @@ function enterRevealScreen(room) {
   $("#result-open-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
   $("#result-open-description").hidden=true;
   const publicAnswers=round.publicAnswers||{};
+  const words=Array.isArray(round.publicWords)?round.publicWords:[];
   $("#selection-summary").innerHTML=words.map((word,index)=>{
     const voters=Object.keys(publicAnswers[String(index)]||{}).map(uid=>playerEntries(room).find(player=>player.uid===uid)?.name||"不明");
     return '<div class="vote-card"><div class="word">'+escape(word)+'</div><div class="vote-count">'+voters.length+'票</div><div class="voters">'+(voters.length?voters.map(escape).join("、"):"選択者なし")+'</div></div>';
@@ -537,6 +551,62 @@ function enterRevealScreen(room) {
   if(isParent)button.addEventListener("click",completeReveal);
   if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。");
   else setRoundMessage("全員の記帳が完了しました。"+parentName+"さん、ひそめごとを開帳してください。");
+}
+function multiplayerVoteData(room) {
+  const round=room.round||{}, words=Array.isArray(round.publicWords)?round.publicWords:[], publicAnswers=round.publicAnswers||{};
+  return words.map((word,index)=>{
+    const voters=Object.keys(publicAnswers[String(index)]||{}).map(uid=>playerEntries(room).find(player=>player.uid===uid)).filter(Boolean);
+    return {word,index,voters};
+  });
+}
+function multiplayerResultSummary(room) {
+  const votes=multiplayerVoteData(room), children=playerEntries(room).filter(player=>player.uid!==room.parentUid);
+  const parentIndex=Number(room.round?.parentCandidateIndex), correct=votes[parentIndex]?.voters||[];
+  if(correct.length===0)return children.length===1?"<strong>子が不正解</strong><span>得点なし</span>":"<strong>全員不正解</strong><span>親：+1ポイント</span>";
+  if(correct.length===children.length)return children.length===1?"<strong>子が正解</strong><span>子：+1ポイント</span>":"<strong>全員正解</strong><span>子：全員+1ポイント<br>親：−1ポイント</span>";
+  return "<strong>一部の子が正解</strong><span>正解した子：各+1ポイント</span>";
+}
+function renderMultiplayerResultVotes(room) {
+  const parentIndex=Number(room.round?.parentCandidateIndex);
+  $("#result-votes").innerHTML=multiplayerVoteData(room).map(({word,index,voters})=>{
+    return '<div class="vote-card'+(index===parentIndex?" parent-answer":"")+'" data-parent-word="'+(index===parentIndex?"true":"false")+'"><div class="word">'+escape(word)+'</div><div class="vote-count">'+voters.length+'票</div><div class="voters">'+(voters.length?voters.map(player=>escape(player.name)).join("、"):"選択者なし")+'</div></div>';
+  }).join("");
+}
+function enterResultScreen(room) {
+  const round=room.round||{}, isParent=room.parentUid===currentUser?.uid;
+  const finished=resultPresentationFinished(room), elapsed=resultElapsedMs(room);
+  document.querySelector('[data-screen="result-open"]')?.classList.remove("is-multiplayer-reveal");
+  show("result"); renderPlayerBar(room,"result");
+  const title=roundTitleRow("result")?.querySelector("[data-round-title]");
+  if(title)title.textContent=roundLabel(room)+"　宴の顛末";
+  $("#result-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
+  renderMultiplayerResultVotes(room);
+  $("#result-parent").textContent="";
+  $("#result-reveal-status").textContent="";
+  const summary=multiplayerResultSummary(room);
+  $("#result-summary").innerHTML=finished?summary:"";
+  const next=$("#result-next");
+  next.hidden=!isParent;
+  next.disabled=!isParent||!finished||!canProgress(room);
+  window.__restoreMultiplayerResultButton?.();
+  if(isParent){
+    next.removeEventListener("click",completeScore);
+    next.removeEventListener("click",window.__singleResultNextHandler);
+    next.removeEventListener("click",window.__singleResultHistoryHandler);
+    next.addEventListener("click",completeScore);
+  }
+  if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。");
+  else setRoundMessage(finished?((playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親")+"さん、得点を確認してください。"):"ひそめごとを開帳しています。");
+  const cards=[...document.querySelectorAll("#result-votes .vote-card")], controller=window.__rouletteController;
+  const key=roomId+":"+currentRoundNumber(room)+":"+String(round.revealCompletedAt)+":"+JSON.stringify(round.roulettePlan||null);
+  if(controller&&round.roulettePlan&&Number(round.revealCompletedAt)){
+    controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed});
+  } else if(finished){
+    cards.forEach(card=>card.classList.remove("reveal-checking","reveal-flash"));
+    cards[Number(round.parentCandidateIndex)]?.classList.add("reveal-parent");
+    $("#result-summary").innerHTML=summary;
+  }
+  resultRouletteKey=key;
 }
 window.__restoreMultiplayerRevealButton=()=>{
   const button=$("#result-open-button");
@@ -553,13 +623,35 @@ function reevaluateAutomaticTransition(room){
 async function completeReveal() {
   const room=latestRoom;
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="reveal"||!canProgress(room)||room.round?.revealCompletedAt)return;
+  const parentCandidateIndex=Number(parentSecret?.parentCandidateIndex);
+  const controller=window.__rouletteController;
+  if(!Number.isInteger(parentCandidateIndex)||parentCandidateIndex<0||parentCandidateIndex>3||!controller)return;
+  const plan=controller.createPlan({count:4,parentIndex:parentCandidateIndex});
   const button=$("#result-open-button"); button.disabled=true;
   try {
-    await update(ref(window.__firebaseDatabase,roomPath(roomId)+"/round"),{phase:"result",revealCompletedAt:serverTimestamp()});
+    await update(ref(window.__firebaseDatabase,roomPath(roomId)+"/round"),{
+      phase:"result",
+      parentCandidateIndex,
+      roulettePlan:plan,
+      revealCompletedAt:serverTimestamp()
+    });
   } catch(error) {
     button.disabled=false;
     setRoundMessage("ひそめごと開帳を完了できませんでした。"+(error.message||""));
   }
+}
+async function completeScore() {
+  const room=latestRoom;
+  const button=$("#result-next");
+  if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="result"||!resultPresentationFinished(room)||!canProgress(room)||phaseTransitionPending)return;
+  phaseTransitionPending=true;
+  button.disabled=true;
+  try {
+    await update(ref(window.__firebaseDatabase,roomPath(roomId)+"/round"),{phase:"score"});
+  } catch(error) {
+    button.disabled=false;
+    setRoundMessage("得点確認を保存できませんでした。"+(error.message||""));
+  } finally { phaseTransitionPending=false; }
 }
 async function submitAnswer() {
   const room=latestRoom;
@@ -668,6 +760,9 @@ function clearRoomSession() {
   parentSecret = null;
   document.querySelector('[data-screen="result-open"]')?.classList.remove("is-multiplayer-reveal");
   window.__restoreMultiplayerRevealButton?.();
+  window.__restoreMultiplayerResultButton?.();
+  resultRouletteKey = "";
+  window.__rouletteController?.cancel?.();
   stopPresence();
   latestRoom = null;
   roomId = "";
