@@ -616,6 +616,16 @@ window.__restoreMultiplayerRevealButton=()=>{
   button.removeEventListener("click",window.__singleResultOpenHandler);
   if(window.__singleResultOpenHandler)button.addEventListener("click",window.__singleResultOpenHandler);
 };
+window.__restoreMultiplayerResultButton=()=>{
+  const button=$("#result-next");
+  if(!button)return;
+  button.removeEventListener("click",completeScore);
+  button.removeEventListener("click",window.__singleResultNextHandler);
+  button.removeEventListener("click",window.__singleResultHistoryHandler);
+  button.onclick=window.__singleResultNextHandler||null;
+  if(window.__singleResultNextHandler)button.addEventListener("click",window.__singleResultNextHandler);
+  if(window.__singleResultHistoryHandler)button.addEventListener("click",window.__singleResultHistoryHandler);
+};
 function reevaluateAutomaticTransition(room){
   if(!room||roomEnded(room)||disconnectedPlayers(room).length)return;
   if(room.round?.phase==="discussion")void maybeAdvanceToAnswer(room);
