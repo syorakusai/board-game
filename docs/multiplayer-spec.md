@@ -240,6 +240,7 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 - `次の席へ` は現在の `room.seats` の次席を親にし、`round.number` を+1、`round.phase` を `draw` にする。`usedCardIds` は維持し、カード・公開ワード・回答・ルーレット・時刻など前ラウンド固有の公開データは新ラウンドへ持ち越さない。旧ラウンドの `roomSecrets`、`roomProgress`、`roomAnswers` は削除しない。
 - 得点反映と次席遷移のRulesでは `numChildren()` を使用しない。2〜6人の人数と次親は `seats/2`〜`seats/5` の存在で判定し、全員正解・全員不正解は、親以外の存在する各席UIDが `publicAnswers/{parentCandidateIndex}` に `true` を持つかで判定する。
 - `result → score` と `score → draw` のRules上の進行権限は `hostUid` ではなく、現在の `parentUid` 本人だけに与える。
+- Realtime Database Rulesでは、`usedCardIds`、公開ワード、回答、ルーレット、席順など子を持つ構造ノードの不変確認を`.val()`全体比較に依存せず、必要な各childの存在・型・プリミティブ値で検証する。
 
 
 ## 8. 切断中に宴が終了した場合
