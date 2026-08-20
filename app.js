@@ -216,5 +216,5 @@ window.addEventListener("beforeunload",e=>{if(state.round){e.preventDefault();e.
 history.pushState(null,"",location.href);window.addEventListener("popstate",()=>{history.pushState(null,"",location.href);stopGame();});
 loadCardSetCatalog().catch(error=>setCatalogError(error.message||"カードセット一覧を読み込めませんでした。")).finally(()=>multiplayerReady.finally(async()=>{
   const recovering=await window.multiplayerPhase1?.checkStoredRoomSession?.();
-  if(!recovering&&!window.multiplayerPhase1?.openJoinFromUrl?.())show("title");
+  if(!recovering&&!window.multiplayerPhase1?.openJoinFromUrl?.()&&state.currentScreen==="title")show("title");
 }));
