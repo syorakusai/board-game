@@ -79,7 +79,7 @@ export function createRouletteController(){
     const durationMs=selected.delays.reduce((sum,delay)=>sum+delay,0)+1200;
     return {...selected,parentIndex,durationMs};
   };
-  const playPlan=({cards,parentIndex,plan,status,summaryEl,next,summary,elapsedMs=0})=>{
+  const playPlan=({cards,parentIndex,plan,status,summaryEl,next,summary,elapsedMs=0,canEnable=()=>true,onComplete=()=>{}})=>{
     cancel();
     activeCards=cards;
     const sequence=Array.isArray(plan?.sequence)?plan.sequence:[];
@@ -87,7 +87,8 @@ export function createRouletteController(){
     if(!sequence.length||sequence.some(index=>!Number.isInteger(index)||index<0||index>=cards.length)||delays.length!==sequence.length-1){
       status.textContent="ルーレット情報を確認できません。";
       summaryEl.innerHTML=summary;
-      next.disabled=false;
+      next.disabled=!!next.disabled;
+      onComplete();
       return;
     }
     const movementDuration=delays.reduce((sum,delay)=>sum+Number(delay||0),0);
@@ -110,16 +111,17 @@ export function createRouletteController(){
           parentCard.classList.remove("reveal-flash");
           status.textContent="";
           summaryEl.innerHTML=summary;
-          next.disabled=false;
+          next.disabled=!canEnable();
+          onComplete();
           return;
         }
         schedule(flash,150);
       };
-      if(remaining>=1200){summaryEl.innerHTML=summary;next.disabled=false;return;}
+      if(remaining>=1200){summaryEl.innerHTML=summary;next.disabled=!canEnable();onComplete();return;}
       for(let index=0;index<flashes;index++)parentCard.classList.toggle("reveal-flash");
       schedule(flash,Math.max(0,150-(Math.max(0,remaining)%150)));
     };
-    if(safeElapsed>=totalDuration){clearCards(cards);cards[parentIndex].classList.add("reveal-parent");summaryEl.innerHTML=summary;next.disabled=false;return;}
+    if(safeElapsed>=totalDuration){clearCards(cards);cards[parentIndex].classList.add("reveal-parent");summaryEl.innerHTML=summary;next.disabled=!canEnable();onComplete();return;}
     if(safeElapsed>=movementDuration){clearCards(cards);cards[parentIndex].classList.add("reveal-parent");finish(safeElapsed-movementDuration);return;}
     let elapsed=0,step=0;
     while(step<delays.length&&elapsed+Number(delays[step])<=safeElapsed){elapsed+=Number(delays[step]);step++;}
