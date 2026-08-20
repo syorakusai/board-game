@@ -33,6 +33,9 @@ let ownAnswer = null;
 let selectedCandidateIndex = null;
 let phaseTransitionPending = false;
 let storedResumeAvailable = false;
+let setupMode = "single";
+let multiplayerSetupMode = "host";
+let multiplayerModeSelectedInCurrentSetup = false;
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -91,20 +94,22 @@ function setOptions(select, items, selected) {
   select.value = selected || items[0]?.id || "";
 }
 
-async function openCreate() {
-  show("create-room");
-  $("#host-name").value = savedName() || "客人1";
-  $("#host-discussion-time").value = "2";
+function ensureMultiplayerName() {
+  const input = $("#multiplayer-name");
+  if (!input.value) input.value = savedName() || "客人";
+}
+async function prepareCreateForm() {
+  ensureMultiplayerName();
+  if (!$("#host-discussion-time").value) $("#host-discussion-time").value = "2";
   try {
     const sets = await ensureCatalog();
-    setOptions($("#host-card-set"), sets, sets[0]?.id);
+    setOptions($("#host-card-set"), sets, $("#host-card-set").value || sets[0]?.id);
     refreshHostWordSets();
   } catch (error) { $("#create-room-error").textContent = `設定を読み込めませんでした。${error.message || ""}`; }
 }
-
 function refreshHostWordSets() {
   const selected = catalog.find(set => set.id === $("#host-card-set").value);
-  setOptions($("#host-word-set"), selected?.wordSets || [], selected?.wordSets?.[0]?.id);
+  setOptions($("#host-word-set"), selected?.wordSets || [], $("#host-word-set").value || selected?.wordSets?.[0]?.id);
 }
 
 function makeRoomId() {
@@ -587,7 +592,7 @@ async function isCurrentPlayerRemoved(id, uid, nameKey) {
 async function createRoom() {
   const error = $("#create-room-error");
   error.textContent = "";
-  const name = $("#host-name").value.trim();
+  const name = $("#multiplayer-name").value.trim();
   if (!name) { error.textContent = "客人名を入力してください。"; return; }
   const cardSet = catalog.find(set => set.id === $("#host-card-set").value);
   const wordSet = cardSet?.wordSets?.find(set => set.id === $("#host-word-set").value);
@@ -612,7 +617,7 @@ async function createRoom() {
 async function joinRoom() {
   const error = $("#join-room-error"); error.textContent = "";
   const id = $("#join-room-id").value.trim().toUpperCase();
-  const name = $("#join-name").value.trim();
+  const name = $("#multiplayer-name").value.trim();
   if (!id || !name) { error.textContent = "部屋番号と客人名を入力してください。"; return; }
   let joined=false;
   let key="";
@@ -681,9 +686,10 @@ async function leaveWaitingRoom() {
   if (leavingWaitingRoom) return;
   leavingWaitingRoom = true;
   if (latestRoom?.status === "closed") {
+    const returnMode=openedRoom ? "host" : "join";
     clearRoomSession();
     clearInviteUrl();
-    show("multiplayer-role");
+    openMultiplayerSetup(returnMode);
     leavingWaitingRoom = false;
     return;
   }
@@ -697,7 +703,7 @@ async function leaveWaitingRoom() {
     }
     clearRoomSession();
     leavingWaitingRoom = false;
-    openCreate();
+    openMultiplayerSetup("host");
     return;
   }
   const id = roomId;
@@ -710,9 +716,10 @@ async function leaveWaitingRoom() {
     try {
       await removeCurrentPlayer(id, uid, nameKey);
       if (await isCurrentPlayerRemoved(id, uid, nameKey)) {
+        const returnMode=openedRoom ? "host" : "join";
         clearRoomSession();
         clearInviteUrl();
-        show("multiplayer-role");
+        openMultiplayerSetup(returnMode);
         leavingWaitingRoom = false;
         return;
       }
@@ -726,13 +733,47 @@ async function leaveWaitingRoom() {
   leavingWaitingRoom = false;
 }
 
-async function exitStartedFeast(){if(!latestRoom||roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();show("multiplayer-role");return;}await set(ref(window.__firebaseDatabase,`${roomPath(roomId)}/endedBy`),{uid:currentUser.uid,name:latestRoom.players?.[currentUser.uid]?.name||savedName(),at:Date.now()});clearRoomSession();clearInviteUrl();show("multiplayer-role");}
-function requestExit(){if(!roomId||!latestRoom||latestRoom.status!=="started")return false;if(roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();show("multiplayer-role");return true;}if(confirm("退出すると、この宴は全員終了となります。退出しますか？"))exitStartedFeast().catch(error=>alert(`退出できませんでした。 ${error.message||""}`));return true;}
+async function exitStartedFeast(){const returnMode=openedRoom ? "host" : "join";if(!latestRoom||roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();openMultiplayerSetup(returnMode);return;}await set(ref(window.__firebaseDatabase,`${roomPath(roomId)}/endedBy`),{uid:currentUser.uid,name:latestRoom.players?.[currentUser.uid]?.name||savedName(),at:Date.now()});clearRoomSession();clearInviteUrl();openMultiplayerSetup(returnMode);}
+function requestExit(){if(!roomId||!latestRoom||latestRoom.status!=="started")return false;if(roomEnded(latestRoom)){const returnMode=openedRoom ? "host" : "join";clearRoomSession();clearInviteUrl();openMultiplayerSetup(returnMode);return true;}if(confirm("退出すると、この宴は全員終了となります。退出しますか？"))exitStartedFeast().catch(error=>alert(`退出できませんでした。 ${error.message||""}`));return true;}
 function showRecoveryError(message){$("#recovery-title").textContent="宴を確認できません";$("#recovery-message").textContent=message;$("#recovery-resume").hidden=true;$("#recovery-retry").hidden=false;show("multiplayer-recovery");}
 const inviteRoomId=()=>new URLSearchParams(location.search).get("room")?.trim().toUpperCase()||"";
 const hasConnectedPlayer=room=>playerEntries(room).some(player=>Object.keys(room?.presence?.[player.uid]||{}).length>0);
 function clearStoredResumeAvailability(){storedResumeAvailable=false;$("#resume-stored-room-choice").hidden=true;}
-function openMultiplayerRole(){const button=$("#resume-stored-room-choice");button.hidden=!storedResumeAvailable;show("multiplayer-role");}
+function clearSetupErrors(){ $("#create-room-error").textContent=""; $("#join-room-error").textContent=""; }
+function setSetupMode(mode, { clearInvitation=false } = {}) {
+  if (clearInvitation) clearInviteUrl();
+  setupMode=mode;
+  $("#setup-single-device").classList.toggle("is-selected",mode==="single");
+  $("#setup-multiplayer").classList.toggle("is-selected",mode==="multiplayer");
+  $("#single-device-setup").hidden=mode!=="single";
+  $("#multiplayer-setup").hidden=mode!=="multiplayer";
+  clearSetupErrors();
+  if(mode==="multiplayer"){
+    if(!multiplayerModeSelectedInCurrentSetup) multiplayerSetupMode="host";
+    multiplayerModeSelectedInCurrentSetup=true;
+    setMultiplayerSetupMode(multiplayerSetupMode);
+  }
+}
+function setMultiplayerSetupMode(mode, { clearInvitation=false } = {}) {
+  if(clearInvitation) clearInviteUrl();
+  multiplayerSetupMode=mode;
+  $("#create-room-choice").classList.toggle("is-selected",mode==="host");
+  $("#join-room-choice").classList.toggle("is-selected",mode==="join");
+  $("#host-form").hidden=mode!=="host";
+  $("#join-form").hidden=mode!=="join";
+  clearSetupErrors();
+  ensureMultiplayerName();
+  if(mode==="host") prepareCreateForm();
+}
+function openFeastSetup({ mode="single", multiplayerMode="host", restoreSingle=true } = {}) {
+  if(mode==="single"&&restoreSingle) window.startSingleDeviceGame?.();
+  else show("player-count");
+  $("#setup-mode-choice").hidden=false;
+  multiplayerModeSelectedInCurrentSetup=mode==="multiplayer";
+  multiplayerSetupMode=multiplayerMode;
+  setSetupMode(mode);
+}
+function openMultiplayerSetup(multiplayerMode="host"){openFeastSetup({mode:"multiplayer",multiplayerMode,restoreSingle:false});}
 async function checkStoredRoomSession(){
   const saved=storedRoomSession(), invitedRoomId=inviteRoomId();
   clearStoredResumeAvailability();
@@ -764,13 +805,13 @@ async function checkStoredRoomSession(){
 }
 async function resumeStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;await startPresence();subscribeRoom(roomId);await renderWaiting(latestRoom);}
 async function resumeStoredRoomFromChoice(){try{await resumeStoredRoom();}catch(error){showRecoveryError(`復帰できませんでした。 ${error.message||""}`);}}
-async function exitStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;if(latestRoom.status==="closed"){clearRoomSession();clearInviteUrl();clearStoredResumeAvailability();openMultiplayerRole();return;}if(latestRoom.status==="started"){if(roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();clearStoredResumeAvailability();openMultiplayerRole();return;}if(!confirm("退出すると、この宴は全員終了となります。退出しますか？"))return;await exitStartedFeast();return;}if(latestRoom.status==="waiting"){await startPresence();await leaveWaitingRoom();}}
+async function exitStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;if(latestRoom.status==="closed"){clearRoomSession();clearInviteUrl();clearStoredResumeAvailability();openMultiplayerSetup("host");return;}if(latestRoom.status==="started"){if(roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();clearStoredResumeAvailability();openMultiplayerSetup("host");return;}if(!confirm("退出すると、この宴は全員終了となります。退出しますか？"))return;await exitStartedFeast();return;}if(latestRoom.status==="waiting"){await startPresence();await leaveWaitingRoom();}}
 function openJoinFromUrl() {
-  const id = new URLSearchParams(location.search).get("room");
+  const id = inviteRoomId();
   if (!id) return false;
-  $("#join-room-id").value = id.toUpperCase();
-  $("#join-name").value = savedName() || "客人";
-  show("join-room");
+  openFeastSetup({mode:"multiplayer",multiplayerMode:"join",restoreSingle:false});
+  $("#join-room-id").value=id;
+  $("#multiplayer-name").value=savedName() || "客人";
   return true;
 }
 
@@ -788,16 +829,14 @@ function initialize() {
     roundHeaderObserver.observe(roundHeader);
   }
   window.addEventListener("resize", updateRoundHeaderOffset);
-  $("#single-device-mode").onclick = () => window.startSingleDeviceGame?.();
-  $("#multiplayer-mode").onclick = openMultiplayerRole;
-  $("#mode-choice-back").onclick = () => show("title");
-  $("#create-room-choice").onclick = openCreate;
-  $("#join-room-choice").onclick = () => { $("#join-room-id").value = ""; $("#join-name").value = savedName() || "客人"; show("join-room"); };
-  $("#resume-stored-room-choice").onclick = resumeStoredRoomFromChoice;
-  $("#multiplayer-role-back").onclick = () => show("mode-choice");
-  $("#create-room-back").onclick = openMultiplayerRole;
-  $("#join-room-back").onclick = () => { clearInviteUrl(); openMultiplayerRole(); };
-  $("#host-card-set").onchange = refreshHostWordSets;
+  $("#setup-single-device").onclick=()=>setSetupMode("single",{clearInvitation:true});
+  $("#setup-multiplayer").onclick=()=>setSetupMode("multiplayer");
+  $("#create-room-choice").onclick=()=>setMultiplayerSetupMode("host",{clearInvitation:true});
+  $("#join-room-choice").onclick=()=>setMultiplayerSetupMode("join");
+  $("#resume-stored-room-choice").onclick=resumeStoredRoomFromChoice;
+  $("#create-room-back").onclick=()=>{clearInviteUrl();show("title");};
+  $("#join-room-back").onclick=()=>{clearInviteUrl();show("title");};
+  $("#host-card-set").onchange=refreshHostWordSets;
   $("#create-room-button").onclick = createRoom;
   $("#join-room-button").onclick = joinRoom;
   $("#start-multiplayer-game").onclick = startRoom;
@@ -812,5 +851,5 @@ function initialize() {
   });
 }
 
-window.multiplayerPhase1 = { isEnabled: enabled, openModeChoice: () => show("mode-choice"), openJoinFromUrl, checkStoredRoomSession, requestExit };
+window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit };
 initialize();

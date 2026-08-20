@@ -371,3 +371,16 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
   margin-top: 4px;
   margin-bottom: 12px;
 }
+
+/* 宴の支度：既存ボタンとフォームを使い、同じ画面内だけでモードを切り替える */
+#setup-mode-choice { margin-bottom: 14px; }
+#multiplayer-setup > .multiplayer-choice-buttons { margin: 14px 0 10px; }
+#resume-stored-room-choice { width: 100%; margin: 0 0 14px; }
+#setup-mode-choice .button.is-selected,
+#multiplayer-setup .multiplayer-choice-buttons .button.is-selected {
+  background: var(--color-accent, #d77622);
+  border-color: var(--color-accent, #d77622);
+  color: #fffdf4;
+}
+#multiplayer-name { margin-bottom: 14px; }
+#host-form[hidden], #join-form[hidden], #single-device-setup[hidden], #multiplayer-setup[hidden] { display: none; }

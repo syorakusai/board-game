@@ -30,49 +30,6 @@
 <button id="recovery-retry" class="button button-primary" type="button" hidden>もう一度確認する</button>
 <button id="recovery-exit" class="button button-secondary" type="button">宴から退出する</button>
 </section>
-<section class="screen is-hidden" data-screen="mode-choice">
-<h1>遊び方を選ぶ</h1>
-<p class="description">同じ端末を回して遊ぶか、通信で宴を開くかを選んでください。</p>
-<img class="seating-illustration multiplayer-choice-image" src="assets/seating-illustration.png" alt="貴族たちが卓を囲む宴の情景">
-<div class="multiplayer-choice-buttons">
-<button id="single-device-mode" class="button button-primary">1台で遊ぶ</button>
-<button id="multiplayer-mode" class="button button-primary">通信対戦</button>
-</div>
-<button id="mode-choice-back" class="button button-secondary multiplayer-choice-back">戻る</button>
-</section>
-<section class="screen is-hidden" data-screen="multiplayer-role">
-<h1>通信対戦</h1>
-<p class="description">宴を開くか、招かれた宴へ参加してください。</p>
-<img class="seating-illustration multiplayer-choice-image" src="assets/seating-illustration.png" alt="貴族たちが卓を囲む宴の情景">
-<div class="multiplayer-choice-buttons">
-<button id="create-room-choice" class="button button-primary">宴を開く</button>
-<button id="join-room-choice" class="button button-primary">宴に参加する</button>
-</div>
-<button id="resume-stored-room-choice" class="button button-secondary" hidden>前の宴に復帰</button>
-<button id="multiplayer-role-back" class="button button-secondary multiplayer-choice-back">戻る</button>
-</section>
-<section class="screen is-hidden" data-screen="create-room">
-<h1>宴を開く</h1>
-<p class="description">宴の設定と、ご自身の客人名を決めてください。</p>
-<label class="field-label">客人名<input id="host-name" maxlength="20" autocomplete="name"></label>
-<label class="set-selection-label" for="host-card-set">カードセット</label><select id="host-card-set" class="set-select"></select>
-<label class="set-selection-label" for="host-word-set">ワードセット</label><select id="host-word-set" class="set-select"></select>
-<label class="set-selection-label" for="host-discussion-time">推理時間</label><select id="host-discussion-time" class="set-select"><option value="1">1分</option><option value="2">2分</option><option value="3">3分</option><option value="5">5分</option></select>
-<p id="create-room-error" class="form-error" role="alert"></p>
-<div class="button-row">
-<button id="create-room-back" class="button button-secondary">戻る</button>
-<button id="create-room-button" class="button button-primary">部屋を作成</button>
-</div>
-</section>
-<section class="screen is-hidden" data-screen="join-room">
-<h1>宴に参加する</h1>
-<p class="description">部屋番号と客人名を入力してください。</p>
-<label class="field-label">部屋番号<input id="join-room-id" maxlength="12" autocomplete="off" autocapitalize="characters"></label>
-<label class="field-label">客人名<input id="join-name" maxlength="20" autocomplete="name"></label>
-<p id="join-room-error" class="form-error" role="alert"></p>
-<button id="join-room-button" class="button button-primary">宴に参加する</button>
-<button id="join-room-back" class="button button-secondary">戻る</button>
-</section>
 <section class="screen is-hidden" data-screen="multiplayer-waiting">
 <h1>宴の待機室</h1>
 <div id="room-summary" class="multiplayer-summary"></div>
@@ -163,28 +120,54 @@
 </section>
 <section class="screen is-hidden" data-screen="player-count">
 <h1>宴の支度</h1>
-<p class="description">一緒に遊ぶ人数を選んでください。</p>
-<div id="player-counts" class="count-grid">
+<p class="description">遊び方を選んで、宴の支度を整えてください。</p>
+<div id="setup-mode-choice" class="multiplayer-choice-buttons" hidden>
+<button id="setup-single-device" class="button button-primary" type="button">1台で遊ぶ</button>
+<button id="setup-multiplayer" class="button button-primary" type="button">通信対戦</button>
 </div>
+<div id="single-device-setup">
+<div id="player-counts" class="count-grid"></div>
 <div class="set-selection">
 <label class="set-selection-label" for="card-set-select">カードセットの選択</label>
-<select id="card-set-select" class="set-select">
-</select>
+<select id="card-set-select" class="set-select"></select>
 <label class="set-selection-label" for="word-set-select">ワードセットの選択</label>
-<select id="word-set-select" class="set-select">
-</select>
+<select id="word-set-select" class="set-select"></select>
 <label class="set-selection-label" for="discussion-time-select">推理時間の選択</label>
 <select id="discussion-time-select" class="set-select">
-<option value="1">1分</option>
-<option value="2">2分</option>
-<option value="3">3分</option>
-<option value="5">5分</option>
+<option value="1">1分</option><option value="2">2分</option><option value="3">3分</option><option value="5">5分</option>
 </select>
 <p id="card-set-error" class="form-error" role="alert"></p>
 </div>
 <div class="button-row">
 <button id="player-count-back" class="button button-secondary" type="button">戻る</button>
 <button id="player-count-next" class="button button-primary" type="button" disabled>次へ</button>
+</div>
+</div>
+<div id="multiplayer-setup" hidden>
+<div class="multiplayer-choice-buttons">
+<button id="create-room-choice" class="button button-primary" type="button">宴を開く</button>
+<button id="join-room-choice" class="button button-primary" type="button">宴に参加する</button>
+</div>
+<button id="resume-stored-room-choice" class="button button-secondary" type="button" hidden>前の宴に復帰</button>
+<label class="field-label">客人名<input id="multiplayer-name" maxlength="20" autocomplete="name"></label>
+<div id="host-form">
+<label class="set-selection-label" for="host-card-set">カードセット</label><select id="host-card-set" class="set-select"></select>
+<label class="set-selection-label" for="host-word-set">ワードセット</label><select id="host-word-set" class="set-select"></select>
+<label class="set-selection-label" for="host-discussion-time">推理時間</label><select id="host-discussion-time" class="set-select"><option value="1">1分</option><option value="2">2分</option><option value="3">3分</option><option value="5">5分</option></select>
+<p id="create-room-error" class="form-error" role="alert"></p>
+<div class="button-row">
+<button id="create-room-back" class="button button-secondary" type="button">戻る</button>
+<button id="create-room-button" class="button button-primary" type="button">部屋を作成</button>
+</div>
+</div>
+<div id="join-form" hidden>
+<label class="field-label">部屋番号<input id="join-room-id" maxlength="12" autocomplete="off" autocapitalize="characters"></label>
+<p id="join-room-error" class="form-error" role="alert"></p>
+<div class="button-row">
+<button id="join-room-back" class="button button-secondary" type="button">戻る</button>
+<button id="join-room-button" class="button button-primary" type="button">宴に参加する</button>
+</div>
+</div>
 </div>
 </section>
 <section class="screen is-hidden" data-screen="player-names">

@@ -118,12 +118,12 @@ for(let n=2;n<=6;n++){
 if(savedPlayerCount)restorePlayerCountSelection();
 updatePlayerCountNext();
 playerCountNext.onclick=()=>{if(state.playerCount)renderPlayerNames();};
-document.querySelector("#player-count-back").onclick=()=>show(window.multiplayerPhase1?.isEnabled?.()?"mode-choice":"title");
+document.querySelector("#player-count-back").onclick=()=>show("title");
 document.querySelector("#card-set-select").onchange=e=>{state.cardSet=e.target.value;state.wordSet=readWordSetSelections()[state.cardSet]||"standard-1";try{localStorage.setItem(CARD_SET_STORAGE_KEY,state.cardSet);}catch{}renderWordSetOptions();saveWordSetSelection();updatePlayerCountNext();};
 document.querySelector("#word-set-select").onchange=e=>{state.wordSet=e.target.value;saveWordSetSelection();updatePlayerCountNext();};
 document.querySelector("#discussion-time-select").onchange=e=>{state.discussionMinutes=Number(e.target.value);};
 window.startSingleDeviceGame=()=>{restorePlayerCountSelection();show("player-count");};
-document.querySelector("#title-start").onclick=()=>{if(window.multiplayerPhase1?.isEnabled()){window.multiplayerPhase1.openModeChoice();return;}window.startSingleDeviceGame();};
+document.querySelector("#title-start").onclick=()=>{if(window.multiplayerPhase1?.isEnabled()){window.multiplayerPhase1.openFeastSetup();return;}window.startSingleDeviceGame();};
 document.querySelector("#title-start").addEventListener("click",()=>{state.history=[];});
 function openHowto(){state.howtoReturnScreen=state.currentScreen;document.querySelectorAll(".game-menu.is-open").forEach(menu=>{menu.classList.remove("is-open");menu.querySelector(".menu-button")?.setAttribute("aria-expanded","false");});show("howto");}
 function returnFromHowto(){const destination=state.howtoReturnScreen||"title";state.howtoReturnScreen="title";show(destination);}
