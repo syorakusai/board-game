@@ -739,7 +739,11 @@ async function completeScore() {
   } catch(error) {
     button.disabled=false;
     setRoundMessage("得点確認を保存できませんでした。"+(error.message||""));
-  } finally { phaseTransitionPending=false; }
+  } finally {
+    phaseTransitionPending=false;
+    if(latestRoom?.round?.phase==="score")enterScoreScreen(latestRoom);
+    else if(latestRoom?.round?.phase==="result")enterResultScreen(latestRoom);
+  }
 }
 function resetRoundLocalState() {
   parentSecret=null; parentWordError=""; parentWordErrorKey=""; roundProgress={}; ownAnswer=null; selectedCandidateIndex=null;
