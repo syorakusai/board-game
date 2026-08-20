@@ -370,7 +370,7 @@ function setProgressSubscription(room) {
 function setAnswerSubscription(room) {
   const roundNumber=currentRoundNumber(room), key=roomId+":"+roundNumber+":"+(currentUser?.uid||"");
   if(answerSubscriptionKey!==key){
-    answerUnsubscribe?.(); answerSubscriptionKey=key; ownAnswer=null;
+    answerUnsubscribe?.(); answerSubscriptionKey=key; ownAnswer=null; selectedCandidateIndex=null;
     answerUnsubscribe=onValue(ref(window.__firebaseDatabase,answerPath(roomId,roundNumber,currentUser.uid)),snapshot=>{
       ownAnswer=snapshot.val();
       if(latestRoom?.round?.phase==="answer") enterAnswerScreen(latestRoom);
@@ -518,7 +518,7 @@ async function maybeAdvanceToReveal(room, answersSnapshot=null) {
   if(!children.length||!children.every(player=>progress[player.uid]===true))return;
   phaseTransitionPending=true;
   try {
-    const answers=answersSnapshot||((await get(ref(window.__firebaseDatabase,answerRoundPath(roomId,currentRoundNumber(room)))).val())||{});
+    const answers=answersSnapshot||((await get(ref(window.__firebaseDatabase,answerRoundPath(roomId,currentRoundNumber(room))))).val()||{});
     const publicAnswers={};
     for(const child of children){
       const candidateIndex=Number(answers?.[child.uid]?.candidateIndex);
@@ -809,6 +809,8 @@ function clearRoomSession() {
   answerSummaryUnsubscribe = null;
   answerSubscriptionKey = "";
   answerSummarySubscriptionKey = "";
+  ownAnswer = null;
+  selectedCandidateIndex = null;
   parentSecret = null;
   document.querySelector('[data-screen="result-open"]')?.classList.remove("is-multiplayer-reveal");
   window.__restoreMultiplayerRevealButton?.();
