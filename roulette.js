@@ -111,17 +111,23 @@ export function createRouletteController(){
       next.disabled=!canEnable();
       onComplete();
     };
+    const beginFlashPhase=()=>{
+      clearCards(cards);
+      cards[parentIndex]?.classList.add("reveal-parent");
+    };
     const playFlashesUntilEnd=()=>{
       if(completed)return;
       const currentElapsed=Math.max(0,Date.now()-startedAt);
       if(currentElapsed>=totalDuration){complete();return;}
-      clearCards(cards);
-      cards[parentIndex]?.classList.add("reveal-parent");
-      cards[parentIndex]?.classList.toggle("reveal-flash");
-      schedule(playFlashesUntilEnd,Math.min(150,totalDuration-currentElapsed));
+      const flashElapsed=Math.max(0,currentElapsed-movementDuration);
+      const flashOn=Math.floor(flashElapsed/150)%2===0;
+      cards[parentIndex]?.classList.toggle("reveal-flash",flashOn);
+      const nextFlashIn=150-(flashElapsed%150);
+      schedule(playFlashesUntilEnd,Math.min(nextFlashIn,totalDuration-currentElapsed));
     };
     if(safeElapsed>=totalDuration){complete();return;}
     if(safeElapsed>=movementDuration){
+      beginFlashPhase();
       playFlashesUntilEnd();
       return;
     }
@@ -132,7 +138,7 @@ export function createRouletteController(){
       let currentStep=step;
       const advance=()=>{
         if(completed)return;
-        if(currentStep>=sequence.length-1){playFlashesUntilEnd();return;}
+        if(currentStep>=sequence.length-1){beginFlashPhase();playFlashesUntilEnd();return;}
         currentStep++;
         showStep(currentStep);
         schedule(advance,delays[currentStep]||0);
