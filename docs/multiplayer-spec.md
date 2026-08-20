@@ -320,7 +320,7 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 
 Firebase Rulesの正本は、ルートの [`firebase-rules.json`](../firebase-rules.json) だけとする。Rulesを変更する実装では、同じコミットでルートの `firebase-rules.json` を更新し、この仕様書内のリンクが最新ファイルを参照する状態にする。実装完了の回答本文にはRules全文を掲載せず、更新済みの [`firebase-rules.json`](../firebase-rules.json) へのリンクを記載する。Firebase Consoleへ貼り付ける場合は、リンク先ファイルの内容を全文コピーする。要約・差分だけをRulesの正本として扱ってはならない。`docs/firebase-rules.json` は作成・更新せず、Rules全文の二重管理を行わない。
 
-現在の `publicAnswers` は「候補番号 → UID集合」形式です。Rulesは、公開された各UIDが参加中の子であり、保存済み回答の候補番号と一致すること、候補番号が0〜3であることを検証します。一方、Realtime Database Rulesには動的な子キー集合を反復して比較する機能がないため、この形式のままでは「全子が必ず1回だけ含まれること」をRulesだけで完全には保証できません。これをRulesで完全保証する必要が生じた場合は、UIDをキーにした公開結果（例：`publicAnswersByUid/$uid`）へデータ構造を変更し、UIDごとの一意性と回答人数を検証する別仕様を定めます。今回の実装ではデータ構造とRulesを変更しません。
+現在の `publicAnswers` は「候補番号 → UID集合」形式です。Rulesは、公開された各UIDが参加中の子であり、`roomAnswers/{roomId}/rounds/{roundNumber}/{uid}` に保存済みの回答候補番号と一致すること、候補番号が0〜3であることを検証します。`roomSecrets`、`roomProgress`、`roomAnswers` はいずれも `{roomId}/rounds/{roundNumber}/...` をラウンド単位の基本階層とする。一方、Realtime Database Rulesには動的な子キー集合を反復して比較する機能がないため、この形式のままでは「全子が必ず1回だけ含まれること」をRulesだけで完全には保証できません。これをRulesで完全保証する必要が生じた場合は、UIDをキーにした公開結果（例：`publicAnswersByUid/$uid`）へデータ構造を変更し、UIDごとの一意性と回答人数を検証する別仕様を定めます。今回の実装ではデータ構造とRulesを変更しません。
 
 
 ## 14. 未確定事項

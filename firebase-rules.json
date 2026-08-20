@@ -22,7 +22,7 @@
           "publicAnswers": {
             "$candidateIndex": {
               "$uid": {
-                ".validate": "($candidateIndex == '0' || $candidateIndex == '1' || $candidateIndex == '2' || $candidateIndex == '3') && newData.val() == true && root.child('rooms').child($roomId).child('players').child($uid).exists() && $uid != root.child('rooms').child($roomId).child('parentUid').val() && (root.child('roomAnswers').child($roomId).child(root.child('rooms').child($roomId).child('round').child('number').val() + '').child($uid).child('candidateIndex').val() + '') == $candidateIndex"
+                ".validate": "($candidateIndex == '0' || $candidateIndex == '1' || $candidateIndex == '2' || $candidateIndex == '3') && newData.val() == true && root.child('rooms').child($roomId).child('players').child($uid).exists() && $uid != root.child('rooms').child($roomId).child('parentUid').val() && (root.child('roomAnswers').child($roomId).child('rounds').child(root.child('rooms').child($roomId).child('round').child('number').val() + '').child($uid).child('candidateIndex').val() + '') == $candidateIndex"
               },
               ".validate": "($candidateIndex == '0' || $candidateIndex == '1' || $candidateIndex == '2' || $candidateIndex == '3') && newData.hasChildren()"
             }
