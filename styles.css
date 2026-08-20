@@ -378,9 +378,9 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 #resume-stored-room-choice { width: 100%; margin: 0 0 14px; }
 #setup-mode-choice .button.is-selected,
 #multiplayer-setup .multiplayer-choice-buttons .button.is-selected {
-  background: var(--color-accent, #d77622);
-  border-color: var(--color-accent, #d77622);
+  background: #063b2b;
   color: #fffdf4;
+  box-shadow: inset 0 0 0 3px #d77622, 0 0 0 1px #f0c879;
 }
 #multiplayer-name { margin-bottom: 14px; }
 #host-form[hidden], #join-form[hidden], #single-device-setup[hidden], #multiplayer-setup[hidden] { display: none; }
