@@ -34,6 +34,7 @@ let answerSummarySubscriptionKey = "";
 let ownAnswer = null;
 let selectedCandidateIndex = null;
 let resultRouletteKey = "";
+let resultVisibilityHandler = null;
 let phaseTransitionPending = false;
 let storedResumeAvailable = false;
 let setupMode = "single";
@@ -287,6 +288,7 @@ async function renderWaiting(room) {
     else if (room.round?.phase === "answer") enterAnswerScreen(room);
     else if (room.round?.phase === "reveal") enterRevealScreen(room);
     else if (room.round?.phase === "result") enterResultScreen(room);
+    else if (room.round?.phase === "score") enterScoreFallbackScreen(room);
     else if (room.round?.phase === "parent-word") enterParentWordScreen(room);
     else enterDrawScreen(room);
     reevaluateAutomaticTransition(room);
@@ -305,6 +307,16 @@ function resultPresentationFinished(room) {
 function resultElapsedMs(room) {
   const started=Number(room?.round?.revealCompletedAt);
   return Number.isFinite(started)&&started>0 ? Math.max(0,serverNow()-started) : 0;
+}
+function stopResultVisibilitySync() {
+  if(resultVisibilityHandler){document.removeEventListener("visibilitychange",resultVisibilityHandler);resultVisibilityHandler=null;}
+}
+function startResultVisibilitySync() {
+  stopResultVisibilitySync();
+  resultVisibilityHandler=()=>{
+    if(document.visibilityState==="visible"&&latestRoom?.round?.phase==="result") enterResultScreen(latestRoom);
+  };
+  document.addEventListener("visibilitychange",resultVisibilityHandler);
 }
 function canProgress(room) { return room?.status === "started" && !roomEnded(room) && !disconnectedPlayers(room).length; }
 function currentRoundNumber(room) { return Number(room?.round?.number || 1); }
@@ -572,7 +584,37 @@ function renderMultiplayerResultVotes(room) {
     return '<div class="vote-card'+(finished&&index===parentIndex?" parent-answer":"")+'" data-parent-word="'+(index===parentIndex?"true":"false")+'"><div class="word">'+escape(word)+'</div><div class="vote-count">'+voters.length+'票</div><div class="voters">'+(voters.length?voters.map(player=>escape(player.name)).join("、"):"選択者なし")+'</div></div>';
   }).join("");
 }
+function enterScoreFallbackScreen(room) {
+  stopResultVisibilitySync();
+  window.__rouletteController?.cancel?.();
+  resultRouletteKey="";
+  const round=room.round||{}, isParent=room.parentUid===currentUser?.uid;
+  show("result");
+  renderPlayerBar(room,"result");
+  const title=roundTitleRow("result")?.querySelector("[data-round-title]");
+  if(title)title.textContent=roundLabel(room)+"　宴の顛末";
+  $("#result-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
+  renderMultiplayerResultVotes(room);
+  const parentIndex=Number(round.parentCandidateIndex);
+  document.querySelectorAll("#result-votes .vote-card").forEach(card=>{
+    card.classList.remove("reveal-checking","reveal-flash","reveal-parent");
+    if(card.dataset.parentWord==="true")card.classList.add("reveal-parent");
+  });
+  $("#result-reveal-status").textContent="";
+  $("#result-summary").innerHTML=multiplayerResultSummary(room);
+  const next=$("#result-next");
+  next.hidden=!isParent;
+  next.disabled=true;
+  next.onclick=null;
+  next.removeEventListener("click",completeScore);
+  next.removeEventListener("click",window.__singleResultNextHandler);
+  next.removeEventListener("click",window.__singleResultHistoryHandler);
+  if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなりました。右上メニューの「退出」から退出してください。");
+  else setRoundMessage((playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親")+"さん、得点確認済みです。");
+}
 function enterResultScreen(room) {
+  stopResultVisibilitySync();
+  startResultVisibilitySync();
   const round=room.round||{}, isParent=room.parentUid===currentUser?.uid;
   const finished=resultPresentationFinished(room), elapsed=resultElapsedMs(room);
   document.querySelector('[data-screen="result-open"]')?.classList.remove("is-multiplayer-reveal");
@@ -623,7 +665,6 @@ window.__restoreMultiplayerResultButton=()=>{
   button.removeEventListener("click",window.__singleResultNextHandler);
   button.removeEventListener("click",window.__singleResultHistoryHandler);
   button.onclick=window.__singleResultNextHandler||null;
-  if(window.__singleResultNextHandler)button.addEventListener("click",window.__singleResultNextHandler);
   if(window.__singleResultHistoryHandler)button.addEventListener("click",window.__singleResultHistoryHandler);
 };
 function reevaluateAutomaticTransition(room){
@@ -774,6 +815,7 @@ function clearRoomSession() {
   window.__restoreMultiplayerResultButton?.();
   resultRouletteKey = "";
   window.__rouletteController?.cancel?.();
+  stopResultVisibilitySync();
   stopPresence();
   latestRoom = null;
   roomId = "";
