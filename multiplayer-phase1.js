@@ -761,6 +761,7 @@ function setMultiplayerSetupMode(mode, { clearInvitation=false } = {}) {
   $("#join-room-choice").classList.toggle("is-selected",mode==="join");
   $("#host-form").hidden=mode!=="host";
   $("#join-form").hidden=mode!=="join";
+  $("#resume-stored-room-choice").hidden=!storedResumeAvailable;
   clearSetupErrors();
   ensureMultiplayerName();
   if(mode==="host") prepareCreateForm();
