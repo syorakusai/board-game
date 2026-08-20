@@ -94,43 +94,45 @@ export function createRouletteController(){
     const movementDuration=delays.reduce((sum,delay)=>sum+Number(delay||0),0);
     const totalDuration=Number(plan.durationMs)||movementDuration+1200;
     const safeElapsed=Math.max(0,Number(elapsedMs)||0);
+    const startedAt=Date.now()-safeElapsed;
+    let completed=false;
     const showStep=step=>{
       clearCards(cards);
       cards[sequence[Math.min(step,sequence.length-1)]].classList.add("reveal-checking");
       status.textContent="";
     };
-    const finish=remaining=>{
-      const parentCard=cards[parentIndex];
+    const complete=()=>{
+      if(completed)return;
+      completed=true;
       clearCards(cards);
-      parentCard.classList.add("reveal-parent");
-      let flashes=Math.min(8,Math.floor(Math.max(0,remaining)/150)+1);
-      const flash=()=>{
-        parentCard.classList.toggle("reveal-flash");
-        flashes++;
-        if(flashes>=8){
-          parentCard.classList.remove("reveal-flash");
-          status.textContent="";
-          summaryEl.innerHTML=summary;
-          next.disabled=!canEnable();
-          onComplete();
-          return;
-        }
-        schedule(flash,150);
-      };
-      if(remaining>=1200){summaryEl.innerHTML=summary;next.disabled=!canEnable();onComplete();return;}
-      for(let index=0;index<flashes;index++)parentCard.classList.toggle("reveal-flash");
-      if(flashes>=8){parentCard.classList.remove("reveal-flash");summaryEl.innerHTML=summary;next.disabled=!canEnable();onComplete();return;}
-      schedule(flash,Math.max(0,150-(Math.max(0,remaining)%150)));
+      cards[parentIndex]?.classList.add("reveal-parent");
+      status.textContent="";
+      summaryEl.innerHTML=summary;
+      next.disabled=!canEnable();
+      onComplete();
     };
-    if(safeElapsed>=totalDuration){clearCards(cards);cards[parentIndex].classList.add("reveal-parent");summaryEl.innerHTML=summary;next.disabled=!canEnable();onComplete();return;}
-    if(safeElapsed>=movementDuration){clearCards(cards);cards[parentIndex].classList.add("reveal-parent");finish(safeElapsed-movementDuration);return;}
+    const playFlashesUntilEnd=()=>{
+      if(completed)return;
+      const currentElapsed=Math.max(0,Date.now()-startedAt);
+      if(currentElapsed>=totalDuration){complete();return;}
+      clearCards(cards);
+      cards[parentIndex]?.classList.add("reveal-parent");
+      cards[parentIndex]?.classList.toggle("reveal-flash");
+      schedule(playFlashesUntilEnd,Math.min(150,totalDuration-currentElapsed));
+    };
+    if(safeElapsed>=totalDuration){complete();return;}
+    if(safeElapsed>=movementDuration){
+      playFlashesUntilEnd();
+      return;
+    }
     let elapsed=0,step=0;
     while(step<delays.length&&elapsed+Number(delays[step])<=safeElapsed){elapsed+=Number(delays[step]);step++;}
     showStep(step);
     schedule(()=>{
       let currentStep=step;
       const advance=()=>{
-        if(currentStep>=sequence.length-1){finish(0);return;}
+        if(completed)return;
+        if(currentStep>=sequence.length-1){playFlashesUntilEnd();return;}
         currentStep++;
         showStep(currentStep);
         schedule(advance,delays[currentStep]||0);
