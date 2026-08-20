@@ -400,30 +400,30 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 #host-form[hidden], #join-form[hidden], #single-device-setup[hidden], #multiplayer-setup[hidden] { display: none; }
 
 /* 通信対戦：ひそめごと開帳 */
-.result-screen[data-screen="result-open"] {
+.result-screen[data-screen="result-open"].is-multiplayer-reveal {
   padding-top: clamp(18px, 5vw, 30px);
   padding-bottom: clamp(18px, 5vw, 30px);
 }
-.result-screen[data-screen="result-open"] #result-open-card-area {
+.result-screen[data-screen="result-open"].is-multiplayer-reveal #result-open-card-area {
   margin: 4px 0 12px;
 }
-.result-screen[data-screen="result-open"] #result-open-card-area img {
+.result-screen[data-screen="result-open"].is-multiplayer-reveal #result-open-card-area img {
   max-height: min(25vh, calc(100dvh - 300px));
 }
-.result-screen[data-screen="result-open"] #selection-summary {
+.result-screen[data-screen="result-open"].is-multiplayer-reveal #selection-summary {
   gap: 7px;
   margin: 0 0 14px;
 }
-.result-screen[data-screen="result-open"] #selection-summary .vote-card {
+.result-screen[data-screen="result-open"].is-multiplayer-reveal #selection-summary .vote-card {
   padding: 7px 9px;
   border-radius: 10px;
 }
-.result-screen[data-screen="result-open"] #selection-summary .vote-card .word {
+.result-screen[data-screen="result-open"].is-multiplayer-reveal #selection-summary .vote-card .word {
   padding: 10px 12px;
   font-size: .95rem;
 }
-.result-screen[data-screen="result-open"] #selection-summary .vote-count,
-.result-screen[data-screen="result-open"] #selection-summary .voters {
+.result-screen[data-screen="result-open"].is-multiplayer-reveal #selection-summary .vote-count,
+.result-screen[data-screen="result-open"].is-multiplayer-reveal #selection-summary .voters {
   display: inline;
   font-size: .85rem;
 }

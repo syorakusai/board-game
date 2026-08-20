@@ -286,6 +286,7 @@ async function renderWaiting(room) {
     else if (room.round?.phase === "reveal" || room.round?.phase === "result") enterRevealScreen(room);
     else if (room.round?.phase === "parent-word") enterParentWordScreen(room);
     else enterDrawScreen(room);
+    reevaluateAutomaticTransition(room);
   }
 }
 
@@ -493,11 +494,13 @@ async function maybeAdvanceToReveal(room, answersSnapshot=null) {
   phaseTransitionPending=true;
   try {
     const answers=answersSnapshot||((await get(ref(window.__firebaseDatabase,answerRoundPath(roomId,currentRoundNumber(room)))).val())||{});
-    const publicAnswers={"0":{},"1":{},"2":{},"3":{}};
+    const publicAnswers={};
     for(const child of children){
       const candidateIndex=Number(answers?.[child.uid]?.candidateIndex);
       if(!Number.isInteger(candidateIndex)||candidateIndex<0||candidateIndex>3)return;
-      publicAnswers[String(candidateIndex)][child.uid]=true;
+      const candidateKey=String(candidateIndex);
+      if(!publicAnswers[candidateKey])publicAnswers[candidateKey]={};
+      publicAnswers[candidateKey][child.uid]=true;
     }
     await update(ref(window.__firebaseDatabase,roomPath(roomId)+"/round"),{
       phase:"reveal",
@@ -513,6 +516,8 @@ async function maybeAdvanceToReveal(room, answersSnapshot=null) {
 function enterRevealScreen(room) {
   const round=room.round||{}, words=Array.isArray(room.round?.publicWords)?room.round.publicWords:[], isParent=room.parentUid===currentUser?.uid;
   const parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親";
+  const revealScreen=document.querySelector('[data-screen="result-open"]');
+  revealScreen?.classList.add("is-multiplayer-reveal");
   show("result-open"); renderPlayerBar(room,"result-open");
   const title=roundTitleRow("result-open")?.querySelector("[data-round-title]");
   if(title)title.textContent=roundLabel(room)+"　ひそめごと開帳";
@@ -526,9 +531,24 @@ function enterRevealScreen(room) {
   const button=$("#result-open-button");
   button.hidden=!isParent;
   button.disabled=!isParent||!canProgress(room)||Boolean(round.revealCompletedAt);
-  button.onclick=isParent?completeReveal:null;
+  window.__restoreMultiplayerRevealButton?.();
+  button.removeEventListener("click",window.__singleResultOpenHandler);
+  button.removeEventListener("click",completeReveal);
+  if(isParent)button.addEventListener("click",completeReveal);
   if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。");
   else setRoundMessage("全員の記帳が完了しました。"+parentName+"さん、ひそめごとを開帳してください。");
+}
+window.__restoreMultiplayerRevealButton=()=>{
+  const button=$("#result-open-button");
+  if(!button)return;
+  button.removeEventListener("click",completeReveal);
+  button.removeEventListener("click",window.__singleResultOpenHandler);
+  if(window.__singleResultOpenHandler)button.addEventListener("click",window.__singleResultOpenHandler);
+};
+function reevaluateAutomaticTransition(room){
+  if(!room||roomEnded(room)||disconnectedPlayers(room).length)return;
+  if(room.round?.phase==="discussion")void maybeAdvanceToAnswer(room);
+  else if(room.round?.phase==="answer")void maybeAdvanceToReveal(room);
 }
 async function completeReveal() {
   const room=latestRoom;
@@ -646,6 +666,8 @@ function clearRoomSession() {
   answerSubscriptionKey = "";
   answerSummarySubscriptionKey = "";
   parentSecret = null;
+  document.querySelector('[data-screen="result-open"]')?.classList.remove("is-multiplayer-reveal");
+  window.__restoreMultiplayerRevealButton?.();
   stopPresence();
   latestRoom = null;
   roomId = "";

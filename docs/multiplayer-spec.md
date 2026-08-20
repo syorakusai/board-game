@@ -113,7 +113,7 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 ラウンド開始後の画面では、カード上に文章を置かない。進行状況・全員へ伝える案内は固定ヘッダー内のメッセージバーへ表示し、本人だけに必要な補足がある場合だけカード周辺本文を表示する。本文がない画面でも、カード、候補、操作ボタンなどの画面要素は通常どおり表示する。
 
 - `○○さん` は、そのラウンドの親の名前を表す。
-- 切断中は通常の進行メッセージより、切断者と復帰待ちを示すメッセージを優先する。宴終了時は、宴終了メッセージを最優先とする。
+- 切断中は名前パネルの下段に「切断中」と表示する。メッセージバーには切断情報を重複表示せず、その画面本来の進行メッセージを維持する。切断中は進行操作だけを停止する。宴終了時は、宴終了メッセージを最優先とする。
 - 宴の推理では、親も会話で子の質問に受け答えする。親・子ともに同じメッセージバー文言を表示する。
 - カード周辺本文の配置は、対応する1台版の既存画面構成を維持する。通信版だけの都合でカード位置・本文位置を変更しない。
 - 操作主体でないプレイヤーには、その工程の入力欄・候補選択・進行ボタンを表示しない。無効化した待機用ボタンも表示しない。ただし札選びの子には、操作不可の山札だけを表示する。
@@ -236,7 +236,7 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 
 1. **札選び**（操作：そのラウンドの親）：開始時の公開部屋には `round.number` と `round.phase: draw` を保存する。使用済みカードがない開始時は `round.usedCardIds` を保存しない。親だけが山札からカードを引き、`round.phase` を `draw` から `parent-word` へ更新するときに、`round.cardId`、`round.cardImage`、`round.usedCardIds` を保存する。`round.cardId` は数値、`round.usedCardIds` の子キーは文字列として照合する。親の公開書込み先は `rooms/{roomId}/round` に限定する。カードを引いたら親のひそめごとへ進む。切断者がいる間は誰も操作できない。
 2. **親のひそめごと**（操作：そのラウンドの親）：カード画像は全員へ公開する。公式ワード3個は親だけが見る。子にはカードと待機表示だけを見せる。子は、親がどこに注目して親ワードを考えているかを想像したり、会話で親へプレッシャーをかけたりできる。親ワード確定前に、公式ワード3個を子の端末へ送信・保存・表示しない。親は親ワードを入力して「ひそめる」で確定し、直ちに宴の推理へ進める。「ひそめる」の下には「もう一度引く」を置く。これを押すと札選びへ戻り、引いた札を使用済みのまま別の札を引く。
-3. **宴の推理**（操作：子のみ）：親ワード確定時に、公式ワード3個と親ワード1個をシャッフルして全員へ公開し、独立したお披露目画面を挟まず宴の推理画面へ遷移する。同時に、部屋作成時に設定した推理時間のカウントダウンを開始する。全員で会話しながら推理する。子はタイムアップを待たず「推理完了」を選べる。名前パネルには親・各子の推理状態を表示する。全員の子が推理完了、またはタイムアップで推理結果の記帳へ進む。親はこの工程の進行操作をしない。現時点では、4語公開とタイマー開始までを実装済みとする。
+3. **宴の推理**（操作：子のみ）：親ワード確定時に、公式ワード3個と親ワード1個をシャッフルして全員へ公開し、独立したお披露目画面を挟まず宴の推理画面へ遷移する。同時に、部屋作成時に設定した推理時間のカウントダウンを開始する。全員で会話しながら推理する。子はタイムアップを待たず「推理完了」を選べる。名前パネルには親・各子の推理状態を表示する。全員の子が推理完了、またはタイムアップで推理結果の記帳へ進む。親はこの工程の進行操作をしない。この工程は実装済みである。
 4. **推理結果の記帳**（操作：子のみ）：子は各端末で同時に親ワードだと思う候補を1つ選ぶ。回答時間は無制限とし、1台版のように順番に記帳する方式にはしない。名前パネルには子ごとに「回答中」「完了」を表示する。全員の子が回答完了するまで、他の子の回答は公開しない。
 5. **ひそめごと開帳**（操作：そのラウンドの親）：全員の子が回答を完了したら、親が各子の回答を読み取り、`round.publicAnswers` に候補番号ごとのUID集合を保存し、`round.phase` を `reveal` に更新する。この更新を検知した全端末が自動でひそめごと開帳画面へ進む。画面にはカード、推理時と同じ順番の4ワード、各ワードの票数と選択者名を表示する。候補番号、親ワードの位置、正誤、得点はこの時点では表示しない。親だけに「ひそめごと開帳」ボタンを表示し、子には待機用ボタンを表示しない。親がボタンを押すと `round.phase` を `result` に更新するが、宴の顛末画面自体は今回実装しない。
 6. **宴の顛末**（操作：そのラウンドの親）：ルーレットで親ワードと各子の回答結果を全員へ公開する。「得点を確認」を押すと得点処理へ進む。
@@ -272,7 +272,7 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 - 宴終了状態と退出者
 - 各プレイヤーの接続状態
 
-秘密情報は、その工程で閲覧権限がある端末だけに表示します。具体的なデータ構造とルールは実装前に確定します。
+秘密情報は、その工程で閲覧権限がある端末だけに表示します。具体的なデータ構造とFirebase Rules全文は、本書および [`firebase-rules.json`](firebase-rules.json) に記載します。
 
 ## 12. 実装順序
 
@@ -284,42 +284,129 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 
 ## 13. Firebaseルール
 
-復帰基盤（待機室〜札選び）用のRealtime Databaseルールを2026-08-14に反映済みです。
+現在の実装範囲（札選び、宴の推理、推理結果の記帳、全子回答完了後のひそめごと開帳、開帳操作）に必要なRealtime Database Rulesを管理する。Firebase Consoleへの反映は別操作で行う。
 
-- 各プレイヤーは、開始後も自分の `presence/{uid}/{connectionId}` だけを追加・削除できる
-- 同一UIDの複数タブ・複数接続は、接続IDごとに管理する
-- 開始後、参加者本人は `endedBy` を最初の1件だけ作成できる
-- 待機室で参加者が戻る場合、`players/{uid}` と対応する `nameIndex/{nameKey}` を同一更新で削除できる
-- 参加者は部屋設定・席順・他人の参加情報を変更できない
+Rulesを更新した場合は、ルートの `firebase-rules.json` と `docs/firebase-rules.json` を同じ内容へ更新し、この仕様書にも更新後のRules全文を、Firebase Consoleへそのまま貼り付けられる有効なJSONコードブロックとして同じコミットで記載する。要約・差分だけの記載は禁止する。
 
-札選びから推理結果の記帳までを含む置換ルール全文は [`firebase-rules.json`](firebase-rules.json) として管理する。Firebase Consoleへの反映は別操作で行う。
-
-Firebase Realtime Database Rulesを更新した場合は、仕様書にその時点の [`firebase-rules.json`](firebase-rules.json) 全文を、Firebase Consoleへそのまま貼り付けられる有効なJSONコードブロックとして必ず記載する。要約・差分だけの記載は禁止する。
-
-札選びの親専用データ保存または公開ラウンド更新がFirebaseルールで拒否された場合は、親端末に拒否された操作を表示し、公開工程へは進めない。
-
-今後の工程を追加する際も、同ファイルの置換用ルール全文を更新し、少なくとも以下を満たします。
-
-- 各自が自分の接続状態と退出意思だけを更新できる
-- 参加者が部屋設定や他人の情報を変更できない
-- 誰かの退出による宴終了を全端末が確認できる
-- 主催者不在でも、参加者本人の正当な退出記録が残る
-- 秘密情報を権限のない端末へ公開しない
-- 現在の親は `round` だけを更新でき、`players`、`seats`、`hostUid`、他人の情報は変更できない
-- 不正な画面進行や他人の回答・得点変更を防ぐ
+```json
+{
+  "rules": {
+    "firebase-test": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() ? newData.child('hostUid').val() === auth.uid : data.child('hostUid').val() === auth.uid)",
+        "round": {
+          ".write": "auth != null && data.parent().child('status').val() === 'started' && data.parent().child('parentUid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['number', 'phase']) && ((!data.exists() && newData.parent().child('hostUid').val() === auth.uid && newData.parent().child('status').val() === 'started' && newData.child('phase').val() === 'draw' && !newData.child('cardId').exists() && !newData.child('cardImage').exists() && !newData.child('usedCardIds').exists()) || (data.exists() && newData.child('number').val() === data.child('number').val() && ((data.child('phase').val() === 'draw' && newData.child('phase').val() === 'parent-word' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage']) && newData.child('cardImage').isString() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() === true) || (data.child('phase').val() === 'parent-word' && newData.child('phase').val() === 'draw' && !newData.child('cardId').exists() && !newData.child('cardImage').exists()) || (data.child('phase').val() === 'parent-word' && newData.child('phase').val() === 'discussion' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'discussionStartedAt', 'discussionDurationSeconds']) && newData.child('cardId').val() === data.child('cardId').val() && newData.child('cardImage').val() === data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() === true && newData.child('publicWords').hasChildren(['0', '1', '2', '3']) && !newData.child('publicWords').child('4').exists() && newData.child('publicWords').child('0').isString() && newData.child('publicWords').child('1').isString() && newData.child('publicWords').child('2').isString() && newData.child('publicWords').child('3').isString() && newData.child('discussionStartedAt').isNumber() && newData.child('discussionDurationSeconds').val() === newData.parent().child('discussionMinutes').val() * 60) || (data.child('phase').val() === 'discussion' && newData.child('phase').val() === 'answer' && newData.child('cardId').val() === data.child('cardId').val() && newData.child('cardImage').val() === data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() === true && newData.child('publicWords').hasChildren(['0', '1', '2', '3']) && !newData.child('publicWords').child('4').exists() && newData.child('publicWords').child('0').isString() && newData.child('publicWords').child('1').isString() && newData.child('publicWords').child('2').isString() && newData.child('publicWords').child('3').isString() && newData.child('answerStartedAt').isNumber()) || (data.child('phase').val() === 'answer' && newData.child('phase').val() === 'reveal' && newData.hasChildren(['number', 'phase', 'usedCardIds', 'cardId', 'cardImage', 'publicWords', 'answerStartedAt', 'publicAnswers', 'revealStartedAt']) && newData.child('cardId').val() === data.child('cardId').val() && newData.child('cardImage').val() === data.child('cardImage').val() && newData.child('usedCardIds').child(newData.child('cardId').val() + '').val() === true && newData.child('publicWords').hasChildren(['0', '1', '2', '3']) && newData.child('publicAnswers').hasChildren() && !newData.child('publicAnswers').child('4').exists() && newData.child('revealStartedAt').isNumber()) || (data.child('phase').val() === 'reveal' && newData.child('phase').val() === 'result' && newData.hasChildren(['number', 'phase', 'publicAnswers', 'revealCompletedAt']) && newData.child('publicAnswers').hasChildren() && newData.child('revealCompletedAt').isNumber()))))",
+          "publicWords": {
+            "$index": {
+              ".validate": "($index === '0' || $index === '1' || $index === '2' || $index === '3') && newData.isString()"
+            }
+          },
+          "publicAnswers": {
+            "$candidateIndex": {
+              "$uid": {
+                ".validate": "($candidateIndex === '0' || $candidateIndex === '1' || $candidateIndex === '2' || $candidateIndex === '3') && newData.val() === true && root.child('rooms').child($roomId).child('players').child($uid).exists() && $uid !== root.child('rooms').child($roomId).child('parentUid').val() && (root.child('roomAnswers').child($roomId).child(root.child('rooms').child($roomId).child('round').child('number').val() + '').child($uid).child('candidateIndex').val() + '') === $candidateIndex"
+              },
+              ".validate": "($candidateIndex === '0' || $candidateIndex === '1' || $candidateIndex === '2' || $candidateIndex === '3') && newData.hasChildren()"
+            }
+          }
+        },
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('status').val() === 'waiting' && ((!data.exists() && newData.exists()) || (data.exists() && !newData.exists() && !newData.parent().parent().child('nameIndex').child(data.child('nameKey').val()).exists()))",
+            ".validate": "newData.hasChildren(['name', 'nameKey', 'joinedAt']) && newData.parent().parent().child('nameIndex').child(newData.child('nameKey').val()).val() === auth.uid"
+          }
+        },
+        "nameIndex": {
+          "$nameKey": {
+            ".write": "auth != null && root.child('rooms').child($roomId).child('status').val() === 'waiting' && ((!data.exists() && newData.val() === auth.uid && newData.parent().parent().child('players').child(auth.uid).child('nameKey').val() === $nameKey) || (data.exists() && data.val() === auth.uid && !newData.exists() && !newData.parent().parent().child('players').child(auth.uid).exists()))",
+            ".validate": "newData.parent().parent().child('players').child(auth.uid).child('nameKey').val() === $nameKey"
+          }
+        },
+        "presence": {
+          "$uid": {
+            "$connectionId": {
+              ".write": "auth != null && auth.uid === $uid && (!newData.exists() || root.child('rooms').child($roomId).child('players').child(auth.uid).exists())",
+              ".validate": "newData.val() === true"
+            }
+          }
+        },
+        "endedBy": {
+          ".write": "auth != null && !data.exists() && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('players').child(auth.uid).exists() && newData.child('uid').val() === auth.uid && newData.child('name').val() === root.child('rooms').child($roomId).child('players').child(auth.uid).child('name').val()",
+          ".validate": "newData.hasChildren(['uid', 'name', 'at']) && newData.child('uid').val() === auth.uid && newData.child('name').val() === root.child('rooms').child($roomId).child('players').child(auth.uid).child('name').val() && newData.child('at').isNumber()"
+        }
+      }
+    },
+    "roomSecrets": {
+      "$roomId": {
+        "rounds": {
+          "$roundNumber": {
+            "$parentUid": {
+              ".read": "auth != null && auth.uid === $parentUid",
+              ".write": "auth != null && auth.uid === $parentUid && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('parentUid').val() === auth.uid",
+              ".validate": "newData.hasChildren(['officialWords', 'cardId', 'createdAt']) && newData.child('createdAt').isNumber()"
+            }
+          }
+        }
+      }
+    },
+    "roomProgress": {
+      "$roomId": {
+        "rounds": {
+          "$roundNumber": {
+            ".read": "auth != null && root.child('rooms').child($roomId).child('players').child(auth.uid).exists()",
+            "discussion": {
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() === 'discussion' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
+                ".validate": "newData.val() === true"
+              }
+            },
+            "answers": {
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() === 'answer' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
+                ".validate": "newData.val() === true"
+              }
+            }
+          }
+        }
+      }
+    },
+    "roomAnswers": {
+      "$roomId": {
+        "rounds": {
+          "$roundNumber": {
+            "$uid": {
+              ".read": "auth != null && (auth.uid === $uid || root.child('rooms').child($roomId).child('parentUid').val() === auth.uid)",
+              ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('status').val() === 'started' && root.child('rooms').child($roomId).child('round').child('phase').val() === 'answer' && root.child('rooms').child($roomId).child('parentUid').val() !== auth.uid",
+              ".validate": "newData.hasChildren(['candidateIndex', 'createdAt']) && newData.child('candidateIndex').isNumber() && newData.child('candidateIndex').val() >= 0 && newData.child('candidateIndex').val() <= 3 && newData.child('createdAt').isNumber()"
+            },
+            ".read": "auth != null && root.child('rooms').child($roomId).child('parentUid').val() === auth.uid && root.child('rooms').child($roomId).child('round').child('phase').val() === 'answer'"
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 ## 14. 未確定事項
 
-- 通常時・切断時・終了時の正式文言
-- Firebase Realtime Databaseの具体的なデータ構造とルール全文
-- プレゼンス構造、複数タブ・同一UIDの複数接続
-- 各工程の更新権限と秘密情報の保存・閲覧制御
-- 切断検知直後の表示揺れを抑える方法
+- 宴の顛末以降の通信対戦画面、得点処理、次ラウンド、勝利画面
+- 1時間以上経過した宴の自動退席・自動終了の最終条件
+- 複数タブ・同一UIDの複数接続を対象とした追加の復帰UX
 
 ## 15. 今回実装しないもの
 
 - 切断者を除外した続行
 - 残り2人以上の場合の続行
 - 主催者移譲
-- 一定時間後の自動退出・自動終了
+- 一定時間後の自動退出・自動終了（条件確定前）
 - 代替プレイヤー・Bot
+- 宴の顛末、ルーレット、得点処理、次ラウンド、勝利画面
