@@ -203,6 +203,7 @@ function setRoundMessage(message) {
 }
 
 function playerPanelState(room, uid, disconnected) {
+  if (roomEnded(room) && room.endedBy?.uid === uid) return { label: "退席", className: "is-complete" };
   if (disconnected.has(uid)) return { label: "切断中", className: "is-disconnected" };
   const phase = room?.round?.phase;
   const isParent = uid === room?.parentUid;
@@ -343,7 +344,6 @@ function enterDrawScreen(room) {
   show("round"); renderPlayerBar(room, "round");const title=roundTitleRow("round")?.querySelector("[data-round-title]");if(title)title.textContent=`${roundLabel(room)}　札選び`;$("#round-title").textContent="";
   $("#round-card-message").textContent="";$("#round-card-message").hidden=true;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
-  else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
   else setRoundMessage(isParent?`${parentName}さん、伏せ札の山から1枚引いてください。`:`${parentName}さんが札を選んでいます。`);
   const enabled=canProgress(room)&&isParent, deck=$("#deck-stack-image"), button=$("#round-start-button");
   button.hidden=!isParent;
@@ -378,7 +378,6 @@ function enterParentWordScreen(room) {
   $("#parent-redraw-button").hidden=!isParent;
   $("#parent-error").textContent="";
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
-  else if(disconnected.length)setRoundMessage(`${disconnected.map(player=>player.name).join("、")}が切断中。復帰待ち`);
   else setRoundMessage(isParent?(ready?"公式ワード3つを確認し、親ワードをひそめてください。":"親専用の札情報を読み込んでいます。"):`${playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親"}さんがひそめごとを考えています。`);
   $("#parent-submit").onclick=hasConfirmedWord?publishParentWords:submitParentWord;
   $("#parent-redraw-button").onclick=redrawMultiplayerCard;
@@ -406,7 +405,6 @@ function enterDiscussionScreen(room) {
   $("#discussion-end").disabled=!canProgress(room);
   $("#discussion-end").onclick=completeDiscussion;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
-  else if(disconnectedPlayers(room).length)setRoundMessage(`${disconnectedPlayers(room).map(player=>player.name).join("、")}が切断中。復帰待ち`);
   else setRoundMessage(isChild?"会話しながら、親がひそめたワードを推理してください。":"子が親ワードを推理しています。高貴に振る舞いましょう。");
   const startedAt=Number(round.discussionStartedAt), duration=Number(round.discussionDurationSeconds);
   const timerKey=`${round.number}:${startedAt}:${duration}`;
@@ -462,7 +460,6 @@ function enterAnswerScreen(room) {
   if(!isParent)$("#answer-words").querySelectorAll("[data-answer-index]").forEach(button=>button.onclick=()=>{selectedCandidateIndex=Number(button.dataset.answerIndex);enterAnswerScreen(latestRoom);});
   submit.onclick=submitAnswer;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
-  else if(disconnectedPlayers(room).length)setRoundMessage(`${disconnectedPlayers(room).map(player=>player.name).join("、")}が切断中。復帰待ち`);
   else setRoundMessage(isParent?"子が推理結果を記帳しています。":"親ワードだと思う言葉を1つ選んでください。");
 }
 async function submitAnswer() {
