@@ -627,7 +627,7 @@ function enterScoreScreen(room) {
   const title=roundTitleRow("scores")?.querySelector("[data-round-title]");
   if(title)title.textContent=roundLabel(room)+"　得点の記録";
   $("#score-title").textContent=multiplayerScoreTitle(room);
-  $("#score-summary").innerHTML=room.seats.map(uid=>{const player=room.players?.[uid]||{};return `<div class="player-item"><span>${escape(player.name||"不明")}</span><span>現在の${Number(player.score)||0}ポイント</span></div>`;}).join("");
+  $("#score-summary").innerHTML=room.seats.map(uid=>{const player=room.players?.[uid]||{};return `<div class="player-item"><span>${escape(player.name||"不明")}</span><span>${Number(player.score)||0}ポイント</span></div>`;}).join("");
   const next=$("#next-round");
   next.textContent="次の席へ"; next.hidden=!isParent; next.onclick=null;
   next.removeEventListener("click",window.__singleNextRoundHandler);
