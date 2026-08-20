@@ -407,9 +407,6 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .result-screen[data-screen="result-open"].is-multiplayer-reveal #result-open-card-area {
   margin: 4px 0 12px;
 }
-.result-screen[data-screen="result-open"].is-multiplayer-reveal #result-open-card-area img {
-  max-height: min(25vh, calc(100dvh - 300px));
-}
 .result-screen[data-screen="result-open"].is-multiplayer-reveal #selection-summary {
   gap: 7px;
   margin: 0 0 14px;
