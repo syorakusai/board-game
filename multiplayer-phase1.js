@@ -38,6 +38,8 @@ let resultRouletteKey = "";
 let resultVisibilityHandler = null;
 let phaseTransitionPending = false;
 let observedRoundKey = "";
+let parentWordError = "";
+let parentWordErrorKey = "";
 let storedResumeAvailable = false;
 let setupMode = "single";
 let multiplayerSetupMode = "host";
@@ -49,6 +51,17 @@ const secretPath = (id, roundNumber, uid) => `roomSecrets/${id}/rounds/${roundNu
 const progressPath = (id, roundNumber) => `roomProgress/${id}/rounds/${roundNumber}`;
 const answerRoundPath = (id, roundNumber) => `roomAnswers/${id}/rounds/${roundNumber}`;
 const answerPath = (id, roundNumber, uid) => `${answerRoundPath(id, roundNumber)}/${uid}`;
+const parentWordErrorKeyFor = room => `${roomId}:${currentRoundNumber(room)}:${room?.round?.cardId ?? ""}`;
+function setParentWordError(room, message) {
+  parentWordErrorKey = parentWordErrorKeyFor(room);
+  parentWordError = message;
+  $("#parent-error").textContent = message;
+}
+function clearParentWordError() {
+  parentWordError = "";
+  parentWordErrorKey = "";
+  $("#parent-error").textContent = "";
+}
 const show = name => {
   if (window.showGameScreen) { window.showGameScreen(name); return; }
   document.querySelectorAll("[data-screen]").forEach(screen => screen.classList.toggle("is-hidden", screen.dataset.screen !== name));
@@ -431,7 +444,8 @@ function enterParentWordScreen(room) {
   $("#parent-submit").textContent="ひそめる";
   $("#parent-redraw-button").disabled=!isParent||!canProgress(room);
   $("#parent-redraw-button").hidden=!isParent;
-  $("#parent-error").textContent="";
+  if(parentWordErrorKey!==parentWordErrorKeyFor(room)){parentWordError="";parentWordErrorKey="";}
+  $("#parent-error").textContent=parentWordError;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else setRoundMessage(isParent?(ready?"公式ワード3つを確認し、親ワードをひそめてください。":"親専用の札情報を読み込んでいます。"):`${playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親"}さんがひそめごとを考えています。`);
   $("#parent-submit").onclick=hasConfirmedWord?publishParentWords:submitParentWord;
@@ -728,7 +742,7 @@ async function completeScore() {
   } finally { phaseTransitionPending=false; }
 }
 function resetRoundLocalState() {
-  parentSecret=null; roundProgress={}; ownAnswer=null; selectedCandidateIndex=null;
+  parentSecret=null; parentWordError=""; parentWordErrorKey=""; roundProgress={}; ownAnswer=null; selectedCandidateIndex=null;
   progressUnsubscribe?.(); progressUnsubscribe=null; progressSubscriptionKey="";
   answerUnsubscribe?.(); answerUnsubscribe=null; answerSubscriptionKey="";
   answerSummaryUnsubscribe?.(); answerSummaryUnsubscribe=null; answerSummarySubscriptionKey="";
@@ -792,25 +806,28 @@ async function drawMultiplayerCard() {
 async function redrawMultiplayerCard() {
   const room=latestRoom;
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="parent-word"||!canProgress(room))return;
+  clearParentWordError();
   try { await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"draw",cardId:null,cardImage:null}); }
-  catch(error) { $("#parent-error").textContent=`札を引き直せませんでした。${error.message||""}`; }
+  catch(error) { setParentWordError(room,`札を引き直せませんでした。${error.message||""}`); }
 }
 async function submitParentWord() {
   const room=latestRoom, value=$("#parent-word").value.trim();
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="parent-word"||!canProgress(room))return;
-  if(!value){$("#parent-error").textContent="親ワードを入力してください。";return;}
-  if(parentSecret?.officialWords?.includes(value)){$("#parent-error").textContent="公式ワードとは別の言葉を入力してください。";return;}
+  if(!value){setParentWordError(room,"親ワードを入力してください。");return;}
+  if(parentSecret?.officialWords?.includes(value)){setParentWordError(room,"公式ワードとは別の言葉を入力してください。");return;}
+  clearParentWordError();
   try {
     await update(ref(window.__firebaseDatabase,secretPath(roomId,currentRoundNumber(room),currentUser.uid)),{parentWord:value,parentWordConfirmedAt:Date.now()});
     parentSecret={...(parentSecret||{}),parentWord:value};
     await publishParentWords();
   }
-  catch(error) { $("#parent-error").textContent=`親ワードをひそめられませんでした。${error.message||""}`; }
+  catch(error) { setParentWordError(room,`親ワードをひそめられませんでした。${error.message||""}`); }
 }
 async function publishParentWords() {
   const room=latestRoom, secret=parentSecret;
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="parent-word"||!canProgress(room))return;
-  if(!Array.isArray(secret?.officialWords)||!secret?.parentWord){$("#parent-error").textContent="親ワードを確認できません。";return;}
+  if(!Array.isArray(secret?.officialWords)||!secret?.parentWord){setParentWordError(room,"親ワードを確認できません。");return;}
+  clearParentWordError();
   try {
     const publicWords=Array.isArray(secret.publicWords)?secret.publicWords:shuffledWords([...secret.officialWords,secret.parentWord]);
     const parentCandidateIndex=Number.isInteger(secret.parentCandidateIndex)?secret.parentCandidateIndex:publicWords.indexOf(secret.parentWord);
@@ -818,11 +835,13 @@ async function publishParentWords() {
     if(parentCandidateIndex<0)throw Error("親ワードの候補位置を作成できませんでした。");
     if(!Number.isInteger(discussionDurationSeconds)||discussionDurationSeconds<=0)throw Error("推理時間を確認できませんでした。");
     if(!Array.isArray(secret.publicWords)||!Number.isInteger(secret.parentCandidateIndex)){
-      await update(ref(window.__firebaseDatabase,secretPath(roomId,currentRoundNumber(room),currentUser.uid)),{publicWords,parentCandidateIndex});
+      try { await update(ref(window.__firebaseDatabase,secretPath(roomId,currentRoundNumber(room),currentUser.uid)),{publicWords,parentCandidateIndex}); }
+      catch(error) { throw Error(`公開語を秘密情報へ保存できませんでした。${error.message||""}`); }
       parentSecret={...secret,publicWords,parentCandidateIndex};
     }
-    await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"discussion",publicWords,discussionStartedAt:serverTimestamp(),discussionDurationSeconds});
-  } catch(error) { $("#parent-error").textContent=`言葉をお披露目できませんでした。${error.message||""}`; }
+    try { await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"discussion",publicWords,discussionStartedAt:serverTimestamp(),discussionDurationSeconds}); }
+    catch(error) { throw Error(`宴の推理開始を保存できませんでした。${error.message||""}`); }
+  } catch(error) { setParentWordError(room,`言葉をお披露目できませんでした。${error.message||""}`); }
 }
 function subscribeRoom(id) {
   subscribeServerClock(window.__firebaseDatabase);
