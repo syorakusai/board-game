@@ -208,7 +208,9 @@ function recordSingleResultHistory(){if(state.history.some(record=>record.round=
 window.__singleResultHistoryHandler=recordSingleResultHistory;
 document.querySelector("#result-next").addEventListener("click",recordSingleResultHistory);
 function returnToTitle(){if(!confirm("ゲームを退出してタイトル画面に戻りますか？\n現在のゲーム内容は失われます。"))return;rouletteController.cancel();clearInterval(state.timer);state.gameSession++;clearPreparedCard();Object.assign(state,{playerCount:0,cardSet:state.cardSet,players:[],order:[],parentIndex:0,card:null,official:[],words:[],parentWord:"",answers:{},answerIndex:0,answerLocked:false,selectedAnswer:"",timer:null,usedCards:new Set(),round:0,handoffNext:"",howtoReturnScreen:"title"});show("title");}
-document.querySelector("#next-round").onclick=()=>{if(document.querySelector("#next-round").dataset.action==="title"){returnToTitle();return;}state.parentIndex=nextParentIndex(state.order,state.parentIndex);startRound();};
+function handleSingleNextRound(){if(document.querySelector("#next-round").dataset.action==="title"){returnToTitle();return;}state.parentIndex=nextParentIndex(state.order,state.parentIndex);startRound();}
+window.__singleNextRoundHandler=handleSingleNextRound;
+document.querySelector("#next-round").onclick=handleSingleNextRound;
 document.querySelector("#final-to-title").onclick=returnToTitle;
 const GAME_EXIT_MESSAGE="ゲームを終了してタイトル画面に戻りますか？\n現在のゲーム内容は失われます。";
 function stopGame(){clearInterval(state.timer);if(confirm(GAME_EXIT_MESSAGE)){location.reload();}}
