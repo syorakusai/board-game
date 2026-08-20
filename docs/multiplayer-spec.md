@@ -286,7 +286,7 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 
 現在の実装範囲（札選び、宴の推理、推理結果の記帳、全子回答完了後のひそめごと開帳、開帳操作）に必要なRealtime Database Rulesを管理する。Firebase Consoleへの反映は別操作で行う。
 
-Rulesを更新した場合は、ルートの `firebase-rules.json` と `docs/firebase-rules.json` を同じ内容へ更新し、この仕様書にも更新後のRules全文を、Firebase Consoleへそのまま貼り付けられる有効なJSONコードブロックとして同じコミットで記載する。要約・差分だけの記載は禁止する。
+Firebase Rulesの正本は、ルートの `firebase-rules.json` だけとする。Rulesを変更する実装では、同じコミットで次の3点を必ず実施する。①ルートの `firebase-rules.json` を更新する。②この仕様書の本節に、更新後のRules全文を有効なJSONコードブロックで記載する。③実装完了の回答本文にも、同じRules全文をFirebase Consoleへそのまま貼り付けられる形で提示する。要約・差分・ファイルへのリンクだけで済ませてはならない。`docs/firebase-rules.json` は作成・更新せず、Rules全文の二重管理を行わない。
 
 ```json
 {
