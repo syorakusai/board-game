@@ -294,6 +294,8 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 
 札選びから推理結果の記帳までを含む置換ルール全文は [`firebase-rules.json`](firebase-rules.json) として管理する。Firebase Consoleへの反映は別操作で行う。
 
+Firebase Realtime Database Rulesを更新した場合は、仕様書にその時点の [`firebase-rules.json`](firebase-rules.json) 全文を、Firebase Consoleへそのまま貼り付けられる有効なJSONコードブロックとして必ず記載する。要約・差分だけの記載は禁止する。
+
 札選びの親専用データ保存または公開ラウンド更新がFirebaseルールで拒否された場合は、親端末に拒否された操作を表示し、公開工程へは進めない。
 
 今後の工程を追加する際も、同ファイルの置換用ルール全文を更新し、少なくとも以下を満たします。
