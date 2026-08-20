@@ -103,7 +103,7 @@ export function createRouletteController(){
       const parentCard=cards[parentIndex];
       clearCards(cards);
       parentCard.classList.add("reveal-parent");
-      let flashes=Math.max(0,Math.floor((1200-Math.max(0,remaining))/150));
+      let flashes=Math.min(8,Math.floor(Math.max(0,remaining)/150)+1);
       const flash=()=>{
         parentCard.classList.toggle("reveal-flash");
         flashes++;
@@ -119,6 +119,7 @@ export function createRouletteController(){
       };
       if(remaining>=1200){summaryEl.innerHTML=summary;next.disabled=!canEnable();onComplete();return;}
       for(let index=0;index<flashes;index++)parentCard.classList.toggle("reveal-flash");
+      if(flashes>=8){parentCard.classList.remove("reveal-flash");summaryEl.innerHTML=summary;next.disabled=!canEnable();onComplete();return;}
       schedule(flash,Math.max(0,150-(Math.max(0,remaining)%150)));
     };
     if(safeElapsed>=totalDuration){clearCards(cards);cards[parentIndex].classList.add("reveal-parent");summaryEl.innerHTML=summary;next.disabled=!canEnable();onComplete();return;}
