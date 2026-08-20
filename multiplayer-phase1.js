@@ -590,6 +590,7 @@ function enterResultScreen(room) {
   next.disabled=!isParent||!finished||!canProgress(room);
   window.__restoreMultiplayerResultButton?.();
   if(isParent){
+    next.onclick=null;
     next.removeEventListener("click",completeScore);
     next.removeEventListener("click",window.__singleResultNextHandler);
     next.removeEventListener("click",window.__singleResultHistoryHandler);
@@ -600,7 +601,7 @@ function enterResultScreen(room) {
   const cards=[...document.querySelectorAll("#result-votes .vote-card")], controller=window.__rouletteController;
   const key=roomId+":"+currentRoundNumber(room)+":"+String(round.revealCompletedAt)+":"+JSON.stringify(round.roulettePlan||null);
   if(controller&&round.roulettePlan&&Number(round.revealCompletedAt)){
-    controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed});
+    controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed,canEnable:()=>isParent&&canProgress(latestRoom)&&resultPresentationFinished(latestRoom),onComplete:()=>{if(latestRoom?.round?.phase==="result"){renderPlayerBar(latestRoom,"result");setRoundMessage(roomEnded(latestRoom)?latestRoom.endedBy.name+"が退出したため、宴はお開きとなります。":(playerEntries(latestRoom).find(player=>player.uid===latestRoom.parentUid)?.name||"親")+"さん、得点を確認してください。");}}});
   } else if(finished){
     cards.forEach(card=>card.classList.remove("reveal-checking","reveal-flash"));
     cards[Number(round.parentCandidateIndex)]?.classList.add("reveal-parent");
