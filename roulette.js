@@ -87,7 +87,7 @@ export function createRouletteController(){
     if(!sequence.length||sequence.some(index=>!Number.isInteger(index)||index<0||index>=cards.length)||delays.length!==sequence.length-1){
       status.textContent="ルーレット情報を確認できません。";
       summaryEl.innerHTML=summary;
-      next.disabled=!!next.disabled;
+      next.disabled=!canEnable();
       onComplete();
       return;
     }
