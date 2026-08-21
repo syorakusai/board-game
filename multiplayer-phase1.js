@@ -26,6 +26,10 @@ let discussionTimerRound = "";
 let serverTimeOffset = 0;
 let serverTimeOffsetUnsubscribe = null;
 let serverTimeOffsetDatabase = null;
+let serverTimeOffsetReady = false;
+let serverTimeOffsetReadyPromise = Promise.resolve();
+let resolveServerTimeOffsetReady = null;
+let rejectServerTimeOffsetReady = null;
 let progressUnsubscribe = null;
 let progressSubscriptionKey = "";
 let roundProgress = {};
@@ -36,6 +40,7 @@ let answerSummarySubscriptionKey = "";
 let ownAnswer = null;
 let selectedCandidateIndex = null;
 let resultRouletteKey = "";
+let resultClockWaitKey = "";
 let resultVisibilityHandler = null;
 let phaseTransitionPending = false;
 let observedRoundKey = "";
@@ -424,10 +429,35 @@ function subscribeServerClock(database) {
   if (!database || serverTimeOffsetDatabase === database) return;
   serverTimeOffsetUnsubscribe?.();
   serverTimeOffsetDatabase = database;
-  serverTimeOffsetUnsubscribe = onValue(ref(database, ".info/serverTimeOffset"), snapshot => {
-    const offset = Number(snapshot.val());
-    serverTimeOffset = Number.isFinite(offset) ? offset : 0;
+  serverTimeOffsetReady = false;
+  serverTimeOffsetReadyPromise = new Promise((resolve,reject) => {
+    resolveServerTimeOffsetReady = resolve;
+    rejectServerTimeOffsetReady = reject;
   });
+  serverTimeOffsetUnsubscribe = onValue(
+    ref(database, ".info/serverTimeOffset"),
+    snapshot => {
+      const offset = Number(snapshot.val());
+      serverTimeOffset = Number.isFinite(offset) ? offset : 0;
+      if (!serverTimeOffsetReady) {
+        serverTimeOffsetReady = true;
+        resolveServerTimeOffsetReady?.();
+        resolveServerTimeOffsetReady = null;
+        rejectServerTimeOffsetReady = null;
+      }
+    },
+    error => {
+      if (!serverTimeOffsetReady) {
+        rejectServerTimeOffsetReady?.(error);
+        resolveServerTimeOffsetReady = null;
+        rejectServerTimeOffsetReady = null;
+      }
+    }
+  );
+}
+function waitForServerTimeOffset(database) {
+  subscribeServerClock(database);
+  return serverTimeOffsetReady ? Promise.resolve() : serverTimeOffsetReadyPromise;
 }
 const serverNow = () => Date.now() + serverTimeOffset;
 function discussionTimeLabel(seconds) {
@@ -786,17 +816,53 @@ function enterResultScreen(room) {
   stopResultVisibilitySync();
   startResultVisibilitySync();
   const round=room.round||{}, isParent=room.parentUid===currentUser?.uid;
+  const key=roomId+":"+currentRoundNumber(room)+":"+String(round.revealCompletedAt)+":"+JSON.stringify(round.roulettePlan||null);
+  const renderBase=()=>{
+    document.querySelector('[data-screen="result-open"]')?.classList.remove("is-multiplayer-reveal");
+    show("result");
+    renderPlayerBar(room,"result");
+    const title=roundTitleRow("result")?.querySelector("[data-round-title]");
+    if(title)title.textContent=roundLabel(room)+"　宴の顛末";
+  };
+  if (!serverTimeOffsetReady) {
+    renderBase();
+    $("#result-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
+    renderMultiplayerResultVotes(room);
+    $("#result-parent").textContent="";
+    $("#result-reveal-status").textContent="共有時刻を確認しています。";
+    $("#result-summary").innerHTML="";
+    const next=$("#result-next");
+    next.hidden=!isParent;
+    next.disabled=true;
+    if (resultClockWaitKey !== key) {
+      resultClockWaitKey = key;
+      waitForServerTimeOffset(window.__firebaseDatabase).then(() => {
+        if (latestRoom?.round?.phase === "result") enterResultScreen(latestRoom);
+      }).catch(error => {
+        if (latestRoom?.round?.phase === "result" && resultClockWaitKey === key) {
+          $("#result-reveal-status").textContent="共有時刻を確認できません。"+(error.message || "");
+        }
+      });
+    }
+    return;
+  }
+  resultClockWaitKey = "";
   const finished=resultPresentationFinished(room), elapsed=resultElapsedMs(room);
-  document.querySelector('[data-screen="result-open"]')?.classList.remove("is-multiplayer-reveal");
-  show("result"); renderPlayerBar(room,"result");
-  const title=roundTitleRow("result")?.querySelector("[data-round-title]");
-  if(title)title.textContent=roundLabel(room)+"　宴の顛末";
+  if (!finished && resultRouletteKey === key) {
+    renderBase();
+    const next=$("#result-next");
+    next.hidden=!isParent;
+    next.disabled=true;
+    if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなりました。右上メニューの「退出」から退出してください。");
+    else setRoundMessage("ひそめごとを開帳しています。");
+    return;
+  }
+  renderBase();
   $("#result-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
   renderMultiplayerResultVotes(room);
   $("#result-parent").textContent="";
   $("#result-reveal-status").textContent="";
   const summary=multiplayerResultSummary(room);
-  $("#result-summary").innerHTML=finished?summary:"";
   const next=$("#result-next");
   next.hidden=!isParent;
   next.disabled=!isParent||!finished||!canProgress(room);
@@ -808,18 +874,19 @@ function enterResultScreen(room) {
     next.removeEventListener("click",window.__singleResultHistoryHandler);
     next.addEventListener("click",completeScore);
   }
-  if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。");
+  if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなりました。右上メニューの「退出」から退出してください。");
   else setRoundMessage(finished?((playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親")+"さん、得点を確認してください。"):"ひそめごとを開帳しています。");
   const cards=[...document.querySelectorAll("#result-votes .vote-card")], controller=window.__rouletteController;
-  const key=roomId+":"+currentRoundNumber(room)+":"+String(round.revealCompletedAt)+":"+JSON.stringify(round.roulettePlan||null);
-  if(controller&&round.roulettePlan&&Number(round.revealCompletedAt)){
-    controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed,canEnable:()=>isParent&&canProgress(latestRoom)&&resultPresentationFinished(latestRoom),onComplete:()=>{if(latestRoom?.round?.phase==="result"){renderPlayerBar(latestRoom,"result");setRoundMessage(roomEnded(latestRoom)?latestRoom.endedBy.name+"が退出したため、宴はお開きとなります。":(playerEntries(latestRoom).find(player=>player.uid===latestRoom.parentUid)?.name||"親")+"さん、得点を確認してください。");}}});
-  } else if(finished){
+  if(finished){
     cards.forEach(card=>card.classList.remove("reveal-checking","reveal-flash"));
     cards[Number(round.parentCandidateIndex)]?.classList.add("reveal-parent");
     $("#result-summary").innerHTML=summary;
+    return;
   }
-  resultRouletteKey=key;
+  if(controller&&round.roulettePlan&&Number(round.revealCompletedAt)){
+    resultRouletteKey=key;
+    controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed,canEnable:()=>isParent&&canProgress(latestRoom)&&resultPresentationFinished(latestRoom),onComplete:()=>{if(latestRoom?.round?.phase==="result"){renderPlayerBar(latestRoom,"result");setRoundMessage(roomEnded(latestRoom)?latestRoom.endedBy.name+"が退出したため、宴はお開きとなりました。":(playerEntries(latestRoom).find(player=>player.uid===latestRoom.parentUid)?.name||"親")+"さん、得点を確認してください。");}}});
+  }
 }
 window.__restoreMultiplayerRevealButton=()=>{
   const button=$("#result-open-button");
@@ -897,7 +964,7 @@ function resetRoundLocalState() {
   progressUnsubscribe?.(); progressUnsubscribe=null; progressSubscriptionKey="";
   answerUnsubscribe?.(); answerUnsubscribe=null; answerSubscriptionKey="";
   answerSummaryUnsubscribe?.(); answerSummaryUnsubscribe=null; answerSummarySubscriptionKey="";
-  resultRouletteKey=""; window.__rouletteController?.cancel?.(); stopResultVisibilitySync();
+  resultRouletteKey=""; resultClockWaitKey=""; window.__rouletteController?.cancel?.(); stopResultVisibilitySync();
 }
 async function advanceToNextSeat() {
   const room=latestRoom, button=$("#next-round");
