@@ -99,7 +99,7 @@ function waitForDatabaseConnection(database, timeoutMs=CONNECTION_TIMEOUT_MS){
 async function verifyJoinedRoom(id,uid,nameKey){
   const snapshot=await get(ref(window.__firebaseDatabase,roomPath(id)));
   const room=snapshot.val();
-  if((room?.status==="waiting"||room?.status==="started")&&room.players?.[uid]?.nameKey===nameKey&&room.nameIndex?.[nameKey]===uid&&Object.keys(room.presence?.[uid]||{}).length)return room;
+  if(((room?.status==="waiting"&&joinSlotForUid(room,uid)?.nameKey===nameKey)||(room?.status==="started"&&room.players?.[uid]?.nameKey===nameKey&&room.nameIndex?.[nameKey]===uid))&&Object.keys(room.presence?.[uid]||{}).length)return room;
   throw Error("参加状態を確認できません。");
 }
 
@@ -153,7 +153,17 @@ function inviteUrl(id) {
   return url.toString();
 }
 
-function playerEntries(room) { return Object.entries(room?.players || {}).map(([uid, player]) => ({ uid, ...player })); }
+function joinSlotEntries(room) {
+  if (room?.status !== "waiting") return [];
+  return Object.entries(room?.joinSlots || {}).map(([slot, player]) => ({ slot, ...player }));
+}
+function joinSlotForUid(room, uid) {
+  return joinSlotEntries(room).find(player => player.uid === uid) || null;
+}
+function playerEntries(room) {
+  const players = Object.entries(room?.players || {}).map(([uid, player]) => ({ uid, ...player }));
+  return room?.status === "waiting" ? [...players, ...joinSlotEntries(room)] : players;
+}
 
 let messageTickerFrame = 0;
 let roundHeaderObserver = null;
@@ -1049,16 +1059,23 @@ function clearRoomSession() {
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 async function removeCurrentPlayer(id, uid, nameKey) {
+  const snapshot = await get(ref(window.__firebaseDatabase, roomPath(id)));
+  const room = snapshot.val();
+  const slot = joinSlotForUid(room, uid);
+  if (slot) {
+    await remove(ref(window.__firebaseDatabase, roomPath(id)+"/joinSlots/"+slot.slot));
+    return;
+  }
   await update(ref(window.__firebaseDatabase, roomPath(id)), {
-    [`players/${uid}`]: null,
-    [`nameIndex/${nameKey}`]: null
+    ["players/"+uid]: null,
+    ["nameIndex/"+nameKey]: null
   });
 }
 
 async function isCurrentPlayerRemoved(id, uid, nameKey) {
   const snapshot = await get(ref(window.__firebaseDatabase, roomPath(id)));
   const room = snapshot.val();
-  return !room?.players?.[uid] && !room?.nameIndex?.[nameKey];
+  return !room?.players?.[uid] && !room?.nameIndex?.[nameKey] && !joinSlotForUid(room, uid);
 }
 
 async function createRoom() {
@@ -1098,23 +1115,17 @@ async function joinRoom() {
     currentUser = context.user; window.__firebaseDatabase = context.database; openedRoom = false;
     await waitForDatabaseConnection(context.database);
     key = normalizedName(name);
-    let transactionIssue = "";
     const joinedAt = Date.now();
-    const transaction = await runTransaction(ref(context.database, `${roomPath(id)}/players`), players => {
-      if (!players || typeof players !== "object") { transactionIssue = "部屋番号が見つかりません。"; return; }
-      const entries = Object.entries(players);
-      if (entries.some(([uid, player]) => uid !== context.user.uid && player?.nameKey === key)) {
-        transactionIssue = "同じ名前の客人がすでに参加しています。別の名前を入力してください。";
-        return;
-      }
-      if (players[context.user.uid]) { transactionIssue = "この端末はすでに参加しています。"; return; }
-      if (entries.length >= 6) { transactionIssue = "この宴は満席です。"; return; }
-      return { ...players, [context.user.uid]: { name, nameKey: key, joinedAt } };
-    }, { applyLocally: false });
-    if (!transaction.committed) throw Error(transactionIssue || "この宴には参加できませんでした。");
-    joined=true;
+    let joinIssue = "";
+    for (let slot = 0; slot < 5; slot++) {
+      const transaction = await runTransaction(ref(context.database, roomPath(id)+"/joinSlots/"+slot), current => {
+        if (current) { joinIssue = "この宴は満席です。"; return; }
+        return { uid: context.user.uid, name, nameKey: key, joinedAt };
+      }, { applyLocally: false });
+      if (transaction.committed) { joined=true; break; }
+    }
+    if (!joined) throw Error(joinIssue || "この宴は満席です。");
     roomId = id;
-    await update(ref(context.database, roomPath(id)), { [`nameIndex/${key}`]: context.user.uid });
     await startPresence();
     const confirmedRoom=await verifyJoinedRoom(id,context.user.uid,key);
     saveName(name);
@@ -1141,15 +1152,22 @@ async function startRoom() {
     const transaction = await runTransaction(ref(window.__firebaseDatabase, roomPath(roomId)), current => {
       if (!current || current.status !== "waiting") { transactionIssue = "この宴はすでに開始されています。"; return; }
       if (current.hostUid !== currentUser.uid) { transactionIssue = "主催者だけが宴を開始できます。"; return; }
-      const players = playerEntries(current);
-      if (players.length < 2 || players.length > 6) { transactionIssue = "参加者は2〜6人必要です。"; return; }
+      const waitingPlayers = playerEntries(current);
+      if (waitingPlayers.length < 2 || waitingPlayers.length > 6) { transactionIssue = "参加者は2〜6人必要です。"; return; }
       if (disconnectedPlayers(current).length) { transactionIssue = "切断中の客人がいるため開始できません。"; return; }
-      const seats = players.map(player => player.uid);
+      const joinedPlayers = joinSlotEntries(current);
+      const players = { ...(current.players || {}) };
+      const nameIndex = { ...(current.nameIndex || {}) };
+      joinedPlayers.forEach(player => {
+        players[player.uid] = { name: player.name, nameKey: player.nameKey, joinedAt: player.joinedAt };
+        nameIndex[player.nameKey] = player.uid;
+      });
+      const seats = waitingPlayers.map(player => player.uid);
       for (let index = seats.length - 1; index > 0; index--) {
         const other = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1);
         [seats[index], seats[other]] = [seats[other], seats[index]];
       }
-      return { ...current, status: "started", startedAt: Date.now(), round: { number: 1, phase: "draw" }, seats, parentUid: seats[0] };
+      return { ...current, players, nameIndex, joinSlots: null, status: "started", startedAt: Date.now(), round: { number: 1, phase: "draw" }, seats, parentUid: seats[0] };
     }, { applyLocally: false });
     if (!transaction.committed) {
       const current = transaction.snapshot?.val();
@@ -1158,7 +1176,7 @@ async function startRoom() {
     }
   } catch (error) {
     show("multiplayer-waiting");
-    $("#room-waiting-message").textContent = `宴を開始できませんでした。${error.message || ""}`;
+    $("#room-waiting-message").textContent = "宴を開始できませんでした。"+(error.message || "");
   } finally {
     startingRoom=false;
   }

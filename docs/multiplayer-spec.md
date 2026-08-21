@@ -60,9 +60,10 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 - 切断中の主催者は `○○（主催・切断）`、切断中の参加者は `○○（切断）` と表示する。復帰すれば切断表記を外す。
 - 主催者だけが「宴を始める」を操作できる。
 - 開始できるのは参加者が2〜6人で、かつ全員が接続中の場合だけとする。切断中の人が1人でもいる間はボタンを無効化する。
-- 参加は `players` ノードのTransactionで確定する。Transaction内で待機室の現在人数（最大6人）、UIDの重複、正規化済み客人名の重複を再評価するため、5人の部屋へ同時参加しても確定する追加参加者は最大1人とする。
-- 宴の開始は主催者が部屋全体のTransactionで確定する。Transactionの再試行ごとに、待機状態、主催者、2〜6人、全員接続中を確認し、その時点のplayers全員から席順をシャッフルする。参加と開始が競合した場合は、参加が先ならその参加者を含む席順で開始し、開始が先なら参加TransactionはRulesにより拒否される。
-- Rulesは開始時のseatsについて、`seats/0`・`seats/1`の存在、`seats/6`の不在、連続した2〜6席、各UIDのplayers存在、重複なし、`parentUid == seats/0`を検証する。動的なplayers全UID集合とseats集合の完全一致はRealtime Database Rules単独では反復検証できないため、これはTransaction側で保証する。
+- 参加者はwaiting中、本人専用の固定5枠 `joinSlots/0`〜`joinSlots/4` のいずれか1枠へTransactionで参加情報を保存する。枠は主催者を除く最大5人分であり、同時参加は同じ枠で競合して再試行するため、参加者総数は最大6人を超えない。各枠のRulesは本人UIDだけを作成・削除可能とし、既存playersと他の4枠に対するUID・正規化済み客人名の重複を拒否する。
+- `joinSlots`は待機中の参加予約であり、players / nameIndexへは参加時に書き込まない。開始時に主催者の部屋全体Transactionが全予約をplayersとnameIndexへ同じ原子的更新で移し、`joinSlots`を削除する。このためplayersだけ、またはnameIndexだけが確定する中間状態は作らない。
+- 宴の開始は主催者が部屋全体のTransactionで確定する。Transactionの再試行ごとに、待機状態、主催者、予約を含む2〜6人、全員接続中を確認し、その時点の全参加者から席順をシャッフルする。joinが先なら予約を含むplayers・nameIndex・seatsを同じ更新でstartedにし、startが先ならjoinSlotsのRulesがwaiting条件で拒否する。
+- 初回のwaiting → startedでは、Rulesがseatsの`0`・`1`の存在、`6`の不在、連続した2〜6席、各seat UIDの新しいplayers存在、重複なし、`parentUid == seats/0`を検証する。再宴のfinal → drawでは、従来どおり旧seatsと同じ参加者集合だけを再シャッフルする検証を適用する。Rulesには動的なplayers全UID集合を反復比較する機能がないため、初回の全員集合一致は開始Transaction側で保証する。
 - 主催者または参加者が切断中でも、新規参加は許可する。ただし全員が接続中になるまで開始はできない。
 - 待機室での切断に時間制限や自動退出は設けない。
 - 参加操作はFirebaseへの接続中にだけ受け付ける。オフラインのまま招待URL・QRコードを開いた場合は、待機室へ遷移させず参加画面で接続エラーを表示する。
