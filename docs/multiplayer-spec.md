@@ -318,6 +318,8 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 
 現在の実装範囲（札選びから、`result → score` の得点反映、`score → draw` の親交代と次ラウンド開始まで）に必要なRealtime Database Rulesを管理する。Firebase Consoleへの反映は別操作で行う。
 
+参加者による明示退出は、全工程で`endedBy`だけを新規作成して宴全体を終了する。`result`および`score`中の退出でも、退出者・時刻以外のゲーム状態を同時に変更する書込みは許可しない。
+
 Firebase Rulesの正本は、ルートの [`firebase-rules.json`](../firebase-rules.json) だけとする。Rulesを変更する実装では、同じコミットでルートの `firebase-rules.json` を更新し、この仕様書内のリンクが最新ファイルを参照する状態にする。実装完了の回答本文にはRules全文を掲載せず、更新済みの [`firebase-rules.json`](../firebase-rules.json) へのリンクを記載する。Firebase Consoleへ貼り付ける場合は、リンク先ファイルの内容を全文コピーする。要約・差分だけをRulesの正本として扱ってはならない。`docs/firebase-rules.json` は作成・更新せず、Rules全文の二重管理を行わない。
 
 現在の `publicAnswers` は「候補番号 → UID集合」形式です。Rulesは、公開された各UIDが参加中の子であり、`roomAnswers/{roomId}/rounds/{roundNumber}/{uid}` に保存済みの回答候補番号と一致すること、候補番号が0〜3であることを検証します。`roomSecrets`、`roomProgress`、`roomAnswers` はいずれも `{roomId}/rounds/{roundNumber}/...` をラウンド単位の基本階層とする。
