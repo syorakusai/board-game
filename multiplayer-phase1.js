@@ -1,5 +1,5 @@
 import { getFirebaseContext } from "./firebase-client.js";
-import { get, onDisconnect, onValue, push, ref, remove, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+import { get, onDisconnect, onValue, push, ref, remove, runTransaction, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
 import { scoreRound } from "./game-rules.js";
 
@@ -16,6 +16,7 @@ let latestRoom = null;
 let currentUser = null;
 let openedRoom = false;
 let leavingWaitingRoom = false;
+let startingRoom = false;
 let presenceUnsubscribe = null;
 let activeConnectionRef = null;
 let secretUnsubscribe = null;
@@ -98,7 +99,7 @@ function waitForDatabaseConnection(database, timeoutMs=CONNECTION_TIMEOUT_MS){
 async function verifyJoinedRoom(id,uid,nameKey){
   const snapshot=await get(ref(window.__firebaseDatabase,roomPath(id)));
   const room=snapshot.val();
-  if(room?.status==="waiting"&&room.players?.[uid]?.nameKey===nameKey&&room.nameIndex?.[nameKey]===uid&&Object.keys(room.presence?.[uid]||{}).length)return room;
+  if((room?.status==="waiting"||room?.status==="started")&&room.players?.[uid]?.nameKey===nameKey&&room.nameIndex?.[nameKey]===uid&&Object.keys(room.presence?.[uid]||{}).length)return room;
   throw Error("参加状態を確認できません。");
 }
 
@@ -1096,19 +1097,24 @@ async function joinRoom() {
     const context = await getFirebaseContext();
     currentUser = context.user; window.__firebaseDatabase = context.database; openedRoom = false;
     await waitForDatabaseConnection(context.database);
-    const snapshot = await get(ref(context.database, roomPath(id)));
-    const room = snapshot.val();
-    if (!room) throw Error("部屋番号が見つかりません。");
-    if (room.status !== "waiting") throw Error(room.status === "closed" ? "この宴は主催者により閉じられました。" : "この宴はすでに開始されています。");
-    if (playerEntries(room).length >= 6) throw Error("この宴は満席です。");
     key = normalizedName(name);
-    if (room.nameIndex?.[key] && room.nameIndex[key] !== context.user.uid) throw Error("同じ名前の客人がすでに参加しています。別の名前を入力してください。");
-    await update(ref(context.database, roomPath(id)), {
-      [`players/${context.user.uid}`]: { name, nameKey: key, joinedAt: Date.now() },
-      [`nameIndex/${key}`]: context.user.uid
-    });
+    let transactionIssue = "";
+    const joinedAt = Date.now();
+    const transaction = await runTransaction(ref(context.database, `${roomPath(id)}/players`), players => {
+      if (!players || typeof players !== "object") { transactionIssue = "部屋番号が見つかりません。"; return; }
+      const entries = Object.entries(players);
+      if (entries.some(([uid, player]) => uid !== context.user.uid && player?.nameKey === key)) {
+        transactionIssue = "同じ名前の客人がすでに参加しています。別の名前を入力してください。";
+        return;
+      }
+      if (players[context.user.uid]) { transactionIssue = "この端末はすでに参加しています。"; return; }
+      if (entries.length >= 6) { transactionIssue = "この宴は満席です。"; return; }
+      return { ...players, [context.user.uid]: { name, nameKey: key, joinedAt } };
+    }, { applyLocally: false });
+    if (!transaction.committed) throw Error(transactionIssue || "この宴には参加できませんでした。");
     joined=true;
     roomId = id;
+    await update(ref(context.database, roomPath(id)), { [`nameIndex/${key}`]: context.user.uid });
     await startPresence();
     const confirmedRoom=await verifyJoinedRoom(id,context.user.uid,key);
     saveName(name);
@@ -1128,28 +1134,33 @@ async function joinRoom() {
 }
 
 async function startRoom() {
-  if (!openedRoom || !roomId || !currentUser?.uid) return;
-  const snapshot = await get(ref(window.__firebaseDatabase, roomPath(roomId)));
-  const room = snapshot.val();
-  if (!room || room.status !== "waiting" || room.hostUid !== currentUser.uid) return;
-  const players = playerEntries(room);
-  if (players.length < 2 || players.length > 6 || disconnectedPlayers(room).length) {
-    await renderWaiting(room);
-    return;
-  }
-  const seats = [...players.map(player => player.uid)];
-  for (let index = seats.length - 1; index > 0; index--) { const other = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1); [seats[index], seats[other]] = [seats[other], seats[index]]; }
+  if (startingRoom || !openedRoom || !roomId || !currentUser?.uid) return;
+  startingRoom=true;
   try {
-    await update(ref(window.__firebaseDatabase, roomPath(roomId)), {
-      status: "started",
-      startedAt: Date.now(),
-      round: { number: 1, phase: "draw" },
-      seats,
-      parentUid: seats[0]
-    });
+    let transactionIssue = "";
+    const transaction = await runTransaction(ref(window.__firebaseDatabase, roomPath(roomId)), current => {
+      if (!current || current.status !== "waiting") { transactionIssue = "この宴はすでに開始されています。"; return; }
+      if (current.hostUid !== currentUser.uid) { transactionIssue = "主催者だけが宴を開始できます。"; return; }
+      const players = playerEntries(current);
+      if (players.length < 2 || players.length > 6) { transactionIssue = "参加者は2〜6人必要です。"; return; }
+      if (disconnectedPlayers(current).length) { transactionIssue = "切断中の客人がいるため開始できません。"; return; }
+      const seats = players.map(player => player.uid);
+      for (let index = seats.length - 1; index > 0; index--) {
+        const other = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1);
+        [seats[index], seats[other]] = [seats[other], seats[index]];
+      }
+      return { ...current, status: "started", startedAt: Date.now(), round: { number: 1, phase: "draw" }, seats, parentUid: seats[0] };
+    }, { applyLocally: false });
+    if (!transaction.committed) {
+      const current = transaction.snapshot?.val();
+      if (current) await renderWaiting(current);
+      else $("#room-waiting-message").textContent = transactionIssue || "宴を開始できませんでした。";
+    }
   } catch (error) {
     show("multiplayer-waiting");
     $("#room-waiting-message").textContent = `宴を開始できませんでした。${error.message || ""}`;
+  } finally {
+    startingRoom=false;
   }
 }
 
