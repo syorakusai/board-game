@@ -322,6 +322,8 @@ Firebase Rulesの正本は、ルートの [`firebase-rules.json`](../firebase-ru
 
 現在の `publicAnswers` は「候補番号 → UID集合」形式です。Rulesは、公開された各UIDが参加中の子であり、`roomAnswers/{roomId}/rounds/{roundNumber}/{uid}` に保存済みの回答候補番号と一致すること、候補番号が0〜3であることを検証します。`roomSecrets`、`roomProgress`、`roomAnswers` はいずれも `{roomId}/rounds/{roundNumber}/...` をラウンド単位の基本階層とする。
 
+一方、Realtime Database Rulesには動的な子キー集合を反復して比較する機能がないため、この形式のままでは「全子が必ず1回だけ含まれること」をRulesだけで完全には保証できません。これをRulesで完全保証する必要が生じた場合は、UIDをキーにした公開結果（例：`publicAnswersByUid/$uid`）へデータ構造を変更し、UIDごとの一意性と回答人数を検証する別仕様を定めます。今回の実装では `publicAnswers` のデータ構造とRulesを変更しません。
+
 通信版の戦績の正本はFirebaseの `roomHistories/{roomId}/{roundNumber}` とする。「宴の顛末」で親が「得点を確認」を正常完了したとき、得点、`result → score`、その席の履歴を同じ原子的更新で確定する。未確定の現在席は戦績に表示しない。表示内容は1台版と同じで、上部の現在得点は最新の `room.players` から表示する。確定済み履歴は再読み込み・復帰後も復元し、将来の正式な勝利画面でもカード履歴として利用する。履歴は現在親が `result` 中に現在席番号へ一度だけ作成でき、既存記録の更新・削除は許可しない。
 
 
