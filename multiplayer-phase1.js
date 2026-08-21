@@ -44,6 +44,9 @@ let storedResumeAvailable = false;
 let setupMode = "single";
 let multiplayerSetupMode = "host";
 let multiplayerModeSelectedInCurrentSetup = false;
+let historyUnsubscribe = null;
+let historySubscriptionKey = "";
+let multiplayerHistory = {};
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -51,6 +54,7 @@ const secretPath = (id, roundNumber, uid) => `roomSecrets/${id}/rounds/${roundNu
 const progressPath = (id, roundNumber) => `roomProgress/${id}/rounds/${roundNumber}`;
 const answerRoundPath = (id, roundNumber) => `roomAnswers/${id}/rounds/${roundNumber}`;
 const answerPath = (id, roundNumber, uid) => `${answerRoundPath(id, roundNumber)}/${uid}`;
+const historyPath = id => `roomHistories/${id}`;
 const parentWordErrorKeyFor = room => `${roomId}:${currentRoundNumber(room)}:${room?.round?.cardId ?? ""}`;
 function setParentWordError(room, message) {
   parentWordErrorKey = parentWordErrorKeyFor(room);
@@ -611,6 +615,33 @@ function multiplayerScoreTitle(room) {
   const {children,correct}=multiplayerScoreOutcome(room);
   return children.length===1?(correct.length===0?"子が不正解":"子が正解"):(correct.length===0?"全員不正解":correct.length===children.length?"全員正解":"一部の子が正解");
 }
+function multiplayerHistorySummary(room) {
+  const {children,correct}=multiplayerScoreOutcome(room);
+  if(children.length===1)return correct.length===0?"子が不正解。得点なし":"子が正解。子プラス1ポイント";
+  if(correct.length===0)return "全員不正解。親プラス1ポイント";
+  if(correct.length===children.length)return "全員正解。子プラス1ポイント、親マイナス1ポイント";
+  return "一部の子が正解。正解した子に1ポイント";
+}
+function multiplayerHistoryRecord(room) {
+  const round=room.round||{}, number=currentRoundNumber(room), words=Array.isArray(round.publicWords)?round.publicWords:[];
+  if(words.length!==4||!words.every(word=>typeof word==="string"))throw Error("戦績に必要な公開語を確認できません。");
+  const answers={};
+  playerEntries(room).filter(player=>player.uid!==room.parentUid).forEach(player=>{
+    const candidateIndex=Object.keys(round.publicAnswers||{}).find(index=>round.publicAnswers?.[index]?.[player.uid]===true);
+    if(candidateIndex===undefined)throw Error("戦績に必要な回答を確認できません。");
+    answers[player.uid]={name:player.name,candidateIndex:Number(candidateIndex)};
+  });
+  const parentCandidateIndex=Number(round.parentCandidateIndex);
+  if(!Number.isInteger(parentCandidateIndex)||parentCandidateIndex<0||parentCandidateIndex>3)throw Error("親ワードの位置を確認できません。");
+  return {round:number,parentUid:room.parentUid,parentName:room.players?.[room.parentUid]?.name||"親",cardId:round.cardId,cardImage:round.cardImage,image:round.cardImage,words,parentCandidateIndex,parentWord:words[parentCandidateIndex],answers,summary:multiplayerHistorySummary(room)};
+}
+function renderMultiplayerHistory() {
+  if(!latestRoom||!roomId)return false;
+  const scores=$("#history-scores"), list=$("#history-list"), records=Object.values(multiplayerHistory||{}).sort((a,b)=>Number(b.round)-Number(a.round));
+  if(scores)scores.innerHTML=`<p class="history-label">現在のポイント</p><div class="history-score-list">${playerEntries(latestRoom).map(player=>`<div class="history-score"><span>${escape(player.name)}</span><strong>${Number(player.score)||0}ポイント</strong></div>`).join("")}</div>`;
+  if(list)list.innerHTML=records.length?records.map(record=>`<article class="history-entry"><div class="history-entry-heading"><h3>第${record.round}席</h3></div><div class="history-entry-overview">${record.cardImage?`<div class="history-card-area"><img class="card-zoom-trigger" src="${escape(record.cardImage)}" alt="第${record.round}席のお題カード。タップで拡大表示" tabindex="0" role="button"></div>`:""}<div class="history-result"><p class="result-parent">親：${escape(record.parentName)}</p><p class="history-summary">${escape(record.summary)}</p></div></div><div class="history-vote-list">${(Array.isArray(record.words)?record.words:[]).map((word,index)=>{const voters=Object.values(record.answers||{}).filter(answer=>Number(answer.candidateIndex)===index).map(answer=>escape(answer.name));return `<div class="vote-card${word===record.parentWord?" parent-answer":""}" data-parent-word="${word===record.parentWord}"><div class="word">${escape(word)}</div><div class="vote-count">${voters.length}票</div><div class="voters">${voters.length?voters.join("、"):"選択者なし"}</div></div>`;}).join("")}</div></article>`).join(""):'<p class="history-empty">まだ結果が確定したラウンドはありません。</p>';
+  return true;
+}
 function hasWinner(room) { return playerEntries(room).some(player=>(Number(player.score)||0)>=5); }
 function renderMultiplayerResultVotes(room) {
   const parentIndex=Number(room.round?.parentCandidateIndex), finished=resultPresentationFinished(room);
@@ -733,7 +764,8 @@ async function completeScore() {
     const snapshot=await get(ref(window.__firebaseDatabase,roomPath(roomId)));
     const current=snapshot.val();
     if(!current||current.parentUid!==currentUser?.uid||current.round?.phase!=="result"||!resultPresentationFinished(current)||!canProgress(current))throw Error("得点を反映できる状態ではありません。");
-    const scored=multiplayerScoreOutcome(current), updates={[`${roomPath(roomId)}/round/phase`]:"score"};
+    const scored=multiplayerScoreOutcome(current), roundNumber=currentRoundNumber(current), history=multiplayerHistoryRecord(current), updates={[`${roomPath(roomId)}/round/phase`]:"score",[`${historyPath(roomId)}/${roundNumber}`]:history};
+    if(multiplayerHistory?.[String(roundNumber)])throw Error("この席の戦績はすでに確定しています。");
     scored.players.forEach(player=>{updates[`${roomPath(roomId)}/players/${player.id}/score`]=player.score;});
     await update(ref(window.__firebaseDatabase),updates);
   } catch(error) {
@@ -849,6 +881,10 @@ async function publishParentWords() {
 }
 function subscribeRoom(id) {
   subscribeServerClock(window.__firebaseDatabase);
+  if(historySubscriptionKey!==id){
+    historyUnsubscribe?.(); historySubscriptionKey=id; multiplayerHistory={};
+    historyUnsubscribe=onValue(ref(window.__firebaseDatabase,historyPath(id)),snapshot=>{multiplayerHistory=snapshot.val()||{};});
+  }
   roomUnsubscribe?.();
   roomUnsubscribe = onValue(
     ref((window.__firebaseDatabase), roomPath(id)),
@@ -873,6 +909,10 @@ function clearInviteUrl() {
 function clearRoomSession() {
   roomUnsubscribe?.();
   roomUnsubscribe = null;
+  historyUnsubscribe?.();
+  historyUnsubscribe = null;
+  historySubscriptionKey = "";
+  multiplayerHistory = {};
   secretUnsubscribe?.();
   secretUnsubscribe = null;
   answerUnsubscribe?.();
@@ -1178,5 +1218,5 @@ function initialize() {
   });
 }
 
-window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit };
+window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory };
 initialize();
