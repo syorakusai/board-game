@@ -887,7 +887,7 @@ function subscribeRoom(id) {
   subscribeServerClock(window.__firebaseDatabase);
   if(historySubscriptionKey!==id){
     historyUnsubscribe?.(); historySubscriptionKey=id; multiplayerHistory={};
-    historyUnsubscribe=onValue(ref(window.__firebaseDatabase,historyPath(id)),snapshot=>{multiplayerHistory=snapshot.val()||{};});
+    historyUnsubscribe=onValue(ref(window.__firebaseDatabase,historyPath(id)),snapshot=>{multiplayerHistory=snapshot.val()||{};if(latestRoom?.round?.phase==="final")enterMultiplayerFinalScreen(latestRoom);});
   }
   roomUnsubscribe?.();
   roomUnsubscribe = onValue(
