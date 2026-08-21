@@ -243,6 +243,7 @@ function playerPanelState(room, uid, disconnected) {
   if (phase === "reveal" && isParent) return { label: "開帳", className: "is-action-needed" };
   if (phase === "result" && isParent && resultPresentationFinished(room)) return { label: "得点確認", className: "is-action-needed" };
   if (phase === "score" && isParent) return { label: "次の席へ", className: "is-action-needed" };
+  if (phase === "final") return { label: "確認中", className: "is-action-needed" };
   return { label: "", className: "" };
 }
 function renderPlayerBar(room, screenName="round") {
@@ -312,6 +313,7 @@ async function renderWaiting(room) {
     else if (room.round?.phase === "reveal") enterRevealScreen(room);
     else if (room.round?.phase === "result") enterResultScreen(room);
     else if (room.round?.phase === "score") enterScoreScreen(room);
+    else if (room.round?.phase === "final") enterMultiplayerFinalScreen(room);
     else if (room.round?.phase === "parent-word") enterParentWordScreen(room);
     else enterDrawScreen(room);
     reevaluateAutomaticTransition(room);
@@ -668,6 +670,7 @@ function enterScoreScreen(room) {
   if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなりました。右上メニューの「退出」から退出してください。");
   else setRoundMessage(`得点が反映されました。${parentName}さん、次の席へ進んでください。`);
 }
+function enterMultiplayerFinalScreen(room){stopResultVisibilitySync();const players=playerEntries(room).map(player=>({id:player.uid,name:player.name,score:Number(player.score)||0})),winners=players.filter(player=>player.score>=5),cards=Object.values(multiplayerHistory||{}).sort((a,b)=>Number(a.round)-Number(b.round)).map(record=>({round:record.round,image:record.cardImage||record.image}));renderPlayerBar(room,"final");const title=roundTitleRow("final")?.querySelector("[data-round-title]");if(title)title.textContent="宴の結び";window.showMultiplayerFinalResults?.(players,winners,cards);$("#final-to-title").onclick=event=>event.preventDefault();$("#final-replay").onclick=event=>event.preventDefault();setRoundMessage("宴の結果をご確認ください。");}
 function enterResultScreen(room) {
   stopResultVisibilitySync();
   startResultVisibilitySync();
@@ -764,7 +767,7 @@ async function completeScore() {
     const snapshot=await get(ref(window.__firebaseDatabase,roomPath(roomId)));
     const current=snapshot.val();
     if(!current||current.parentUid!==currentUser?.uid||current.round?.phase!=="result"||!resultPresentationFinished(current)||!canProgress(current))throw Error("得点を反映できる状態ではありません。");
-    const scored=multiplayerScoreOutcome(current), roundNumber=currentRoundNumber(current), history=multiplayerHistoryRecord(current), updates={[`${roomPath(roomId)}/round/phase`]:"score",[`${historyPath(roomId)}/${roundNumber}`]:history};
+    const scored=multiplayerScoreOutcome(current), roundNumber=currentRoundNumber(current), history=multiplayerHistoryRecord(current), hasWinner=scored.players.some(player=>player.score>=5), updates={[`${roomPath(roomId)}/round/phase`]:hasWinner?"final":"score",[`${historyPath(roomId)}/${roundNumber}`]:history};
     if(multiplayerHistory?.[String(roundNumber)])throw Error("この席の戦績はすでに確定しています。");
     scored.players.forEach(player=>{updates[`${roomPath(roomId)}/players/${player.id}/score`]=player.score;});
     await update(ref(window.__firebaseDatabase),updates);
@@ -773,7 +776,8 @@ async function completeScore() {
     setRoundMessage("得点確認を保存できませんでした。"+(error.message||""));
   } finally {
     phaseTransitionPending=false;
-    if(latestRoom?.round?.phase==="score")enterScoreScreen(latestRoom);
+    if(latestRoom?.round?.phase==="final")enterMultiplayerFinalScreen(latestRoom);
+    else if(latestRoom?.round?.phase==="score")enterScoreScreen(latestRoom);
     else if(latestRoom?.round?.phase==="result")enterResultScreen(latestRoom);
   }
 }
