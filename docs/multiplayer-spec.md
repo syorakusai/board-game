@@ -318,7 +318,7 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 
 現在の実装範囲（札選びから、`result → score` の得点反映、`score → draw` の親交代と次ラウンド開始まで）に必要なRealtime Database Rulesを管理する。Firebase Consoleへの反映は別操作で行う。
 
-参加者による明示退出は、全工程で`endedBy`だけを新規作成して宴全体を終了する。`result`／`score`を含め、退出は`endedBy`子ノードの専用Rulesでのみ許可する。上位の親書込み権限は`result → score`および`score → draw`の正規遷移に限定するため、退出を装ってゲーム状態を同時変更する書込みは許可しない。
+参加者による明示退出は、全工程で`endedBy`だけを新規作成して宴全体を終了する。`result`／`score`を含め、親・子・ホスト・ゲストを問わず、退出は`endedBy`子ノードの専用Rulesでのみ許可する。ホストのroom上位書込み権限は部屋作成と待機室操作に限定し、started中の上位書込み権限は現在親の`result → score`および`score → draw`の正規遷移だけとする。退出を装ってゲーム状態を同時変更する書込みは許可しない。
 
 Firebase Rulesの正本は、ルートの [`firebase-rules.json`](../firebase-rules.json) だけとする。Rulesを変更する実装では、同じコミットでルートの `firebase-rules.json` を更新し、この仕様書内のリンクが最新ファイルを参照する状態にする。実装完了の回答本文にはRules全文を掲載せず、更新済みの [`firebase-rules.json`](../firebase-rules.json) へのリンクを記載する。Firebase Consoleへ貼り付ける場合は、リンク先ファイルの内容を全文コピーする。要約・差分だけをRulesの正本として扱ってはならない。`docs/firebase-rules.json` は作成・更新せず、Rules全文の二重管理を行わない。
 
