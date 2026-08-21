@@ -1284,7 +1284,11 @@ async function checkStoredRoomSession(){
     currentUser=context.user;window.__firebaseDatabase=context.database;
     if(context.user.uid!==saved.uid)return false;
     const room=(await get(ref(context.database,roomPath(saved.roomId)))).val();
-    const valid=room&&room.feastId===saved.feastId&&room.players?.[context.user.uid]&&(saved.role==="host")===(room.hostUid===context.user.uid)&&(room.status==="waiting"||room.status==="started"||room.status==="closed");
+    const uid=context.user.uid;
+    const isHost=room?.hostUid===uid;
+    const waitingParticipant=room?.status==="waiting"&&(isHost?!!room.players?.[uid]:!!joinSlotForUid(room,uid));
+    const startedParticipant=(room?.status==="started"||room?.status==="closed")&&!!room.players?.[uid]&&room.nameIndex?.[room.players[uid].nameKey]===uid;
+    const valid=room&&room.feastId===saved.feastId&&(saved.role==="host")===isHost&&(waitingParticipant||startedParticipant);
     if(!valid)return false;
     roomId=saved.roomId;openedRoom=saved.role==="host";latestRoom=room;
     if(room.status==="closed"||roomEnded(room)){clearRoomSession();clearStoredResumeAvailability();return false;}
@@ -1304,7 +1308,22 @@ async function checkStoredRoomSession(){
     return false;
   }
 }
-async function resumeStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;await startPresence();subscribeRoom(roomId);await renderWaiting(latestRoom);}
+async function resumeStoredRoom(){
+  if(!latestRoom||!roomId||!currentUser)return;
+  await startPresence();
+  const room=(await get(ref(window.__firebaseDatabase,roomPath(roomId)))).val();
+  const uid=currentUser.uid;
+  const isHost=room?.hostUid===uid;
+  const waitingParticipant=room?.status==="waiting"&&(isHost?!!room.players?.[uid]:!!joinSlotForUid(room,uid));
+  const startedParticipant=room?.status==="started"&&!!room.players?.[uid]&&room.nameIndex?.[room.players[uid].nameKey]===uid;
+  if(!(waitingParticipant||startedParticipant)||!Object.keys(room?.presence?.[uid]||{}).length){
+    stopPresence();
+    throw Error("復帰状態を確認できません。");
+  }
+  latestRoom=room;
+  subscribeRoom(roomId);
+  await renderWaiting(room);
+}
 async function resumeStoredRoomFromChoice(){try{await resumeStoredRoom();}catch(error){showRecoveryError(`復帰できませんでした。 ${error.message||""}`);}}
 async function exitStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;if(latestRoom.status==="closed"){clearRoomSession();clearInviteUrl();clearStoredResumeAvailability();openMultiplayerSetup("host");return;}if(latestRoom.status==="started"){if(roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();clearStoredResumeAvailability();openMultiplayerSetup("host");return;}if(!confirm("退出すると、この宴は全員終了となります。退出しますか？"))return;await exitStartedFeast();return;}if(latestRoom.status==="waiting"){await startPresence();await leaveWaitingRoom();}}
 function openJoinFromUrl() {
