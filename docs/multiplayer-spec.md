@@ -62,12 +62,13 @@ Firebaseがサーバーで、主催者・参加者の各端末はいずれもク
 - 開始できるのは参加者が2〜6人で、かつ全員が接続中の場合だけとする。切断中の人が1人でもいる間はボタンを無効化する。
 - 参加者はwaiting中、本人専用の固定5枠 `joinSlots/0`〜`joinSlots/4` のいずれか1枠へTransactionで参加情報を保存する。枠は主催者を除く最大5人分であり、同時参加は同じ枠で競合して再試行するため、参加者総数は最大6人を超えない。各枠のRulesは本人UIDだけを作成・削除可能とし、既存playersと他の4枠に対するUID・正規化済み客人名の重複を拒否する。
 - `joinSlots`は待機中の参加予約であり、players / nameIndexへは参加時に書き込まない。開始時に主催者の部屋全体Transactionが全予約をplayersとnameIndexへ同じ原子的更新で移し、`joinSlots`を削除する。このためplayersだけ、またはnameIndexだけが確定する中間状態は作らない。
+- `roomHistories`はstarted後に`players`へ確定した参加者だけが購読する。待機中のゲストは読取権限を持たず、started受信時に新規listenerを開始する。読取エラー時は購読キーを解除するため、権限が成立した後のroom更新で再購読できる。
 - 宴の開始は主催者が部屋全体のTransactionで確定する。Transactionの再試行ごとに、待機状態、主催者、予約を含む2〜6人、全員接続中を確認し、その時点の全参加者から席順をシャッフルする。joinが先なら予約を含むplayers・nameIndex・seatsを同じ更新でstartedにし、startが先ならjoinSlotsのRulesがwaiting条件で拒否する。
 - 初回のwaiting → startedでは、Rulesがseatsの`0`・`1`の存在、`6`の不在、連続した2〜6席、各seat UIDの新しいplayers存在、重複なし、`parentUid == seats/0`を検証する。再宴のfinal → drawでは、従来どおり旧seatsと同じ参加者集合だけを再シャッフルする検証を適用する。Rulesには動的なplayers全UID集合を反復比較する機能がないため、初回の全員集合一致は開始Transaction側で保証する。
 - 主催者または参加者が切断中でも、新規参加は許可する。ただし全員が接続中になるまで開始はできない。
 - 待機室での切断に時間制限や自動退出は設けない。
 - 参加操作はFirebaseへの接続中にだけ受け付ける。オフラインのまま招待URL・QRコードを開いた場合は、待機室へ遷移させず参加画面で接続エラーを表示する。
-- 待機中の参加確認・復帰確認では、本人の `joinSlots` 予約と `presence` を確認する。開始後は、`players`、`nameIndex`、`presence` が同じUIDとして一致することを確認する。待機中のゲストは `players` / `nameIndex` をまだ持たないため、再読み込み時も既存の `joinSlots` を参加情報として復帰し、新規予約は作成しない。確認できない場合は参加情報を削除して参加画面へ戻す。
+- 待機中の参加確認・復帰確認では、本人の `joinSlots` 予約を照合し、復帰時に同じUIDの `presence` を再登録する。開始後は、`players` と `nameIndex` を同じUIDとして照合し、同じ `presence` 再登録を行う。presence登録は成功した書込みの完了で確認し、直後の読取値に依存して正規の復帰を拒否しない。待機中のゲストは `players` / `nameIndex` をまだ持たないため、再読み込み時も既存の `joinSlots` を参加情報として復帰し、新規予約は作成しない。保存済みの宴ID・UID・主催者／ゲスト種別とroomが一致しない場合、閉室済みの場合、または終了済みの場合だけ復帰対象から外す。
 
 ### ラウンド開始後
 

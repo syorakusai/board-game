@@ -319,6 +319,7 @@ async function renderWaiting(room) {
     await QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark: "#063b2b", light: "#fffdf4" } });
   }
   if (room.status === "started") {
+    subscribeHistory(room);
     const nextRoundKey=`${roomId}:${currentRoundNumber(room)}`;
     if(observedRoundKey&&observedRoundKey!==nextRoundKey)resetRoundLocalState();
     observedRoundKey=nextRoundKey;
@@ -995,12 +996,29 @@ async function publishParentWords() {
     catch(error) { throw Error(`宴の推理開始を保存できませんでした。${error.message||""}`); }
   } catch(error) { setParentWordError(room,`言葉をお披露目できませんでした。${error.message||""}`); }
 }
+function subscribeHistory(room) {
+  if (room?.status !== "started" || !room.players?.[currentUser?.uid]) return;
+  const key = `${roomId}:${currentUser.uid}`;
+  if (historySubscriptionKey === key) return;
+  historyUnsubscribe?.();
+  historySubscriptionKey = key;
+  multiplayerHistory = {};
+  historyUnsubscribe = onValue(
+    ref(window.__firebaseDatabase, historyPath(roomId)),
+    snapshot => {
+      multiplayerHistory = snapshot.val() || {};
+      if (latestRoom?.round?.phase === "final") enterMultiplayerFinalScreen(latestRoom);
+    },
+    error => {
+      historyUnsubscribe?.();
+      historyUnsubscribe = null;
+      historySubscriptionKey = "";
+      console.warn("戦績を受信できませんでした。", error);
+    }
+  );
+}
 function subscribeRoom(id) {
   subscribeServerClock(window.__firebaseDatabase);
-  if(historySubscriptionKey!==id){
-    historyUnsubscribe?.(); historySubscriptionKey=id; multiplayerHistory={};
-    historyUnsubscribe=onValue(ref(window.__firebaseDatabase,historyPath(id)),snapshot=>{multiplayerHistory=snapshot.val()||{};if(latestRoom?.round?.phase==="final")enterMultiplayerFinalScreen(latestRoom);});
-  }
   roomUnsubscribe?.();
   roomUnsubscribe = onValue(
     ref((window.__firebaseDatabase), roomPath(id)),
@@ -1275,6 +1293,11 @@ function openFeastSetup({ mode="single", multiplayerMode="host", restoreSingle=t
   setSetupMode(mode);
 }
 function openMultiplayerSetup(multiplayerMode="host"){openFeastSetup({mode:"multiplayer",multiplayerMode,restoreSingle:false});}
+function storedSessionMatchesRoom(room, saved, uid) {
+  if (!room || !saved || room.feastId !== saved.feastId || (saved.role === "host") !== (room.hostUid === uid)) return false;
+  if (room.status === "waiting") return room.hostUid === uid ? !!room.players?.[uid] : !!joinSlotForUid(room, uid);
+  return (room.status === "started" || room.status === "closed") && !!room.players?.[uid] && room.nameIndex?.[room.players[uid].nameKey] === uid;
+}
 async function checkStoredRoomSession(){
   const saved=storedRoomSession(), invitedRoomId=inviteRoomId();
   clearStoredResumeAvailability();
@@ -1284,11 +1307,7 @@ async function checkStoredRoomSession(){
     currentUser=context.user;window.__firebaseDatabase=context.database;
     if(context.user.uid!==saved.uid)return false;
     const room=(await get(ref(context.database,roomPath(saved.roomId)))).val();
-    const uid=context.user.uid;
-    const isHost=room?.hostUid===uid;
-    const waitingParticipant=room?.status==="waiting"&&(isHost?!!room.players?.[uid]:!!joinSlotForUid(room,uid));
-    const startedParticipant=(room?.status==="started"||room?.status==="closed")&&!!room.players?.[uid]&&room.nameIndex?.[room.players[uid].nameKey]===uid;
-    const valid=room&&room.feastId===saved.feastId&&(saved.role==="host")===isHost&&(waitingParticipant||startedParticipant);
+    const valid=storedSessionMatchesRoom(room,saved,context.user.uid);
     if(!valid)return false;
     roomId=saved.roomId;openedRoom=saved.role==="host";latestRoom=room;
     if(room.status==="closed"||roomEnded(room)){clearRoomSession();clearStoredResumeAvailability();return false;}
@@ -1309,14 +1328,11 @@ async function checkStoredRoomSession(){
   }
 }
 async function resumeStoredRoom(){
-  if(!latestRoom||!roomId||!currentUser)return;
+  if(!roomId||!currentUser)return;
+  const saved=storedRoomSession();
   await startPresence();
   const room=(await get(ref(window.__firebaseDatabase,roomPath(roomId)))).val();
-  const uid=currentUser.uid;
-  const isHost=room?.hostUid===uid;
-  const waitingParticipant=room?.status==="waiting"&&(isHost?!!room.players?.[uid]:!!joinSlotForUid(room,uid));
-  const startedParticipant=room?.status==="started"&&!!room.players?.[uid]&&room.nameIndex?.[room.players[uid].nameKey]===uid;
-  if(!(waitingParticipant||startedParticipant)||!Object.keys(room?.presence?.[uid]||{}).length){
+  if(!storedSessionMatchesRoom(room,saved,currentUser.uid)){
     stopPresence();
     throw Error("復帰状態を確認できません。");
   }
