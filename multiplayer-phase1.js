@@ -243,6 +243,7 @@ function playerPanelState(room, uid, disconnected) {
   if (phase === "reveal" && isParent) return { label: "開帳", className: "is-action-needed" };
   if (phase === "result" && isParent && resultPresentationFinished(room)) return { label: "得点確認", className: "is-action-needed" };
   if (phase === "score" && isParent) return { label: "次の席へ", className: "is-action-needed" };
+  if (phase === "final" && room?.replayChoices?.[uid] === true) return { label: "再宴希望", className: "is-complete" };
   if (phase === "final") return { label: "確認中", className: "is-action-needed" };
   return { label: "", className: "" };
 }
@@ -352,6 +353,50 @@ function shuffledWords(words) {
     [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
   }
   return result;
+}
+function allReplayChoices(room) {
+  return Array.isArray(room?.seats) && room.seats.length >= 2
+    && room.seats.every(uid => room.replayChoices?.[uid] === true);
+}
+async function chooseFinalReplay() {
+  const room = latestRoom;
+  const uid = currentUser?.uid;
+  if (!room || !uid || room.round?.phase !== "final" || roomEnded(room) || room.replayChoices?.[uid] === true) return;
+  await set(ref(window.__firebaseDatabase, `${roomPath(roomId)}/replayChoices/${uid}`), true);
+}
+async function restartFinalFeast() {
+  const room = latestRoom;
+  if (!room || room.round?.phase !== "final" || roomEnded(room) || room.parentUid !== currentUser?.uid || !allReplayChoices(room) || phaseTransitionPending) return;
+  phaseTransitionPending = true;
+  try {
+    const seats = shuffledWords(room.seats);
+    const updates = {
+      [`${roomPath(roomId)}/seats`]: seats,
+      [`${roomPath(roomId)}/parentUid`]: seats[0],
+      [`${roomPath(roomId)}/round/number`]: 1,
+      [`${roomPath(roomId)}/round/phase`]: "draw",
+      [`${roomPath(roomId)}/round/cardId`]: null,
+      [`${roomPath(roomId)}/round/cardImage`]: null,
+      [`${roomPath(roomId)}/round/publicWords`]: null,
+      [`${roomPath(roomId)}/round/publicAnswers`]: null,
+      [`${roomPath(roomId)}/round/discussionStartedAt`]: null,
+      [`${roomPath(roomId)}/round/discussionDurationSeconds`]: null,
+      [`${roomPath(roomId)}/round/answerStartedAt`]: null,
+      [`${roomPath(roomId)}/round/revealStartedAt`]: null,
+      [`${roomPath(roomId)}/round/revealCompletedAt`]: null,
+      [`${roomPath(roomId)}/round/parentCandidateIndex`]: null,
+      [`${roomPath(roomId)}/round/roulettePlan`]: null,
+      [`${roomPath(roomId)}/replayChoices`]: null,
+      [`${historyPath(roomId)}`]: null,
+      [`roomSecrets/${roomId}`]: null,
+      [`roomProgress/${roomId}`]: null,
+      [`roomAnswers/${roomId}`]: null
+    };
+    playerEntries(room).forEach(player => { updates[`${roomPath(roomId)}/players/${player.uid}/score`] = 0; });
+    await update(ref(window.__firebaseDatabase), updates);
+  } finally {
+    phaseTransitionPending = false;
+  }
 }
 function stopDiscussionTimer() {
   clearInterval(discussionTimer);
@@ -670,7 +715,47 @@ function enterScoreScreen(room) {
   if(roomEnded(room))setRoundMessage(room.endedBy.name+"が退出したため、宴はお開きとなりました。右上メニューの「退出」から退出してください。");
   else setRoundMessage(`得点が反映されました。${parentName}さん、次の席へ進んでください。`);
 }
-function enterMultiplayerFinalScreen(room){stopResultVisibilitySync();const players=playerEntries(room).map(player=>({id:player.uid,name:player.name,score:Number(player.score)||0})),winners=players.filter(player=>player.score>=5),cards=Object.values(multiplayerHistory||{}).sort((a,b)=>Number(a.round)-Number(b.round)).map(record=>({round:record.round,image:record.cardImage||record.image}));renderPlayerBar(room,"final");const title=roundTitleRow("final")?.querySelector("[data-round-title]");if(title)title.textContent="宴の結び";window.showMultiplayerFinalResults?.(players,winners,cards);$("#final-to-title").onclick=event=>event.preventDefault();$("#final-replay").onclick=event=>event.preventDefault();setRoundMessage("宴の結果をご確認ください。");}
+function enterMultiplayerFinalScreen(room) {
+  stopResultVisibilitySync();
+  const players = playerEntries(room).map(player => ({ id: player.uid, name: player.name, score: Number(player.score) || 0 }));
+  const winners = players.filter(player => player.score >= 5);
+  const cards = Object.values(multiplayerHistory || {})
+    .sort((a, b) => Number(a.round) - Number(b.round))
+    .map(record => ({ round: record.round, image: record.cardImage || record.image }));
+  const choiceMade = room.replayChoices?.[currentUser?.uid] === true;
+  const ended = roomEnded(room);
+  renderPlayerBar(room, "final");
+  const title = roundTitleRow("final")?.querySelector("[data-round-title]");
+  if (title) title.textContent = "宴の結び";
+  window.showMultiplayerFinalResults?.(players, winners, cards);
+  const toTitle = $("#final-to-title");
+  const replay = $("#final-replay");
+  toTitle.disabled = ended || choiceMade || phaseTransitionPending;
+  replay.disabled = ended || choiceMade || phaseTransitionPending;
+  toTitle.onclick = async event => {
+    event.preventDefault();
+    if (toTitle.disabled) return;
+    try { await exitStartedFeast(); }
+    catch (error) { setRoundMessage(`退出できませんでした。${error.message || ""}`); }
+  };
+  replay.onclick = async event => {
+    event.preventDefault();
+    if (replay.disabled) return;
+    replay.disabled = true;
+    toTitle.disabled = true;
+    try { await chooseFinalReplay(); }
+    catch (error) {
+      replay.disabled = false;
+      toTitle.disabled = false;
+      setRoundMessage(`再宴希望を保存できませんでした。${error.message || ""}`);
+    }
+  };
+  if (!ended && allReplayChoices(room) && room.parentUid === currentUser?.uid) {
+    restartFinalFeast().catch(error => setRoundMessage(`再宴を開始できませんでした。${error.message || ""}`));
+  }
+  if (ended) setRoundMessage(`${room.endedBy?.name || "参加者"}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
+  else setRoundMessage("宴の結果をご確認ください。");
+}
 function enterResultScreen(room) {
   stopResultVisibilitySync();
   startResultVisibilitySync();
