@@ -94,6 +94,8 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .final-screen.is-revealing .final-score-summary { animation: final-reveal-rise 420ms ease-out calc(var(--final-reveal-delay) + 610ms) forwards; }
 .final-screen.is-revealing #final-to-title { animation: final-reveal-rise 360ms ease-out calc(var(--final-reveal-delay) + 760ms) forwards; }
 .final-screen.is-revealing .final-score.is-winner { animation: final-score-winner 850ms ease-out calc(var(--final-reveal-delay) + 900ms) both; }
+.final-screen.is-revealed .final-card-recap { height: 116px; margin: 12px 0 0; }
+.final-screen.is-revealed .final-recap-card { opacity: 1; transform: translate(calc(-50% + var(--mini-x)), -82px) scale(.44) rotate(var(--mini-rotate)); }
 @media (prefers-reduced-motion: reduce) { .final-screen.is-revealing .final-card-recap { height: 116px; margin: 12px 0 0; animation: none; } .final-screen.is-revealing .final-recap-card { opacity: 1; transform: translate(calc(-50% + var(--mini-x)), -82px) scale(.44) rotate(var(--mini-rotate)); animation: none; } .final-screen.is-revealing .final-reveal-content > * { opacity: 1; animation: none; } }
 .card-area { margin: 18px 0 22px; text-align: center; }
 #handoff-card-area { min-height: min(48vh, calc(100dvh - 240px)); display: grid; place-items: center; }

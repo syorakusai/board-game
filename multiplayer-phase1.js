@@ -47,6 +47,9 @@ let multiplayerModeSelectedInCurrentSetup = false;
 let historyUnsubscribe = null;
 let historySubscriptionKey = "";
 let multiplayerHistory = {};
+let multiplayerFinalKey = "";
+let multiplayerFinalCardsKey = "";
+let multiplayerFinalPresentationKey = "";
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -262,6 +265,7 @@ function renderPlayerBar(room, screenName="round") {
 }
 async function renderWaiting(room) {
   latestRoom = room;
+  if (room?.round?.phase !== "final") { multiplayerFinalKey = ""; multiplayerFinalCardsKey = ""; multiplayerFinalPresentationKey = ""; }
   if (leavingWaitingRoom) return;
   if (!room) { hideRoundHeader(); $("#room-waiting-message").textContent = "この宴は見つかりません。"; return; }
   if (room.status !== "started") {
@@ -322,6 +326,7 @@ async function renderWaiting(room) {
 }
 
 function roundLabel(room) { return `第${["","一","二","三","四","五","六","七","八","九","十"][Number(room?.round?.number || 1)] || Number(room?.round?.number || 1)}席`; }
+function roundLabelForNumber(roundNumber) { return `第${["","一","二","三","四","五","六","七","八","九","十"][Number(roundNumber)] || Number(roundNumber)}席`; }
 function multiplayerCardMarkup(image) {
   return image ? `<img class="card-zoom-trigger" src="${escape(image)}" alt="お題カード。タップで拡大表示">` : `<div class="missing-card">カード画像を読み込めません</div>`;
 }
@@ -686,7 +691,7 @@ function renderMultiplayerHistory() {
   if(!latestRoom||!roomId)return false;
   const scores=$("#history-scores"), list=$("#history-list"), records=Object.values(multiplayerHistory||{}).sort((a,b)=>Number(b.round)-Number(a.round));
   if(scores)scores.innerHTML=`<p class="history-label">現在のポイント</p><div class="history-score-list">${playerEntries(latestRoom).map(player=>`<div class="history-score"><span>${escape(player.name)}</span><strong>${Number(player.score)||0}ポイント</strong></div>`).join("")}</div>`;
-  if(list)list.innerHTML=records.length?records.map(record=>`<article class="history-entry"><div class="history-entry-heading"><h3>第${record.round}席</h3></div><div class="history-entry-overview">${record.cardImage?`<div class="history-card-area"><img class="card-zoom-trigger" src="${escape(record.cardImage)}" alt="第${record.round}席のお題カード。タップで拡大表示" tabindex="0" role="button"></div>`:""}<div class="history-result"><p class="result-parent">親：${escape(record.parentName)}</p><p class="history-summary">${escape(record.summary)}</p></div></div><div class="history-vote-list">${(Array.isArray(record.words)?record.words:[]).map((word,index)=>{const voters=Object.values(record.answers||{}).filter(answer=>Number(answer.candidateIndex)===index).map(answer=>escape(answer.name));return `<div class="vote-card${word===record.parentWord?" parent-answer":""}" data-parent-word="${word===record.parentWord}"><div class="word">${escape(word)}</div><div class="vote-count">${voters.length}票</div><div class="voters">${voters.length?voters.join("、"):"選択者なし"}</div></div>`;}).join("")}</div></article>`).join(""):'<p class="history-empty">まだ結果が確定したラウンドはありません。</p>';
+  if(list)list.innerHTML=records.length?records.map(record=>{const label=roundLabelForNumber(record.round);return `<article class="history-entry"><div class="history-entry-heading"><h3>${label}</h3></div><div class="history-entry-overview">${record.cardImage?`<div class="history-card-area"><img class="card-zoom-trigger" src="${escape(record.cardImage)}" alt="${label}のお題カード。タップで拡大表示" tabindex="0" role="button"></div>`:""}<div class="history-result"><p class="result-parent">親：${escape(record.parentName)}</p><p class="history-summary">${escape(record.summary)}</p></div></div><div class="history-vote-list">${(Array.isArray(record.words)?record.words:[]).map((word,index)=>{const voters=Object.values(record.answers||{}).filter(answer=>Number(answer.candidateIndex)===index).map(answer=>escape(answer.name));return `<div class="vote-card${word===record.parentWord?" parent-answer":""}" data-parent-word="${word===record.parentWord}"><div class="word">${escape(word)}</div><div class="vote-count">${voters.length}票</div><div class="voters">${voters.length?voters.join("、"):"選択者なし"}</div></div>`;}).join("")}</div></article>`;}).join(""):'<p class="history-empty">まだ結果が確定したラウンドはありません。</p>';
   return true;
 }
 function hasWinner(room) { return playerEntries(room).some(player=>(Number(player.score)||0)>=5); }
@@ -724,10 +729,19 @@ function enterMultiplayerFinalScreen(room) {
     .map(record => ({ round: record.round, image: record.cardImage || record.image }));
   const choiceMade = room.replayChoices?.[currentUser?.uid] === true;
   const ended = roomEnded(room);
+  const finalKey = `${roomId}:${room.round?.number}:${room.round?.cardId}`;
+  const firstFinalEntry = multiplayerFinalKey !== finalKey;
+  const cardsKey = cards.map(card => `${card.round}:${card.image || ""}`).join("|");
+  const presentationKey = players.map(player => `${player.id}:${player.name}:${player.score}`).join("|");
+  const cardsChanged = firstFinalEntry || multiplayerFinalCardsKey !== cardsKey;
+  const presentationChanged = firstFinalEntry || multiplayerFinalPresentationKey !== presentationKey;
+  multiplayerFinalKey = finalKey;
+  multiplayerFinalCardsKey = cardsKey;
+  multiplayerFinalPresentationKey = presentationKey;
   renderPlayerBar(room, "final");
   const title = roundTitleRow("final")?.querySelector("[data-round-title]");
   if (title) title.textContent = "宴の結び";
-  window.showMultiplayerFinalResults?.(players, winners, cards);
+  window.showMultiplayerFinalResults?.(players, winners, cards, { animate: firstFinalEntry, cardsChanged, presentationChanged });
   const toTitle = $("#final-to-title");
   const replay = $("#final-replay");
   toTitle.disabled = ended || choiceMade || phaseTransitionPending;
@@ -899,8 +913,10 @@ async function submitAnswer() {
   const submit=$("#answer-submit"); submit.disabled=true;
   try {
     const answer={candidateIndex:selectedCandidateIndex,createdAt:Date.now()};
-    await set(ref(window.__firebaseDatabase,answerPath(roomId,currentRoundNumber(room),currentUser.uid)),answer);
-    await set(ref(window.__firebaseDatabase,progressPath(roomId,currentRoundNumber(room))+"/answers/"+currentUser.uid),true);
+    await update(ref(window.__firebaseDatabase),{
+      [answerPath(roomId,currentRoundNumber(room),currentUser.uid)]:answer,
+      [progressPath(roomId,currentRoundNumber(room))+"/answers/"+currentUser.uid]:true
+    });
   } catch(error) { submit.disabled=false; setRoundMessage("推理結果を保存できませんでした。"+(error.message||"")); }
 }
 async function drawMultiplayerCard() {
