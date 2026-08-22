@@ -1162,6 +1162,7 @@ function clearInviteUrl() {
 }
 
 function clearRoomSession() {
+  clearStoredResumeAvailability();
   roomUnsubscribe?.();
   roomUnsubscribe = null;
   historyUnsubscribe?.();
