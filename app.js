@@ -187,7 +187,7 @@ function finalCardRecapMarkup(cards){
     const x=Math.round(distance*11),y=Math.abs(distance)*3,rotation=(distance*3.1).toFixed(1);
     const miniX=Math.round(distance*24),miniRotation=(distance*5.4).toFixed(1);
     const last=index===cards.length-1?" is-last":"";
-    return `<img class="final-recap-card${last}" src="${esc(cardImagePath(card.image))}" alt="第${card.round}席のお題カード" style="--entry-delay:${index*300}ms;--card-x:${x}px;--card-y:${y}px;--card-rotate:${rotation}deg;--mini-x:${miniX}px;--mini-rotate:${miniRotation}deg;--stack-order:${index}">`;
+    return `<img class="final-recap-card${last}" src="${esc(cardImagePath(card.image))}" alt="${roundSeatLabel(card.round)}のお題カード" style="--entry-delay:${index*300}ms;--card-x:${x}px;--card-y:${y}px;--card-rotate:${rotation}deg;--mini-x:${miniX}px;--mini-rotate:${miniRotation}deg;--stack-order:${index}">`;
   }).join("");
 }
 function showFinalResults(winners){

@@ -425,7 +425,7 @@ async function chooseFinalReplay() {
 }
 async function restartFinalFeast() {
   const room = latestRoom;
-  if (!room || room.round?.phase !== "final" || roomEnded(room) || room.parentUid !== currentUser?.uid || !allReplayChoices(room) || phaseTransitionPending) return;
+  if (!room || room.round?.phase !== "final" || roomEnded(room) || !canProgress(room) || room.parentUid !== currentUser?.uid || !allReplayChoices(room) || phaseTransitionPending) return;
   phaseTransitionPending = true;
   try {
     const seats = shuffledWords(room.seats);
@@ -852,7 +852,7 @@ function enterMultiplayerFinalScreen(room) {
       setRoundMessage(`再宴希望を保存できませんでした。${error.message || ""}`);
     }
   };
-  if (!ended && allReplayChoices(room) && room.parentUid === currentUser?.uid) {
+  if (!ended && canProgress(room) && allReplayChoices(room) && room.parentUid === currentUser?.uid) {
     restartFinalFeast().catch(error => setRoundMessage(`再宴を開始できませんでした。${error.message || ""}`));
   }
   if (ended) setRoundMessage(`${room.endedBy?.name || "参加者"}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
