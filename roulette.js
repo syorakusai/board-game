@@ -1,12 +1,14 @@
 export function createRouletteController(){
   const timers=new Set();
   let activeCards=[];
-  const schedule=(callback,delay)=>{
-    const timer=setTimeout(()=>{timers.delete(timer);callback();},Math.max(0,delay));
+  let generation=0;
+  const schedule=(callback,delay,isActive=()=>true)=>{
+    const timer=setTimeout(()=>{timers.delete(timer);if(isActive())callback();},Math.max(0,delay));
     timers.add(timer);
   };
   const clearCards=cards=>cards.forEach(card=>card.classList.remove("reveal-checking","reveal-parent","reveal-flash"));
   const cancel=()=>{
+    generation++;
     timers.forEach(clearTimeout);
     timers.clear();
     clearCards(activeCards);
@@ -81,6 +83,8 @@ export function createRouletteController(){
   };
   const playPlan=({cards,parentIndex,plan,status,summaryEl,next,summary,elapsedMs=0,canEnable=()=>true,onComplete=()=>{}})=>{
     cancel();
+    const runGeneration=generation;
+    const isActive=()=>generation===runGeneration;
     activeCards=cards;
     const sequence=Array.isArray(plan?.sequence)?plan.sequence:[];
     const delays=Array.isArray(plan?.delays)?plan.delays:[];
@@ -97,12 +101,13 @@ export function createRouletteController(){
     const startedAt=Date.now()-safeElapsed;
     let completed=false;
     const showStep=step=>{
+      if(!isActive())return;
       clearCards(cards);
       cards[sequence[Math.min(step,sequence.length-1)]].classList.add("reveal-checking");
       status.textContent="";
     };
     const complete=()=>{
-      if(completed)return;
+      if(completed||!isActive())return;
       completed=true;
       clearCards(cards);
       cards[parentIndex]?.classList.add("reveal-parent");
@@ -112,18 +117,19 @@ export function createRouletteController(){
       onComplete();
     };
     const beginFlashPhase=()=>{
+      if(!isActive())return;
       clearCards(cards);
       cards[parentIndex]?.classList.add("reveal-parent");
     };
     const playFlashesUntilEnd=()=>{
-      if(completed)return;
+      if(completed||!isActive())return;
       const currentElapsed=Math.max(0,Date.now()-startedAt);
       if(currentElapsed>=totalDuration){complete();return;}
       const flashElapsed=Math.max(0,currentElapsed-movementDuration);
       const flashOn=Math.floor(flashElapsed/150)%2===0;
       cards[parentIndex]?.classList.toggle("reveal-flash",flashOn);
       const nextFlashIn=150-(flashElapsed%150);
-      schedule(playFlashesUntilEnd,Math.min(nextFlashIn,totalDuration-currentElapsed));
+      schedule(playFlashesUntilEnd,Math.min(nextFlashIn,totalDuration-currentElapsed),isActive);
     };
     if(safeElapsed>=totalDuration){complete();return;}
     if(safeElapsed>=movementDuration){
@@ -134,17 +140,17 @@ export function createRouletteController(){
     let elapsed=0,step=0;
     while(step<delays.length&&elapsed+Number(delays[step])<=safeElapsed){elapsed+=Number(delays[step]);step++;}
     showStep(step);
-    schedule(()=>{
+      schedule(()=>{
       let currentStep=step;
       const advance=()=>{
         if(completed)return;
         if(currentStep>=sequence.length-1){beginFlashPhase();playFlashesUntilEnd();return;}
         currentStep++;
         showStep(currentStep);
-        schedule(advance,delays[currentStep]||0);
+        schedule(advance,delays[currentStep]||0,isActive);
       };
       advance();
-    },Math.max(0,elapsed+Number(delays[step]||0)-safeElapsed));
+    },Math.max(0,elapsed+Number(delays[step]||0)-safeElapsed),isActive);
   };
   const start=({cards,parentIndex,status,summaryEl,next,summary})=>{
     const plan=createPlan({count:cards.length,parentIndex});

@@ -56,6 +56,7 @@ let parentWordError = "";
 let parentWordErrorKey = "";
 let storedResumeAvailable = false;
 let storedSessionReconnectUnsubscribe = null;
+let storedSessionReconnectAttempted = false;
 let checkingStoredRoomSession = false;
 let setupMode = "single";
 let multiplayerSetupMode = "host";
@@ -951,6 +952,7 @@ function enterResultScreen(room) {
   renderMultiplayerResultVotes(room);
   $("#result-parent").textContent="";
   $("#result-reveal-status").textContent="";
+  $("#result-summary").innerHTML="";
   const summary=multiplayerResultSummary(room);
   const next=$("#result-next");
   next.hidden=!isParent;
@@ -975,7 +977,7 @@ function enterResultScreen(room) {
   }
   if(controller&&round.roulettePlan&&Number(round.revealCompletedAt)){
     resultRouletteKey=key;
-    controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed,canEnable:()=>false,onComplete:()=>{if(latestRoom?.round?.phase==="result")enterResultScreen(latestRoom);}});
+    controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed,canEnable:()=>false,onComplete:()=>{if(latestRoom?.round?.phase==="result"&&resultPresentationKey(latestRoom)===key)enterResultScreen(latestRoom);}});
   }
 }
 window.__restoreMultiplayerRevealButton=()=>{
@@ -1483,16 +1485,25 @@ function stopStoredSessionReconnectRetry() {
   storedSessionReconnectUnsubscribe?.();
   storedSessionReconnectUnsubscribe = null;
 }
+function showStoredSessionReconnectWaiting() {
+  if (!$('[data-screen="title"]:not(.is-hidden)')) return;
+  $("#recovery-title").textContent = "宴へ復帰しています";
+  $("#recovery-message").textContent = "通信の復旧を待っています。";
+  $("#recovery-resume").hidden = true;
+  $("#recovery-retry").hidden = true;
+  show("multiplayer-recovery");
+}
 function retryStoredSessionOnReconnect() {
   const saved = storedRoomSession(), database = window.__firebaseDatabase;
   if (!saved || !database || storedSessionReconnectUnsubscribe) return;
-  let sawDisconnected = !navigator.onLine;
+  showStoredSessionReconnectWaiting();
   storedSessionReconnectUnsubscribe = onValue(ref(database, ".info/connected"), snapshot => {
     if (snapshot.val() !== true) {
-      sawDisconnected = true;
+      storedSessionReconnectAttempted = false;
       return;
     }
-    if (!sawDisconnected) return;
+    if (storedSessionReconnectAttempted) return;
+    storedSessionReconnectAttempted = true;
     stopStoredSessionReconnectRetry();
     checkStoredRoomSession();
   }, error => {
@@ -1514,6 +1525,7 @@ async function checkStoredRoomSession(){
     if(!navigator.onLine){retryStoredSessionOnReconnect();return false;}
     await waitForDatabaseConnection(context.database);
     const room=(await get(ref(context.database,roomPath(saved.roomId)))).val();
+    if(!room){retryStoredSessionOnReconnect();return false;}
     const valid=storedSessionMatchesRoom(room,saved,context.user.uid);
     if(!valid){
       const connected=(await get(ref(context.database,".info/connected"))).val()===true;
@@ -1525,10 +1537,12 @@ async function checkStoredRoomSession(){
     if(invitedRoomId){
       if(invitedRoomId!==roomId.toUpperCase())return false;
       await resumeStoredRoom();
+      storedSessionReconnectAttempted=false;
       return true;
     }
     if(!autoResumeSuppressed()&&hasConnectedPlayer(room)){
       await resumeStoredRoom();
+      storedSessionReconnectAttempted=false;
       return true;
     }
     storedResumeAvailable=true;
