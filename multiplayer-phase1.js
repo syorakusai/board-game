@@ -6,6 +6,7 @@ import { scoreRound } from "./game-rules.js";
 const ROOM_PREFIX = "rooms";
 const NAME_STORAGE_KEY = "board-game:dev:multiplayer-name";
 const ROOM_SESSION_STORAGE_KEY = "board-game:dev:multiplayer-room-session";
+const ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY = "board-game:dev:multiplayer-auto-resume-suppressed";
 const LEAVE_RETRY_COUNT = 3;
 const LEAVE_RETRY_DELAY_MS = 700;
 const CONNECTION_TIMEOUT_MS = 8000;
@@ -20,6 +21,7 @@ let startingRoom = false;
 let presenceUnsubscribe = null;
 let activeConnectionRef = null;
 let secretUnsubscribe = null;
+let secretSubscriptionKey = "";
 let parentSecret = null;
 let discussionTimer = null;
 let discussionTimerRound = "";
@@ -42,6 +44,9 @@ let selectedCandidateIndex = null;
 let resultRouletteKey = "";
 let resultClockWaitKey = "";
 let resultVisibilityHandler = null;
+let resultCompletionTimer = null;
+let resultCompletionTimerKey = "";
+let resultPresentationCompletedKey = "";
 let phaseTransitionPending = false;
 let observedRoundKey = "";
 let parentWordError = "";
@@ -87,6 +92,9 @@ const enabled = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
 const storedRoomSession=()=>{try{const s=JSON.parse(localStorage.getItem(ROOM_SESSION_STORAGE_KEY)||"null");return s&&typeof s==="object"?s:null;}catch{return null;}};
 const saveRoomSession=room=>{if(!roomId||!currentUser?.uid||!room?.feastId)return;localStorage.setItem(ROOM_SESSION_STORAGE_KEY,JSON.stringify({roomId,uid:currentUser.uid,name:room.players?.[currentUser.uid]?.name||savedName(),role:room.hostUid===currentUser.uid?"host":"guest",feastId:room.feastId}));};
 const forgetRoomSession=()=>localStorage.removeItem(ROOM_SESSION_STORAGE_KEY);
+const autoResumeSuppressed=()=>localStorage.getItem(ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY)==="true";
+const suppressAutoResume=()=>localStorage.setItem(ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY,"true");
+const allowAutoResume=()=>localStorage.removeItem(ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY);
 const roomEnded=room=>Boolean(room?.endedBy);
 const disconnectedPlayers=room=>playerEntries(room).filter(player=>!Object.keys(room?.presence?.[player.uid]||{}).length);
 function waitForDatabaseConnection(database, timeoutMs=CONNECTION_TIMEOUT_MS){
@@ -347,10 +355,18 @@ function roundLabelForNumber(roundNumber) { return `第${["","一","二","三","
 function multiplayerCardMarkup(image) {
   return image ? `<img class="card-zoom-trigger" src="${escape(image)}" alt="お題カード。タップで拡大表示">` : `<div class="missing-card">カード画像を読み込めません</div>`;
 }
+function resultPresentationKey(room) {
+  const round=room?.round||{};
+  return `${roomId}:${currentRoundNumber(room)}:${String(round.revealCompletedAt)}:${JSON.stringify(round.roulettePlan||null)}`;
+}
 function resultPresentationFinished(room) {
   const round=room?.round||{}, plan=round.roulettePlan;
   const started=Number(round.revealCompletedAt), duration=Number(plan?.durationMs);
-  return Number.isFinite(started)&&started>0&&Number.isFinite(duration)&&duration>=0&&serverNow()>=started+duration;
+  const key=resultPresentationKey(room);
+  if(resultPresentationCompletedKey===key)return true;
+  const finished=Number.isFinite(started)&&started>0&&Number.isFinite(duration)&&duration>=0&&serverNow()>=started+duration;
+  if(finished)resultPresentationCompletedKey=key;
+  return finished;
 }
 function resultElapsedMs(room) {
   const started=Number(room?.round?.revealCompletedAt);
@@ -358,6 +374,27 @@ function resultElapsedMs(room) {
 }
 function stopResultVisibilitySync() {
   if(resultVisibilityHandler){document.removeEventListener("visibilitychange",resultVisibilityHandler);resultVisibilityHandler=null;}
+}
+function stopResultCompletionRecheck() {
+  clearTimeout(resultCompletionTimer);
+  resultCompletionTimer=null;
+  resultCompletionTimerKey="";
+}
+function scheduleResultCompletionRecheck(room) {
+  const round=room?.round||{}, started=Number(round.revealCompletedAt), duration=Number(round.roulettePlan?.durationMs);
+  const key=resultPresentationKey(room);
+  if(!Number.isFinite(started)||started<=0||!Number.isFinite(duration)||duration<0||resultPresentationFinished(room)){
+    stopResultCompletionRecheck();
+    return;
+  }
+  const remaining=Math.max(0,started+duration-serverNow());
+  stopResultCompletionRecheck();
+  resultCompletionTimerKey=key;
+  resultCompletionTimer=setTimeout(()=>{
+    resultCompletionTimer=null;
+    if(resultCompletionTimerKey!==key||latestRoom?.round?.phase!=="result"||resultPresentationKey(latestRoom)!==key)return;
+    enterResultScreen(latestRoom);
+  },remaining+20);
 }
 function startResultVisibilitySync() {
   stopResultVisibilitySync();
@@ -445,6 +482,7 @@ function subscribeServerClock(database) {
         resolveServerTimeOffsetReady = null;
         rejectServerTimeOffsetReady = null;
       }
+      if(latestRoom?.round?.phase==="result")enterResultScreen(latestRoom);
     },
     error => {
       if (!serverTimeOffsetReady) {
@@ -465,9 +503,12 @@ function discussionTimeLabel(seconds) {
   return `${Math.floor(safeSeconds/60)}:${String(safeSeconds%60).padStart(2,"0")}`;
 }
 function setSecretSubscription(room) {
-  secretUnsubscribe?.(); secretUnsubscribe = null; parentSecret = null;
+  secretUnsubscribe?.(); secretUnsubscribe = null; secretSubscriptionKey=""; parentSecret = null;
   if (room?.parentUid !== currentUser?.uid || !room?.round?.number) return;
+  const key=`${roomId}:${currentRoundNumber(room)}:${currentUser.uid}`;
+  secretSubscriptionKey=key;
   secretUnsubscribe = onValue(ref(window.__firebaseDatabase, secretPath(roomId, currentRoundNumber(room), currentUser.uid)), snapshot => {
+    if(secretSubscriptionKey!==key)return;
     parentSecret = snapshot.val();
     if (latestRoom?.round?.phase === "parent-word") enterParentWordScreen(latestRoom);
   });
@@ -477,6 +518,7 @@ function setProgressSubscription(room) {
   if(progressSubscriptionKey===key)return;
   progressUnsubscribe?.(); progressSubscriptionKey=key; roundProgress={};
   progressUnsubscribe=onValue(ref(window.__firebaseDatabase,progressPath(roomId,roundNumber)),snapshot=>{
+    if(progressSubscriptionKey!==key)return;
     roundProgress=snapshot.val()||{};
     if(latestRoom?.round?.phase==="discussion") { enterDiscussionScreen(latestRoom); maybeAdvanceToAnswer(latestRoom); }
     if(latestRoom?.round?.phase==="answer") { enterAnswerScreen(latestRoom); maybeAdvanceToReveal(latestRoom); }
@@ -489,6 +531,7 @@ function setAnswerSubscription(room) {
   if(answerSubscriptionKey!==key){
     answerUnsubscribe?.(); answerSubscriptionKey=key; ownAnswer=null; selectedCandidateIndex=null;
     answerUnsubscribe=onValue(ref(window.__firebaseDatabase,answerPath(roomId,roundNumber,currentUser.uid)),snapshot=>{
+      if(answerSubscriptionKey!==key)return;
       ownAnswer=snapshot.val();
       if(latestRoom?.round?.phase==="answer") enterAnswerScreen(latestRoom);
     });
@@ -498,6 +541,7 @@ function setAnswerSubscription(room) {
     answerSummaryUnsubscribe?.(); answerSummarySubscriptionKey=summaryKey;
     if(room.parentUid===currentUser?.uid){
       answerSummaryUnsubscribe=onValue(ref(window.__firebaseDatabase,answerRoundPath(roomId,roundNumber)),snapshot=>{
+        if(answerSummarySubscriptionKey!==summaryKey)return;
         if(latestRoom?.round?.phase==="answer") maybeAdvanceToReveal(latestRoom,snapshot.val()||{});
       });
     } else {
@@ -745,6 +789,7 @@ function renderMultiplayerResultVotes(room) {
 }
 function enterScoreScreen(room) {
   stopResultVisibilitySync();
+  stopResultCompletionRecheck();
   window.__rouletteController?.cancel?.();
   resultRouletteKey="";
   const isParent=room.parentUid===currentUser?.uid, parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親";
@@ -764,6 +809,7 @@ function enterScoreScreen(room) {
 }
 function enterMultiplayerFinalScreen(room) {
   stopResultVisibilitySync();
+  stopResultCompletionRecheck();
   const players = playerEntries(room).map(player => ({ id: player.uid, name: player.name, score: Number(player.score) || 0 }));
   const winners = players.filter(player => player.score >= 5);
   const cards = Object.values(multiplayerHistory || {})
@@ -816,7 +862,7 @@ function enterResultScreen(room) {
   stopResultVisibilitySync();
   startResultVisibilitySync();
   const round=room.round||{}, isParent=room.parentUid===currentUser?.uid;
-  const key=roomId+":"+currentRoundNumber(room)+":"+String(round.revealCompletedAt)+":"+JSON.stringify(round.roulettePlan||null);
+  const key=resultPresentationKey(room);
   const renderBase=()=>{
     document.querySelector('[data-screen="result-open"]')?.classList.remove("is-multiplayer-reveal");
     show("result");
@@ -848,6 +894,7 @@ function enterResultScreen(room) {
   }
   resultClockWaitKey = "";
   const finished=resultPresentationFinished(room), elapsed=resultElapsedMs(room);
+  scheduleResultCompletionRecheck(room);
   if (!finished && resultRouletteKey === key) {
     renderBase();
     const next=$("#result-next");
@@ -878,6 +925,7 @@ function enterResultScreen(room) {
   else setRoundMessage(finished?((playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親")+"さん、得点を確認してください。"):"ひそめごとを開帳しています。");
   const cards=[...document.querySelectorAll("#result-votes .vote-card")], controller=window.__rouletteController;
   if(finished){
+    stopResultCompletionRecheck();
     cards.forEach(card=>card.classList.remove("reveal-checking","reveal-flash"));
     cards[Number(round.parentCandidateIndex)]?.classList.add("reveal-parent");
     $("#result-summary").innerHTML=summary;
@@ -885,7 +933,7 @@ function enterResultScreen(room) {
   }
   if(controller&&round.roulettePlan&&Number(round.revealCompletedAt)){
     resultRouletteKey=key;
-    controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed,canEnable:()=>isParent&&canProgress(latestRoom)&&resultPresentationFinished(latestRoom),onComplete:()=>{if(latestRoom?.round?.phase==="result"){renderPlayerBar(latestRoom,"result");setRoundMessage(roomEnded(latestRoom)?latestRoom.endedBy.name+"が退出したため、宴はお開きとなりました。":(playerEntries(latestRoom).find(player=>player.uid===latestRoom.parentUid)?.name||"親")+"さん、得点を確認してください。");}}});
+    controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed,canEnable:()=>false,onComplete:()=>{if(latestRoom?.round?.phase==="result")enterResultScreen(latestRoom);}});
   }
 }
 window.__restoreMultiplayerRevealButton=()=>{
@@ -961,10 +1009,12 @@ async function completeScore() {
 }
 function resetRoundLocalState() {
   parentSecret=null; parentWordError=""; parentWordErrorKey=""; roundProgress={}; ownAnswer=null; selectedCandidateIndex=null;
+  secretUnsubscribe?.(); secretUnsubscribe=null; secretSubscriptionKey="";
   progressUnsubscribe?.(); progressUnsubscribe=null; progressSubscriptionKey="";
   answerUnsubscribe?.(); answerUnsubscribe=null; answerSubscriptionKey="";
   answerSummaryUnsubscribe?.(); answerSummaryUnsubscribe=null; answerSummarySubscriptionKey="";
-  resultRouletteKey=""; resultClockWaitKey=""; window.__rouletteController?.cancel?.(); stopResultVisibilitySync();
+  stopDiscussionTimer();
+  resultRouletteKey=""; resultClockWaitKey=""; resultPresentationCompletedKey=""; stopResultCompletionRecheck(); window.__rouletteController?.cancel?.(); stopResultVisibilitySync();
 }
 async function advanceToNextSeat() {
   const room=latestRoom, button=$("#next-round");
@@ -1073,6 +1123,7 @@ function subscribeHistory(room) {
   historyUnsubscribe = onValue(
     ref(window.__firebaseDatabase, historyPath(roomId)),
     snapshot => {
+      if(historySubscriptionKey!==key)return;
       multiplayerHistory = snapshot.val() || {};
       if (latestRoom?.round?.phase === "final") enterMultiplayerFinalScreen(latestRoom);
     },
@@ -1089,10 +1140,13 @@ function subscribeRoom(id) {
   roomUnsubscribe?.();
   roomUnsubscribe = onValue(
     ref((window.__firebaseDatabase), roomPath(id)),
-    snapshot => renderWaiting(snapshot.val()).catch(error => {
+    snapshot => {
+      if(roomId!==id)return;
+      return renderWaiting(snapshot.val()).catch(error => {
       show("multiplayer-waiting");
       $("#room-waiting-message").textContent = `宴の状態を表示できませんでした。${error.message || ""}`;
-    }),
+      });
+    },
     error => {
       show("multiplayer-waiting");
       $("#room-waiting-message").textContent = `宴の状態を受信できませんでした。${error.message || ""}`;
@@ -1116,12 +1170,18 @@ function clearRoomSession() {
   multiplayerHistory = {};
   secretUnsubscribe?.();
   secretUnsubscribe = null;
+  secretSubscriptionKey = "";
   answerUnsubscribe?.();
   answerUnsubscribe = null;
   answerSummaryUnsubscribe?.();
   answerSummaryUnsubscribe = null;
   answerSubscriptionKey = "";
   answerSummarySubscriptionKey = "";
+  progressUnsubscribe?.();
+  progressUnsubscribe = null;
+  progressSubscriptionKey = "";
+  roundProgress = {};
+  stopDiscussionTimer();
   ownAnswer = null;
   selectedCandidateIndex = null;
   parentSecret = null;
@@ -1130,6 +1190,9 @@ function clearRoomSession() {
   window.__restoreMultiplayerResultButton?.();
   window.__restoreMultiplayerNextRoundButton?.();
   resultRouletteKey = "";
+  resultClockWaitKey = "";
+  resultPresentationCompletedKey = "";
+  stopResultCompletionRecheck();
   observedRoundKey = "";
   window.__rouletteController?.cancel?.();
   stopResultVisibilitySync();
@@ -1184,7 +1247,7 @@ async function createRoom() {
     players: { [context.user.uid]: { name, nameKey: key, joinedAt: Date.now() } },
     nameIndex: { [key]: context.user.uid }
   };
-  try { await update(ref(context.database, roomPath(roomId)), room); saveName(name); saveRoomSession(room); await startPresence(); subscribeRoom(roomId); show("multiplayer-waiting"); }
+  try { await update(ref(context.database, roomPath(roomId)), room); saveName(name); saveRoomSession(room); allowAutoResume(); await startPresence(); subscribeRoom(roomId); show("multiplayer-waiting"); }
   catch (cause) { error.textContent = `部屋を作成できませんでした。${cause.message || ""}`; }
 }
 
@@ -1215,6 +1278,7 @@ async function joinRoom() {
     const confirmedRoom=await verifyJoinedRoom(id,context.user.uid,key);
     saveName(name);
     saveRoomSession(confirmedRoom);
+    allowAutoResume();
     subscribeRoom(roomId);
     show("multiplayer-waiting");
   } catch (cause) {
@@ -1325,8 +1389,9 @@ const inviteRoomId=()=>new URLSearchParams(location.search).get("room")?.trim().
 const hasConnectedPlayer=room=>playerEntries(room).some(player=>Object.keys(room?.presence?.[player.uid]||{}).length>0);
 function clearStoredResumeAvailability(){storedResumeAvailable=false;$("#resume-stored-room-choice").hidden=true;}
 function clearSetupErrors(){ $("#create-room-error").textContent=""; $("#join-room-error").textContent=""; }
-function setSetupMode(mode, { clearInvitation=false } = {}) {
+function setSetupMode(mode, { clearInvitation=false, suppressResume=false } = {}) {
   if (clearInvitation) clearInviteUrl();
+  if(mode==="single"&&suppressResume)suppressAutoResume();
   setupMode=mode;
   $("#setup-single-device").classList.toggle("is-selected",mode==="single");
   $("#setup-multiplayer").classList.toggle("is-selected",mode==="multiplayer");
@@ -1383,7 +1448,7 @@ async function checkStoredRoomSession(){
       await resumeStoredRoom();
       return true;
     }
-    if(hasConnectedPlayer(room)){
+    if(!autoResumeSuppressed()&&hasConnectedPlayer(room)){
       await resumeStoredRoom();
       return true;
     }
@@ -1403,6 +1468,7 @@ async function resumeStoredRoom(){
     stopPresence();
     throw Error("復帰状態を確認できません。");
   }
+  allowAutoResume();
   latestRoom=room;
   subscribeRoom(roomId);
   await renderWaiting(room);
@@ -1432,7 +1498,7 @@ function initialize() {
     roundHeaderObserver.observe(roundHeader);
   }
   window.addEventListener("resize", updateRoundHeaderOffset);
-  $("#setup-single-device").onclick=()=>setSetupMode("single",{clearInvitation:true});
+  $("#setup-single-device").onclick=()=>setSetupMode("single",{clearInvitation:true,suppressResume:true});
   $("#setup-multiplayer").onclick=()=>setSetupMode("multiplayer");
   $("#create-room-choice").onclick=()=>setMultiplayerSetupMode("host",{clearInvitation:true});
   $("#join-room-choice").onclick=()=>setMultiplayerSetupMode("join");
