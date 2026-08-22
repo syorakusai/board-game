@@ -122,7 +122,7 @@ async function verifyJoinedRoom(id,uid,nameKey){
 }
 
 function stopPresence(){presenceUnsubscribe?.();presenceUnsubscribe=null;if(activeConnectionRef){onDisconnect(activeConnectionRef).cancel().catch(()=>{});remove(activeConnectionRef).catch(()=>{});activeConnectionRef=null;}}
-function startPresence(){if(!window.__firebaseDatabase||!roomId||!currentUser?.uid)return Promise.reject(Error("接続状態を開始できません。"));stopPresence();const connections=ref(window.__firebaseDatabase,`${roomPath(roomId)}/presence/${currentUser.uid}`);return new Promise((resolve,reject)=>{let first=true;presenceUnsubscribe=onValue(ref(window.__firebaseDatabase,".info/connected"),async snapshot=>{if(snapshot.val()!==true){activeConnectionRef=null;return;}const connection=push(connections);try{await onDisconnect(connection).remove();await set(connection,true);activeConnectionRef=connection;if(first){first=false;resolve();}}catch(error){if(first){first=false;reject(error);}else console.error("接続状態を再登録できませんでした。",error);}},error=>{if(first){first=false;reject(error);}});});}
+function startPresence(){if(!window.__firebaseDatabase||!roomId||!currentUser?.uid)return Promise.reject(Error("接続状態を開始できません。"));stopPresence();const connections=ref(window.__firebaseDatabase,`${roomPath(roomId)}/presence/${currentUser.uid}`);return new Promise((resolve,reject)=>{let first=true;const fail=error=>{if(!first)return;first=false;clearTimeout(timeout);presenceUnsubscribe?.();presenceUnsubscribe=null;reject(error);};const timeout=setTimeout(()=>fail(Error("Firebaseへの再接続を待っています。")),CONNECTION_TIMEOUT_MS);presenceUnsubscribe=onValue(ref(window.__firebaseDatabase,".info/connected"),async snapshot=>{if(snapshot.val()!==true){activeConnectionRef=null;return;}const connection=push(connections);try{await onDisconnect(connection).remove();await set(connection,true);activeConnectionRef=connection;if(first){first=false;clearTimeout(timeout);resolve();}}catch(error){if(first)fail(error);else console.error("接続状態を再登録できませんでした。",error);}},fail);});}
 async function ensureCatalog() {
   if (catalog.length) return catalog;
   const listing = await (await fetch("card-sets.json")).json();
@@ -1030,6 +1030,7 @@ async function completeScore() {
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="result"||!resultPresentationFinished(room)||!canProgress(room)||phaseTransitionPending)return;
   phaseTransitionPending=true;
   button.disabled=true;
+  let failureMessage="";
   try {
     const snapshot=await get(ref(window.__firebaseDatabase,roomPath(roomId)));
     const current=snapshot.val();
@@ -1040,12 +1041,14 @@ async function completeScore() {
     await update(ref(window.__firebaseDatabase),updates);
   } catch(error) {
     button.disabled=false;
-    setRoundMessage("得点確認を保存できませんでした。"+(error.message||""));
+    failureMessage="得点確認を保存できませんでした。"+(error.message||"");
+    setRoundMessage(failureMessage);
   } finally {
     phaseTransitionPending=false;
     if(latestRoom?.round?.phase==="final")enterMultiplayerFinalScreen(latestRoom);
     else if(latestRoom?.round?.phase==="score")enterScoreScreen(latestRoom);
     else if(latestRoom?.round?.phase==="result")enterResultScreen(latestRoom);
+    if(failureMessage&&latestRoom?.round?.phase==="result")setRoundMessage(failureMessage);
   }
 }
 function resetRoundLocalState() {
@@ -1508,6 +1511,7 @@ async function checkStoredRoomSession(){
     currentUser=context.user;window.__firebaseDatabase=context.database;
     if(context.user.uid!==saved.uid)return false;
     if(!navigator.onLine){retryStoredSessionOnReconnect();return false;}
+    await waitForDatabaseConnection(context.database);
     const room=(await get(ref(context.database,roomPath(saved.roomId)))).val();
     const valid=storedSessionMatchesRoom(room,saved,context.user.uid);
     if(!valid){
