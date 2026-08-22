@@ -55,6 +55,8 @@ let observedRoundKey = "";
 let parentWordError = "";
 let parentWordErrorKey = "";
 let storedResumeAvailable = false;
+let storedSessionReconnectUnsubscribe = null;
+let checkingStoredRoomSession = false;
 let setupMode = "single";
 let multiplayerSetupMode = "host";
 let multiplayerModeSelectedInCurrentSetup = false;
@@ -1202,6 +1204,7 @@ function clearInviteUrl() {
 
 function clearRoomSession() {
   clearStoredResumeAvailability();
+  stopStoredSessionReconnectRetry();
   roomUnsubscribe?.();
   roomUnsubscribe = null;
   historyUnsubscribe?.();
@@ -1472,17 +1475,46 @@ function storedSessionMatchesRoom(room, saved, uid) {
   if (room.status === "waiting") return room.hostUid === uid ? !!room.players?.[uid] : !!joinSlotForUid(room, uid);
   return (room.status === "started" || room.status === "closed") && !!room.players?.[uid] && room.nameIndex?.[room.players[uid].nameKey] === uid;
 }
+function stopStoredSessionReconnectRetry() {
+  storedSessionReconnectUnsubscribe?.();
+  storedSessionReconnectUnsubscribe = null;
+}
+function retryStoredSessionOnReconnect() {
+  const saved = storedRoomSession(), database = window.__firebaseDatabase;
+  if (!saved || !database || storedSessionReconnectUnsubscribe) return;
+  let sawDisconnected = !navigator.onLine;
+  storedSessionReconnectUnsubscribe = onValue(ref(database, ".info/connected"), snapshot => {
+    if (snapshot.val() !== true) {
+      sawDisconnected = true;
+      return;
+    }
+    if (!sawDisconnected) return;
+    stopStoredSessionReconnectRetry();
+    checkStoredRoomSession();
+  }, error => {
+    stopStoredSessionReconnectRetry();
+    console.warn("保存済みの宴の再接続状態を受信できませんでした。", error);
+  });
+}
 async function checkStoredRoomSession(){
+  if (checkingStoredRoomSession) return false;
+  checkingStoredRoomSession = true;
   const saved=storedRoomSession(), invitedRoomId=inviteRoomId();
+  stopStoredSessionReconnectRetry();
   clearStoredResumeAvailability();
-  if(!saved)return false;
+  if(!saved){checkingStoredRoomSession=false;return false;}
   try{
     const context=await getFirebaseContext();
     currentUser=context.user;window.__firebaseDatabase=context.database;
     if(context.user.uid!==saved.uid)return false;
+    if(!navigator.onLine){retryStoredSessionOnReconnect();return false;}
     const room=(await get(ref(context.database,roomPath(saved.roomId)))).val();
     const valid=storedSessionMatchesRoom(room,saved,context.user.uid);
-    if(!valid)return false;
+    if(!valid){
+      const connected=(await get(ref(context.database,".info/connected"))).val()===true;
+      if(!connected)retryStoredSessionOnReconnect();
+      return false;
+    }
     roomId=saved.roomId;openedRoom=saved.role==="host";latestRoom=room;
     if(room.status==="closed"||roomEnded(room)){clearRoomSession();clearStoredResumeAvailability();return false;}
     if(invitedRoomId){
@@ -1498,7 +1530,10 @@ async function checkStoredRoomSession(){
     return false;
   }catch(error){
     console.warn("保存済みの宴を確認できませんでした。",error);
+    if (currentUser?.uid === saved.uid) retryStoredSessionOnReconnect();
     return false;
+  }finally{
+    checkingStoredRoomSession=false;
   }
 }
 async function resumeStoredRoom(){
