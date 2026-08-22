@@ -27,11 +27,13 @@ let discussionTimer = null;
 let discussionTimerRound = "";
 let serverTimeOffset = 0;
 let serverTimeOffsetUnsubscribe = null;
+let serverTimeOffsetRetryUnsubscribe = null;
 let serverTimeOffsetDatabase = null;
 let serverTimeOffsetReady = false;
-let serverTimeOffsetReadyPromise = Promise.resolve();
+let serverTimeOffsetReadyPromise = null;
 let resolveServerTimeOffsetReady = null;
 let rejectServerTimeOffsetReady = null;
+let serverTimeOffsetGeneration = 0;
 let progressUnsubscribe = null;
 let progressSubscriptionKey = "";
 let roundProgress = {};
@@ -43,6 +45,7 @@ let ownAnswer = null;
 let selectedCandidateIndex = null;
 let resultRouletteKey = "";
 let resultClockWaitKey = "";
+let resultClockWaitGeneration = 0;
 let resultVisibilityHandler = null;
 let resultCompletionTimer = null;
 let resultCompletionTimerKey = "";
@@ -462,18 +465,44 @@ function stopDiscussionTimer() {
   discussionTimer = null;
   discussionTimerRound = "";
 }
-function subscribeServerClock(database) {
-  if (!database || serverTimeOffsetDatabase === database) return;
-  serverTimeOffsetUnsubscribe?.();
-  serverTimeOffsetDatabase = database;
-  serverTimeOffsetReady = false;
+function createServerTimeOffsetReadyPromise() {
   serverTimeOffsetReadyPromise = new Promise((resolve,reject) => {
     resolveServerTimeOffsetReady = resolve;
     rejectServerTimeOffsetReady = reject;
   });
-  serverTimeOffsetUnsubscribe = onValue(
+  serverTimeOffsetReadyPromise.catch(() => {});
+}
+function stopServerClockRetry() {
+  serverTimeOffsetRetryUnsubscribe?.();
+  serverTimeOffsetRetryUnsubscribe = null;
+}
+function retryServerClockOnReconnect(database) {
+  if (!database || serverTimeOffsetRetryUnsubscribe) return;
+  let sawDisconnected = false;
+  serverTimeOffsetRetryUnsubscribe = onValue(ref(database, ".info/connected"), snapshot => {
+    const connected = snapshot.val() === true;
+    if (!connected) {
+      sawDisconnected = true;
+      return;
+    }
+    if (!sawDisconnected || serverTimeOffsetReady || serverTimeOffsetUnsubscribe) return;
+    stopServerClockRetry();
+    subscribeServerClock(database);
+  }, error => {
+    console.warn("Firebase再接続状態を受信できませんでした。", error);
+  });
+}
+function subscribeServerClock(database) {
+  if (!database || serverTimeOffsetUnsubscribe || serverTimeOffsetReady) return;
+  stopServerClockRetry();
+  serverTimeOffsetDatabase = database;
+  if (!serverTimeOffsetReadyPromise) createServerTimeOffsetReadyPromise();
+  const generation = ++serverTimeOffsetGeneration;
+  let unsubscribe = null;
+  unsubscribe = onValue(
     ref(database, ".info/serverTimeOffset"),
     snapshot => {
+      if (generation !== serverTimeOffsetGeneration) return;
       const offset = Number(snapshot.val());
       serverTimeOffset = Number.isFinite(offset) ? offset : 0;
       if (!serverTimeOffsetReady) {
@@ -485,13 +514,21 @@ function subscribeServerClock(database) {
       if(latestRoom?.round?.phase==="result")enterResultScreen(latestRoom);
     },
     error => {
+      if (generation !== serverTimeOffsetGeneration) return;
+      serverTimeOffsetGeneration += 1;
+      unsubscribe?.();
+      if (serverTimeOffsetUnsubscribe === unsubscribe) serverTimeOffsetUnsubscribe = null;
+      serverTimeOffsetDatabase = null;
       if (!serverTimeOffsetReady) {
-        rejectServerTimeOffsetReady?.(error);
-        resolveServerTimeOffsetReady = null;
-        rejectServerTimeOffsetReady = null;
+        const reject = rejectServerTimeOffsetReady;
+        createServerTimeOffsetReadyPromise();
+        reject?.(error);
       }
+      retryServerClockOnReconnect(database);
     }
   );
+  if (generation === serverTimeOffsetGeneration) serverTimeOffsetUnsubscribe = unsubscribe;
+  else unsubscribe?.();
 }
 function waitForServerTimeOffset(database) {
   subscribeServerClock(database);
@@ -882,10 +919,12 @@ function enterResultScreen(room) {
     next.disabled=true;
     if (resultClockWaitKey !== key) {
       resultClockWaitKey = key;
+      const waitGeneration = ++resultClockWaitGeneration;
       waitForServerTimeOffset(window.__firebaseDatabase).then(() => {
-        if (latestRoom?.round?.phase === "result") enterResultScreen(latestRoom);
+        if (waitGeneration === resultClockWaitGeneration && latestRoom?.round?.phase === "result") enterResultScreen(latestRoom);
       }).catch(error => {
-        if (latestRoom?.round?.phase === "result" && resultClockWaitKey === key) {
+        if (waitGeneration === resultClockWaitGeneration && latestRoom?.round?.phase === "result" && resultClockWaitKey === key) {
+          resultClockWaitKey = "";
           $("#result-reveal-status").textContent="共有時刻を確認できません。"+(error.message || "");
         }
       });
@@ -1014,7 +1053,7 @@ function resetRoundLocalState() {
   answerUnsubscribe?.(); answerUnsubscribe=null; answerSubscriptionKey="";
   answerSummaryUnsubscribe?.(); answerSummaryUnsubscribe=null; answerSummarySubscriptionKey="";
   stopDiscussionTimer();
-  resultRouletteKey=""; resultClockWaitKey=""; resultPresentationCompletedKey=""; stopResultCompletionRecheck(); window.__rouletteController?.cancel?.(); stopResultVisibilitySync();
+  resultRouletteKey=""; resultClockWaitKey=""; resultClockWaitGeneration+=1; resultPresentationCompletedKey=""; stopServerClockRetry(); stopResultCompletionRecheck(); window.__rouletteController?.cancel?.(); stopResultVisibilitySync();
 }
 async function advanceToNextSeat() {
   const room=latestRoom, button=$("#next-round");
@@ -1192,7 +1231,9 @@ function clearRoomSession() {
   window.__restoreMultiplayerNextRoundButton?.();
   resultRouletteKey = "";
   resultClockWaitKey = "";
+  resultClockWaitGeneration += 1;
   resultPresentationCompletedKey = "";
+  stopServerClockRetry();
   stopResultCompletionRecheck();
   observedRoundKey = "";
   window.__rouletteController?.cancel?.();
