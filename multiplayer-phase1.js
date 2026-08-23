@@ -1472,13 +1472,15 @@ async function startRoom() {
   if (startingRoom || !openedRoom || !roomId || !currentUser?.uid) return;
   startingRoom=true;
   try {
+    const presenceSnapshot = await get(ref(window.__firebaseDatabase, roomPresencePath(roomId)));
+    const presence = presenceSnapshot.val() || {};
     let transactionIssue = "";
     const transaction = await runTransaction(ref(window.__firebaseDatabase, roomPath(roomId)), current => {
       if (!current || current.status !== "waiting") { transactionIssue = "この宴はすでに開始されています。"; return; }
       if (current.hostUid !== currentUser.uid) { transactionIssue = "主催者だけが宴を開始できます。"; return; }
       const waitingPlayers = playerEntries(current);
       if (waitingPlayers.length < 2 || waitingPlayers.length > 6) { transactionIssue = "参加者は2〜6人必要です。"; return; }
-      if (disconnectedPlayers(current).length) { transactionIssue = "切断中の客人がいるため開始できません。"; return; }
+      if (disconnectedPlayers({ ...current, presence }).length) { transactionIssue = "切断中の客人がいるため開始できません。"; return; }
       const joinedPlayers = joinSlotEntries(current);
       const players = { ...(current.players || {}) };
       const nameIndex = { ...(current.nameIndex || {}) };
@@ -1495,7 +1497,7 @@ async function startRoom() {
     }, { applyLocally: false });
     if (!transaction.committed) {
       const current = transaction.snapshot?.val();
-      if (current) await renderWaiting(current);
+      if (current) await renderWaiting(withRoomPresence(current));
       else $("#room-waiting-message").textContent = transactionIssue || "宴を開始できませんでした。";
     }
   } catch (error) {
