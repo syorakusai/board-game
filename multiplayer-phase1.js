@@ -7,6 +7,8 @@ const ROOM_PREFIX = "rooms";
 const NAME_STORAGE_KEY = "board-game:dev:multiplayer-name";
 const ROOM_SESSION_STORAGE_KEY = "board-game:dev:multiplayer-room-session";
 const ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY = "board-game:dev:multiplayer-auto-resume-suppressed";
+const RESUME_DEBUG_LOG_STORAGE_KEY = "board-game:dev:multiplayer-resume-debug-log";
+const RESUME_DEBUG_LOG_LIMIT = 80;
 const LEAVE_RETRY_COUNT = 3;
 const LEAVE_RETRY_DELAY_MS = 700;
 const CONNECTION_TIMEOUT_MS = 8000;
@@ -101,6 +103,35 @@ const forgetRoomSession=()=>localStorage.removeItem(ROOM_SESSION_STORAGE_KEY);
 const autoResumeSuppressed=()=>localStorage.getItem(ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY)==="true";
 const suppressAutoResume=()=>localStorage.setItem(ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY,"true");
 const allowAutoResume=()=>localStorage.removeItem(ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY);
+function resumeDebug(event, detail={}) {
+  if (!enabled()) return;
+  try {
+    const entries=JSON.parse(localStorage.getItem(RESUME_DEBUG_LOG_STORAGE_KEY)||"[]");
+    const log=Array.isArray(entries)?entries:[];
+    log.push({at:new Date().toISOString(),event,detail});
+    localStorage.setItem(RESUME_DEBUG_LOG_STORAGE_KEY,JSON.stringify(log.slice(-RESUME_DEBUG_LOG_LIMIT)));
+    const button=$("#multiplayer-resume-debug");
+    if(button)button.hidden=false;
+  } catch (error) { console.warn("復帰診断ログを保存できませんでした。",error); }
+}
+function resumeDebugEntries() {
+  try { const entries=JSON.parse(localStorage.getItem(RESUME_DEBUG_LOG_STORAGE_KEY)||"[]"); return Array.isArray(entries)?entries:[]; }
+  catch { return []; }
+}
+function showResumeDebugLog() {
+  const output=resumeDebugEntries().map(entry=>`${entry.at} ${entry.event} ${JSON.stringify(entry.detail)}`).join("\n")||"診断ログはありません。";
+  $("#multiplayer-debug-actions")?.remove();
+  $("#recovery-title").textContent="復帰診断ログ";
+  const pre=Object.assign(document.createElement("pre"),{className:"multiplayer-debug-log",textContent:output});
+  $("#recovery-message").replaceChildren(pre);
+  $("#recovery-resume").hidden=true; $("#recovery-retry").hidden=true; $("#recovery-exit").hidden=true;
+  const actions=document.createElement("div"); actions.id="multiplayer-debug-actions"; actions.className="button-row";
+  const copy=Object.assign(document.createElement("button"),{className:"button button-primary",type:"button",textContent:"ログをコピー"});
+  copy.onclick=async()=>{await navigator.clipboard.writeText(output);copy.textContent="コピーしました";};
+  const clear=Object.assign(document.createElement("button"),{className:"button button-secondary",type:"button",textContent:"ログを消去"});
+  clear.onclick=()=>{localStorage.removeItem(RESUME_DEBUG_LOG_STORAGE_KEY);showResumeDebugLog();};
+  actions.append(copy,clear); $("#recovery-message").after(actions); show("multiplayer-recovery");
+}
 const roomEnded=room=>Boolean(room?.endedBy);
 const disconnectedPlayers=room=>playerEntries(room).filter(player=>!Object.keys(room?.presence?.[player.uid]||{}).length);
 function waitForDatabaseConnection(database, timeoutMs=CONNECTION_TIMEOUT_MS){
@@ -904,6 +935,7 @@ function enterResultScreen(room) {
   startResultVisibilitySync();
   const round=room.round||{}, isParent=room.parentUid===currentUser?.uid;
   const key=resultPresentationKey(room);
+  resumeDebug("result:enter",{key,clockReady:serverTimeOffsetReady,hasPlan:Boolean(round.roulettePlan),hasStartedAt:Number.isFinite(Number(round.revealCompletedAt)),controller:Boolean(window.__rouletteController)});
   const renderBase=()=>{
     document.querySelector('[data-screen="result-open"]')?.classList.remove("is-multiplayer-reveal");
     show("result");
@@ -912,6 +944,7 @@ function enterResultScreen(room) {
     if(title)title.textContent=roundLabel(room)+"　宴の顛末";
   };
   if (!serverTimeOffsetReady) {
+    resumeDebug("result:wait-server-clock",{key});
     renderBase();
     $("#result-card-area").innerHTML=multiplayerCardMarkup(round.cardImage);
     renderMultiplayerResultVotes(room);
@@ -925,8 +958,10 @@ function enterResultScreen(room) {
       resultClockWaitKey = key;
       const waitGeneration = ++resultClockWaitGeneration;
       waitForServerTimeOffset(window.__firebaseDatabase).then(() => {
+        resumeDebug("result:server-clock-ready",{key});
         if (waitGeneration === resultClockWaitGeneration && latestRoom?.round?.phase === "result") enterResultScreen(latestRoom);
       }).catch(error => {
+        resumeDebug("result:server-clock-error",{key,message:error.message||String(error)});
         if (waitGeneration === resultClockWaitGeneration && latestRoom?.round?.phase === "result" && resultClockWaitKey === key) {
           resultClockWaitKey = "";
           $("#result-reveal-status").textContent="共有時刻を確認できません。"+(error.message || "");
@@ -937,6 +972,7 @@ function enterResultScreen(room) {
   }
   resultClockWaitKey = "";
   const finished=resultPresentationFinished(room), elapsed=resultElapsedMs(room);
+  resumeDebug("result:restore",{key,finished,elapsed,planDuration:Number(round.roulettePlan?.durationMs)||null});
   scheduleResultCompletionRecheck(room);
   if (!finished && resultRouletteKey === key) {
     renderBase();
@@ -976,6 +1012,7 @@ function enterResultScreen(room) {
     return;
   }
   if(controller&&round.roulettePlan&&Number(round.revealCompletedAt)){
+    resumeDebug("result:play-plan",{key,elapsed});
     resultRouletteKey=key;
     controller.playPlan({cards,parentIndex:Number(round.parentCandidateIndex),plan:round.roulettePlan,status:$("#result-reveal-status"),summaryEl:$("#result-summary"),next,summary,elapsedMs:elapsed,canEnable:()=>false,onComplete:()=>{if(latestRoom?.round?.phase==="result"&&resultPresentationKey(latestRoom)===key)enterResultScreen(latestRoom);}});
   }
@@ -1509,36 +1546,43 @@ async function checkStoredRoomSession(){
   stopStoredSessionReconnectRetry();
   clearStoredResumeAvailability();
   if(!saved){checkingStoredRoomSession=false;return false;}
+  resumeDebug("check:start",{invited:Boolean(invitedRoomId),suppressed:autoResumeSuppressed()});
   try{
     const context=await getFirebaseContext();
     currentUser=context.user;window.__firebaseDatabase=context.database;
-    if(context.user.uid!==saved.uid)return false;
-    if(!navigator.onLine){retryStoredSessionOnReconnect();return false;}
+    if(context.user.uid!==saved.uid){resumeDebug("check:uid-mismatch");return false;}
+    if(!navigator.onLine){resumeDebug("check:offline");retryStoredSessionOnReconnect();return false;}
     await waitForDatabaseConnection(context.database);
     const room=(await get(ref(context.database,roomPath(saved.roomId)))).val();
-    if(!room){retryStoredSessionOnReconnect();return false;}
+    if(!room){resumeDebug("check:room-missing");retryStoredSessionOnReconnect();return false;}
     const valid=storedSessionMatchesRoom(room,saved,context.user.uid);
+    resumeDebug("check:room-read",{status:room.status,phase:room.round?.phase||null,valid,connectedPlayers:playerEntries(room).filter(player=>Object.keys(room?.presence?.[player.uid]||{}).length).length});
     if(!valid){
       const connected=(await get(ref(context.database,".info/connected"))).val()===true;
+      resumeDebug("check:session-invalid",{connected});
       if(!connected)retryStoredSessionOnReconnect();
       return false;
     }
     roomId=saved.roomId;openedRoom=saved.role==="host";latestRoom=room;
-    if(room.status==="closed"||roomEnded(room)){clearRoomSession();clearStoredResumeAvailability();return false;}
+    if(room.status==="closed"||roomEnded(room)){resumeDebug("check:room-ended",{status:room.status,ended:Boolean(room.endedBy)});clearRoomSession();clearStoredResumeAvailability();return false;}
     if(invitedRoomId){
       if(invitedRoomId!==roomId.toUpperCase())return false;
       await resumeStoredRoom();
+      resumeDebug("check:resumed-from-invite");
       storedSessionReconnectAttempted=false;
       return true;
     }
     if(!autoResumeSuppressed()&&hasConnectedPlayer(room)){
       await resumeStoredRoom();
+      resumeDebug("check:auto-resumed");
       storedSessionReconnectAttempted=false;
       return true;
     }
     storedResumeAvailable=true;
+    resumeDebug("check:resume-choice-required");
     return false;
   }catch(error){
+    resumeDebug("check:error",{message:error.message||String(error)});
     console.warn("保存済みの宴を確認できませんでした。",error);
     if (currentUser?.uid === saved.uid) retryStoredSessionOnReconnect();
     return false;
@@ -1549,16 +1593,21 @@ async function checkStoredRoomSession(){
 async function resumeStoredRoom(){
   if(!roomId||!currentUser)return;
   const saved=storedRoomSession();
+  resumeDebug("resume:start",{phase:latestRoom?.round?.phase||null});
   await startPresence();
+  resumeDebug("resume:presence-started");
   const room=(await get(ref(window.__firebaseDatabase,roomPath(roomId)))).val();
   if(!storedSessionMatchesRoom(room,saved,currentUser.uid)){
+    resumeDebug("resume:session-invalid-after-presence");
     stopPresence();
     throw Error("復帰状態を確認できません。");
   }
   allowAutoResume();
   latestRoom=room;
+  resumeDebug("resume:room-ready",{phase:room.round?.phase||null});
   subscribeRoom(roomId);
   await renderWaiting(room);
+  resumeDebug("resume:rendered",{phase:room.round?.phase||null});
 }
 async function resumeStoredRoomFromChoice(){try{await resumeStoredRoom();}catch(error){showRecoveryError(`復帰できませんでした。 ${error.message||""}`);}}
 async function exitStoredRoom(){if(!latestRoom||!roomId||!currentUser)return;if(latestRoom.status==="closed"){clearRoomSession();clearInviteUrl();clearStoredResumeAvailability();openMultiplayerSetup("host");return;}if(latestRoom.status==="started"){if(roomEnded(latestRoom)){clearRoomSession();clearInviteUrl();clearStoredResumeAvailability();openMultiplayerSetup("host");return;}if(!confirm("退出すると、この宴は全員終了となります。退出しますか？"))return;await exitStartedFeast();return;}if(latestRoom.status==="waiting"){await startPresence();await leaveWaitingRoom();}}
@@ -1577,8 +1626,13 @@ function initialize() {
   $("#recovery-exit").onclick=()=>exitStoredRoom().catch(error=>{$("#recovery-message").textContent=`退出できませんでした。 ${error.message||""}`;});
   $("#recovery-retry").onclick=()=>checkStoredRoomSession();
   const style = document.createElement("style");
-  style.textContent = ".multiplayer-choice-image{max-width:330px;margin:12px auto 18px}.multiplayer-choice-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.multiplayer-choice-buttons .button{width:100%;padding-inline:8px}.multiplayer-choice-back{margin-top:24px}.copy-field{display:flex;gap:8px;align-items:stretch}.copy-field input{min-width:0;flex:1}.copy-icon-button{flex:0 0 42px;width:42px;min-height:42px;border:0;border-radius:11px;background:#eceff1;color:#263238;font-size:1.3rem;line-height:1;display:grid;place-items:center;cursor:pointer}.room-number-row{display:flex;align-items:center;gap:8px}.room-number-row .copy-icon-button{flex-basis:34px;width:34px;min-height:34px;font-size:1.05rem}.multiplayer-summary{margin:14px 0;padding:12px;border:1px solid #68775c;border-radius:12px;background:#192623}.multiplayer-summary p{margin:5px 0}.invite-qr{display:grid;place-items:center;margin:12px auto}.invite-qr canvas{max-width:100%;height:auto;border-radius:8px}";
+  style.textContent = ".multiplayer-choice-image{max-width:330px;margin:12px auto 18px}.multiplayer-choice-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.multiplayer-choice-buttons .button{width:100%;padding-inline:8px}.multiplayer-choice-back{margin-top:24px}.copy-field{display:flex;gap:8px;align-items:stretch}.copy-field input{min-width:0;flex:1}.copy-icon-button{flex:0 0 42px;width:42px;min-height:42px;border:0;border-radius:11px;background:#eceff1;color:#263238;font-size:1.3rem;line-height:1;display:grid;place-items:center;cursor:pointer}.room-number-row{display:flex;align-items:center;gap:8px}.room-number-row .copy-icon-button{flex-basis:34px;width:34px;min-height:34px;font-size:1.05rem}.multiplayer-summary{margin:14px 0;padding:12px;border:1px solid #68775c;border-radius:12px;background:#192623}.multiplayer-summary p{margin:5px 0}.invite-qr{display:grid;place-items:center;margin:12px auto}.invite-qr canvas{max-width:100%;height:auto;border-radius:8px}.multiplayer-debug-log{max-height:42vh;overflow:auto;white-space:pre-wrap;word-break:break-word;padding:10px;border:1px solid #68775c;border-radius:8px;background:#101a17;color:#eee8dc;font:12px/1.45 ui-monospace,monospace;text-align:left}";
   document.head.append(style);
+  const debugButton=document.createElement("button");
+  debugButton.id="multiplayer-resume-debug"; debugButton.className="button button-secondary"; debugButton.type="button"; debugButton.textContent="復帰診断ログ";
+  debugButton.hidden=resumeDebugEntries().length===0;
+  debugButton.onclick=showResumeDebugLog;
+  $("#howto-button").after(debugButton);
   const roundHeader = $("#multiplayer-round-header");
   if (roundHeader && "ResizeObserver" in window) {
     roundHeaderObserver = new ResizeObserver(updateRoundHeaderOffset);
