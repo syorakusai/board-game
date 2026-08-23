@@ -157,6 +157,14 @@ async function refreshRoomPresence(id) {
   });
   if (roomId === id) applyRoomPresence(snapshot.val());
 }
+async function getCurrentRoomWithPresence() {
+  const [roomSnapshot, presenceSnapshot] = await Promise.all([
+    get(ref(window.__firebaseDatabase, roomPath(roomId))),
+    get(ref(window.__firebaseDatabase, roomPresencePath(roomId)))
+  ]);
+  const room = roomSnapshot.val();
+  return room ? { ...room, presence: presenceSnapshot.val() || {} } : null;
+}
 const disconnectedPlayers=room=>playerEntries(room).filter(player=>!Object.keys(room?.presence?.[player.uid]||{}).length);
 function waitForDatabaseConnection(database, timeoutMs=CONNECTION_TIMEOUT_MS){
   if(!navigator.onLine)return Promise.reject(Error("オフラインのため、通信に接続してから参加してください。"));
@@ -1149,8 +1157,7 @@ async function completeScore() {
   button.disabled=true;
   let failureMessage="";
   try {
-    const snapshot=await get(ref(window.__firebaseDatabase,roomPath(roomId)));
-    const current=snapshot.val();
+    const current=await getCurrentRoomWithPresence();
     if(!current||current.parentUid!==currentUser?.uid||current.round?.phase!=="result"||!resultPresentationFinished(current)||!canProgress(current))throw Error("得点を反映できる状態ではありません。");
     const scored=multiplayerScoreOutcome(current), roundNumber=currentRoundNumber(current), history=multiplayerHistoryRecord(current), hasWinner=scored.players.some(player=>player.score>=5), updates={[`${roomPath(roomId)}/round/phase`]:hasWinner?"final":"score",[`${historyPath(roomId)}/${roundNumber}`]:history};
     if(multiplayerHistory?.[String(roundNumber)])throw Error("この席の戦績はすでに確定しています。");
@@ -1182,7 +1189,7 @@ async function advanceToNextSeat() {
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="score"||!canProgress(room)||hasWinner(room)||phaseTransitionPending)return;
   phaseTransitionPending=true; button.disabled=true;
   try {
-    const snapshot=await get(ref(window.__firebaseDatabase,roomPath(roomId))),current=snapshot.val();
+    const current=await getCurrentRoomWithPresence();
     if(!current||current.parentUid!==currentUser?.uid||current.round?.phase!=="score"||!canProgress(current)||hasWinner(current))throw Error("次の席へ進める状態ではありません。");
     const index=current.seats.indexOf(current.parentUid);
     if(index<0)throw Error("現在の親を席次から確認できません。");
