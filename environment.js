@@ -29,7 +29,7 @@
   window.addEventListener("load", setDevelopmentTitle, { once: true });
   setTimeout(setDevelopmentTitle, 1000);
   const style = document.createElement("style");
-  style.textContent = ".dev-badge{position:fixed;z-index:2000;top:8px;right:8px;padding:3px 7px;border:1px solid #f0c36e;border-radius:999px;background:#2f2416;color:#ffe5a7;font:800 11px/1 system-ui,sans-serif;letter-spacing:.08em;pointer-events:none}";
+  style.textContent = ".dev-badge{position:fixed;z-index:2000;right:calc(8px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom));padding:3px 7px;border:1px solid #f0c36e;border-radius:999px;background:#2f2416;color:#ffe5a7;font:800 11px/1 system-ui,sans-serif;letter-spacing:.08em;pointer-events:none}";
   document.head.append(style);
   const badge = document.createElement("div");
   badge.className = "dev-badge";

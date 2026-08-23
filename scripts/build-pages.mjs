@@ -10,11 +10,13 @@ function argument(name) {
 async function configureIndex(path, development) {
   const html = await readFile(path, "utf8");
   const label = development ? "貴族のひそめごと DEV" : "貴族のひそめごと";
-  const environmentScript = development ? "environment.js?version=dev-1" : "environment.js";
+  const scripts = development
+    ? '<script src="environment.js?version=dev-1"></script>\n<script type="module" src="firebase-client.js"></script>\n<script type="module" src="multiplayer-phase1.js"></script>\n<script type="module" src="app.js"></script>'
+    : '<script src="environment.js"></script>\n<script type="module" src="firebase-client.js"></script>\n<script type="module" src="multiplayer-phase1.js"></script>\n<script type="module" src="app.js"></script>';
   await writeFile(path, html
     .replace("<title>貴族のひそめごと</title>", `<title>${label}</title>`)
     .replace('content="貴族のひそめごと"', `content="${label}"`)
-    .replace('<script type="module" src="app.js"></script>', `<script src="${environmentScript}"></script>\n<script type="module" src="app.js"></script>`));
+    .replace('<script type="module" src="app.js"></script>', scripts));
 }
 
 async function configureDevelopmentApp(path) {
@@ -31,6 +33,8 @@ await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await cp(prod, output, copyOptions);
 await cp(dev, `${output}/dev`, copyOptions);
+await cp(`${prod}/firebase-config.prod.js`, `${output}/firebase-config.js`);
+await cp(`${dev}/firebase-config.dev.js`, `${output}/dev/firebase-config.js`);
 await cp(`${dev}/manifest.dev.webmanifest`, `${output}/dev/manifest.webmanifest`);
 await Promise.all([
   configureIndex(`${output}/index.html`, false),

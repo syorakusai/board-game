@@ -31,7 +31,7 @@ jobs:
           path: development
 
       - name: Build Pages artifact
-        run: node public/scripts/build-pages.mjs --prod public --dev development --output pages
+        run: node development/scripts/build-pages.mjs --prod public --dev development --output pages
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

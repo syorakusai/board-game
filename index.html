@@ -22,6 +22,32 @@
 <button id="title-start" class="button button-primary">はじめる</button>
 <button id="howto-button" class="button button-secondary">遊び方</button>
 </section>
+<section class="screen is-hidden" data-screen="multiplayer-recovery">
+<h1 id="recovery-title">宴に復帰しますか</h1>
+<p id="recovery-message" class="description"></p>
+<p class="description">別の宴を始めるには、ここで現在の参加状態を退出してください。</p>
+<button id="recovery-resume" class="button button-primary" type="button">宴に復帰する</button>
+<button id="recovery-retry" class="button button-primary" type="button" hidden>もう一度確認する</button>
+<button id="recovery-exit" class="button button-secondary" type="button">宴から退出する</button>
+</section>
+<section class="screen is-hidden" data-screen="multiplayer-waiting">
+<h1>宴の待機室</h1>
+<div id="room-summary" class="multiplayer-summary"></div>
+<div id="room-invitation" class="is-hidden"><label class="field-label">招待URL<span class="copy-field"><input id="invite-url" readonly><button id="copy-invite-url" class="copy-icon-button" type="button" aria-label="招待URLをコピー" title="招待URLをコピー"><span aria-hidden="true">⧉</span></button></span></label><div id="invite-qr" class="invite-qr" aria-label="招待QRコード"></div></div>
+<h2>参加者</h2><div id="room-players" class="player-list"></div>
+<p id="room-waiting-message" class="description"></p>
+<div class="button-row">
+<button id="waiting-back" class="button button-secondary">戻る</button>
+<button id="start-multiplayer-game" class="button button-primary is-hidden">宴を始める</button>
+</div>
+</section>
+<div id="multiplayer-round-header" class="multiplayer-round-header is-hidden">
+<div id="multiplayer-round-title-slot" class="multiplayer-round-title-slot"></div>
+<div id="multiplayer-player-bar" class="multiplayer-player-bar" aria-label="参加者一覧"></div>
+<div id="multiplayer-message-bar" class="multiplayer-message-bar" role="status" aria-live="polite">
+<span id="multiplayer-message-text" class="multiplayer-message-text"></span>
+</div>
+</div>
 <section class="screen is-hidden" data-screen="howto">
 <h1>遊び方</h1>
 <nav class="howto-tabs" aria-label="遊び方の項目">
@@ -94,28 +120,54 @@
 </section>
 <section class="screen is-hidden" data-screen="player-count">
 <h1>宴の支度</h1>
-<p class="description">一緒に遊ぶ人数を選んでください。</p>
-<div id="player-counts" class="count-grid">
+<p class="description">遊び方を選んで、宴の支度を整えてください。</p>
+<div id="setup-mode-choice" class="multiplayer-choice-buttons" hidden>
+<button id="setup-single-device" class="button button-primary" type="button">1台で遊ぶ</button>
+<button id="setup-multiplayer" class="button button-primary" type="button">通信対戦</button>
 </div>
+<div id="single-device-setup">
+<div id="player-counts" class="count-grid"></div>
 <div class="set-selection">
+<label class="set-selection-label" for="card-set-select">カードセットの選択</label>
+<select id="card-set-select" class="set-select"></select>
+<label class="set-selection-label" for="word-set-select">ワードセットの選択</label>
+<select id="word-set-select" class="set-select"></select>
 <label class="set-selection-label" for="discussion-time-select">推理時間の選択</label>
 <select id="discussion-time-select" class="set-select">
-<option value="1">1分</option>
-<option value="2">2分</option>
-<option value="3">3分</option>
-<option value="5">5分</option>
-</select>
-<label class="set-selection-label" for="card-set-select">カードセットの選択</label>
-<select id="card-set-select" class="set-select">
-</select>
-<label class="set-selection-label" for="word-set-select">ワードセットの選択</label>
-<select id="word-set-select" class="set-select">
+<option value="1">1分</option><option value="2">2分</option><option value="3">3分</option><option value="5">5分</option>
 </select>
 <p id="card-set-error" class="form-error" role="alert"></p>
 </div>
 <div class="button-row">
 <button id="player-count-back" class="button button-secondary" type="button">戻る</button>
 <button id="player-count-next" class="button button-primary" type="button" disabled>次へ</button>
+</div>
+</div>
+<div id="multiplayer-setup" hidden>
+<div class="multiplayer-choice-buttons">
+<button id="create-room-choice" class="button button-primary" type="button">宴を開く</button>
+<button id="join-room-choice" class="button button-primary" type="button">宴に参加する</button>
+</div>
+<button id="resume-stored-room-choice" class="button button-secondary" type="button" hidden>前の宴に復帰</button>
+<label class="field-label">客人名<input id="multiplayer-name" maxlength="20" autocomplete="name"></label>
+<div id="host-form">
+<label class="set-selection-label" for="host-card-set">カードセット</label><select id="host-card-set" class="set-select"></select>
+<label class="set-selection-label" for="host-word-set">ワードセット</label><select id="host-word-set" class="set-select"></select>
+<label class="set-selection-label" for="host-discussion-time">推理時間</label><select id="host-discussion-time" class="set-select"><option value="1">1分</option><option value="2" selected>2分</option><option value="3">3分</option><option value="5">5分</option></select>
+<p id="create-room-error" class="form-error" role="alert"></p>
+<div class="button-row">
+<button id="create-room-back" class="button button-secondary" type="button">戻る</button>
+<button id="create-room-button" class="button button-primary" type="button">部屋を作成</button>
+</div>
+</div>
+<div id="join-form" hidden>
+<label class="field-label">部屋番号<input id="join-room-id" maxlength="12" autocomplete="off" autocapitalize="characters"></label>
+<p id="join-room-error" class="form-error" role="alert"></p>
+<div class="button-row">
+<button id="join-room-back" class="button button-secondary" type="button">戻る</button>
+<button id="join-room-button" class="button button-primary" type="button">宴に参加する</button>
+</div>
+</div>
 </div>
 </section>
 <section class="screen is-hidden" data-screen="player-names">
@@ -177,20 +229,23 @@
 <p class="screen-subtitle">親ワード入力</p>
 <div id="parent-card-area" class="card-area">
 </div>
-<p class="description">公式の選択肢は以下の3つです。<br>4つ目にあなたのワードを入力し、ひそめてください。</p>
+<p id="parent-secret-description" class="description">4つ目にあなたのワードを入力してください。</p>
 <div id="official-preview" class="word-list">
 </div>
 <input id="parent-word" maxlength="40" autocomplete="off" placeholder="親ワード入力">
 <p id="parent-error" class="form-error">
 </p>
 <button id="parent-submit" class="button button-primary">ひそめる</button>
+<button id="parent-redraw-button" class="button button-secondary" type="button">もう一度引く</button>
 </section>
 <section class="screen is-hidden" data-screen="word-open">
 <h1 data-round-title="WORD OPEN">
 </h1>
 <div id="public-card-area" class="card-area">
 </div>
-<p class="description">子に画面を向けて推理を開始してください。</p>
+<p class="description">4つの言葉をお披露目します。</p>
+<div id="word-open-words" class="word-list">
+</div>
 <button id="word-open-button" class="button button-primary">推理を開始</button>
 </section>
 <section class="screen is-hidden discussion-screen" data-screen="discussion">
@@ -203,7 +258,8 @@
 <div id="public-words" class="word-list">
 </div>
 </div>
-<button id="discussion-end" class="button button-primary">推理を終えて、答えを記帳</button>
+<p id="discussion-guide" class="description">推理が決まったら「推理完了」を押してください。</p>
+<button id="discussion-end" class="button button-primary">推理完了</button>
 </section>
 <section class="screen is-hidden timeout-screen" data-screen="timeout">
 <h1 data-round-title="TIME UP">
@@ -222,7 +278,7 @@
 <div class="answer-guide">
 <p id="answer-title" class="screen-subtitle">
 </p>
-<p class="description">親ワードの候補を選んでください。<br>選んだら「決定」を押してください。</p>
+<p id="answer-guide-text" class="description">選んだら「決定」を押してください。</p>
 </div>
 </div>
 <div id="answer-words" class="word-list">
@@ -235,7 +291,7 @@
 <div class="result-overview">
 <div id="result-open-card-area" class="card-area compact-card">
 </div>
-<p class="description">全員のワード選択が完了しました。<br>選択結果を確認してください。</p>
+<p id="result-open-description" class="description">全員のワード選択が完了しました。<br>選択結果を確認してください。</p>
 </div>
 <div id="selection-summary" class="vote-list selection-summary">
 </div>
@@ -273,16 +329,14 @@
 <h1 data-round-title="FINAL">
 </h1>
 <div id="final-card-recap" class="final-card-recap" aria-label="今宵を彩った札">
-</div>
-<div class="final-reveal-content">
+</div><div class="final-reveal-content">
 <h2 class="final-heading">今宵の勝者</h2>
 <img class="final-image" src="assets/final-winners.jpg" alt="社交場で勝者を称える人々">
 <div id="final-winners" class="final-winners" aria-label="勝者">
 </div>
 <div id="final-score-summary" class="final-score-summary" aria-label="得点一覧">
 </div>
-<button id="final-to-title" class="button button-primary">タイトルへ</button>
-</div>
+<button id="final-to-title" class="button button-primary">タイトルへ</button></div>
 </section>
 </main>
 <div id="history-lightbox" class="history-lightbox is-hidden" role="dialog" aria-modal="true" aria-label="戦績">
