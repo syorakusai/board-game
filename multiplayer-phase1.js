@@ -1668,17 +1668,21 @@ async function resumeStoredRoom(){
   resumeDebug("resume:start",{phase:latestRoom?.round?.phase||null});
   await startPresence();
   resumeDebug("resume:presence-started");
-  const room=(await get(ref(window.__firebaseDatabase,roomPath(roomId)))).val();
+  const [roomSnapshot,presenceSnapshot]=await Promise.all([
+    get(ref(window.__firebaseDatabase,roomPath(roomId))),
+    get(ref(window.__firebaseDatabase,roomPresencePath(roomId)))
+  ]);
+  const room={...(roomSnapshot.val()||{}),presence:presenceSnapshot.val()||{}};
   if(!storedSessionMatchesRoom(room,saved,currentUser.uid)){
     resumeDebug("resume:session-invalid-after-presence");
     stopPresence();
     throw Error("復帰状態を確認できません。");
   }
   allowAutoResume();
-  latestRoom=room;
+  latestRoom=withRoomPresence(room);
   resumeDebug("resume:room-ready",{phase:room.round?.phase||null});
   subscribeRoom(roomId);
-  await renderWaiting(room);
+  await renderWaiting(withRoomPresence(room));
   resumeDebug("resume:rendered",{phase:room.round?.phase||null});
 }
 async function resumeStoredRoomFromChoice(){try{await resumeStoredRoom();}catch(error){showRecoveryError(`復帰できませんでした。 ${error.message||""}`);}}
