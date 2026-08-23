@@ -21,6 +21,8 @@ let openedRoom = false;
 let leavingWaitingRoom = false;
 let startingRoom = false;
 let presenceUnsubscribe = null;
+let roomPresenceUnsubscribe = null;
+let roomPresence = {};
 let activeConnectionRef = null;
 let secretUnsubscribe = null;
 let secretSubscriptionKey = "";
@@ -72,6 +74,7 @@ let multiplayerFinalPresentationKey = "";
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
+const roomPresencePath = id => `roomPresence/${id}`;
 const secretPath = (id, roundNumber, uid) => `roomSecrets/${id}/rounds/${roundNumber}/${uid}`;
 const progressPath = (id, roundNumber) => `roomProgress/${id}/rounds/${roundNumber}`;
 const answerRoundPath = (id, roundNumber) => `roomAnswers/${id}/rounds/${roundNumber}`;
@@ -133,6 +136,7 @@ function showResumeDebugLog() {
   actions.append(copy,clear); $("#recovery-message").after(actions); show("multiplayer-recovery");
 }
 const roomEnded=room=>Boolean(room?.endedBy);
+const withRoomPresence=room=>room?{...room,presence:roomPresence}:room;
 const disconnectedPlayers=room=>playerEntries(room).filter(player=>!Object.keys(room?.presence?.[player.uid]||{}).length);
 function waitForDatabaseConnection(database, timeoutMs=CONNECTION_TIMEOUT_MS){
   if(!navigator.onLine)return Promise.reject(Error("オフラインのため、通信に接続してから参加してください。"));
@@ -147,14 +151,66 @@ function waitForDatabaseConnection(database, timeoutMs=CONNECTION_TIMEOUT_MS){
   });
 }
 async function verifyJoinedRoom(id,uid,nameKey){
-  const snapshot=await get(ref(window.__firebaseDatabase,roomPath(id)));
-  const room=snapshot.val();
-  if(((room?.status==="waiting"&&joinSlotForUid(room,uid)?.nameKey===nameKey)||(room?.status==="started"&&room.players?.[uid]?.nameKey===nameKey&&room.nameIndex?.[nameKey]===uid))&&Object.keys(room.presence?.[uid]||{}).length)return room;
+  const [roomSnapshot,presenceSnapshot]=await Promise.all([
+    get(ref(window.__firebaseDatabase,roomPath(id))),
+    get(ref(window.__firebaseDatabase,`${roomPresencePath(id)}/${uid}`))
+  ]);
+  const room=roomSnapshot.val();
+  if(((room?.status==="waiting"&&joinSlotForUid(room,uid)?.nameKey===nameKey)||(room?.status==="started"&&room.players?.[uid]?.nameKey===nameKey&&room.nameIndex?.[nameKey]===uid))&&presenceSnapshot.exists())return {...room,presence:{[uid]:presenceSnapshot.val()}};
   throw Error("参加状態を確認できません。");
 }
 
 function stopPresence(){presenceUnsubscribe?.();presenceUnsubscribe=null;if(activeConnectionRef){onDisconnect(activeConnectionRef).cancel().catch(()=>{});remove(activeConnectionRef).catch(()=>{});activeConnectionRef=null;}}
-function startPresence(){if(!window.__firebaseDatabase||!roomId||!currentUser?.uid)return Promise.reject(Error("接続状態を開始できません。"));stopPresence();const connections=ref(window.__firebaseDatabase,`${roomPath(roomId)}/presence/${currentUser.uid}`);return new Promise((resolve,reject)=>{let first=true,stage="waiting-for-connection";const fail=error=>{resumeDebug("presence:error",{stage,code:error?.code||null,message:error?.message||String(error)});if(!first)return;first=false;clearTimeout(timeout);presenceUnsubscribe?.();presenceUnsubscribe=null;reject(error);};const timeout=setTimeout(()=>fail(Error("Firebaseへの再接続を待っています。")),CONNECTION_TIMEOUT_MS);presenceUnsubscribe=onValue(ref(window.__firebaseDatabase,".info/connected"),async snapshot=>{if(snapshot.val()!==true){activeConnectionRef=null;return;}const connection=push(connections);try{stage="register-on-disconnect";resumeDebug("presence:register-on-disconnect");await onDisconnect(connection).remove();stage="write-connection";resumeDebug("presence:write-connection");await set(connection,true);stage="connected";resumeDebug("presence:connected");activeConnectionRef=connection;if(first){first=false;clearTimeout(timeout);resolve();}}catch(error){if(first)fail(error);else console.error("接続状態を再登録できませんでした。",error);}},error=>{stage="listen-connection";fail(error);});});}
+function startPresence() {
+  if (!window.__firebaseDatabase || !roomId || !currentUser?.uid) {
+    return Promise.reject(Error("接続状態を開始できません。"));
+  }
+  stopPresence();
+  const connections = ref(window.__firebaseDatabase, `${roomPresencePath(roomId)}/${currentUser.uid}`);
+  return new Promise((resolve, reject) => {
+    let first = true;
+    let stage = "waiting-for-connection";
+    const fail = error => {
+      resumeDebug("presence:error", { stage, code: error?.code || null, message: error?.message || String(error) });
+      if (!first) return;
+      first = false;
+      clearTimeout(timeout);
+      presenceUnsubscribe?.();
+      presenceUnsubscribe = null;
+      reject(error);
+    };
+    const timeout = setTimeout(() => fail(Error("Firebaseへの再接続を待っています。")), CONNECTION_TIMEOUT_MS);
+    presenceUnsubscribe = onValue(ref(window.__firebaseDatabase, ".info/connected"), async snapshot => {
+      if (snapshot.val() !== true) {
+        activeConnectionRef = null;
+        return;
+      }
+      const connection = push(connections);
+      try {
+        stage = "register-on-disconnect";
+        resumeDebug("presence:register-on-disconnect");
+        await onDisconnect(connection).remove();
+        stage = "write-connection";
+        resumeDebug("presence:write-connection");
+        await set(connection, true);
+        stage = "connected";
+        resumeDebug("presence:connected");
+        activeConnectionRef = connection;
+        if (first) {
+          first = false;
+          clearTimeout(timeout);
+          resolve();
+        }
+      } catch (error) {
+        if (first) fail(error);
+        else console.error("接続状態を再登録できませんでした。", error);
+      }
+    }, error => {
+      stage = "listen-connection";
+      fail(error);
+    });
+  });
+}
 async function ensureCatalog() {
   if (catalog.length) return catalog;
   const listing = await (await fetch("card-sets.json")).json();
@@ -1221,12 +1277,21 @@ function subscribeHistory(room) {
 }
 function subscribeRoom(id) {
   subscribeServerClock(window.__firebaseDatabase);
+  roomPresenceUnsubscribe?.();
+  roomPresenceUnsubscribe = onValue(ref(window.__firebaseDatabase, roomPresencePath(id)), snapshot => {
+    if (roomId !== id) return;
+    roomPresence = snapshot.val() || {};
+    if (latestRoom) renderWaiting(withRoomPresence(latestRoom)).catch(error => {
+      show("multiplayer-waiting");
+      $("#room-waiting-message").textContent = `宴の状態を表示できませんでした。${error.message || ""}`;
+    });
+  });
   roomUnsubscribe?.();
   roomUnsubscribe = onValue(
     ref((window.__firebaseDatabase), roomPath(id)),
     snapshot => {
       if(roomId!==id)return;
-      return renderWaiting(snapshot.val()).catch(error => {
+      return renderWaiting(withRoomPresence(snapshot.val())).catch(error => {
       show("multiplayer-waiting");
       $("#room-waiting-message").textContent = `宴の状態を表示できませんでした。${error.message || ""}`;
       });
@@ -1250,6 +1315,9 @@ function clearRoomSession() {
   stopStoredSessionReconnectRetry();
   roomUnsubscribe?.();
   roomUnsubscribe = null;
+  roomPresenceUnsubscribe?.();
+  roomPresenceUnsubscribe = null;
+  roomPresence = {};
   historyUnsubscribe?.();
   historyUnsubscribe = null;
   historySubscriptionKey = "";
@@ -1553,7 +1621,11 @@ async function checkStoredRoomSession(){
     if(context.user.uid!==saved.uid){resumeDebug("check:uid-mismatch");return false;}
     if(!navigator.onLine){resumeDebug("check:offline");retryStoredSessionOnReconnect();return false;}
     await waitForDatabaseConnection(context.database);
-    const room=(await get(ref(context.database,roomPath(saved.roomId)))).val();
+    const [roomSnapshot,presenceSnapshot]=await Promise.all([
+      get(ref(context.database,roomPath(saved.roomId))),
+      get(ref(context.database,roomPresencePath(saved.roomId)))
+    ]);
+    const room={...(roomSnapshot.val()||{}),presence:presenceSnapshot.val()||{}};
     if(!room){resumeDebug("check:room-missing");retryStoredSessionOnReconnect();return false;}
     const valid=storedSessionMatchesRoom(room,saved,context.user.uid);
     resumeDebug("check:room-read",{status:room.status,phase:room.round?.phase||null,valid,connectedPlayers:playerEntries(room).filter(player=>Object.keys(room?.presence?.[player.uid]||{}).length).length});
