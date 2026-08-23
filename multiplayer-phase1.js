@@ -139,6 +139,10 @@ const roomEnded=room=>Boolean(room?.endedBy);
 const withRoomPresence=room=>room?{...room,presence:roomPresence}:room;
 function applyRoomPresence(value) {
   roomPresence = value || {};
+  resumeDebug("presence:room-observed", {
+    connectedPlayers: Object.values(roomPresence).filter(connections => Object.keys(connections || {}).length > 0).length,
+    ownConnections: Object.keys(roomPresence[currentUser?.uid] || {}).length
+  });
   if (!latestRoom) return;
   renderWaiting(withRoomPresence(latestRoom)).catch(error => {
     show("multiplayer-waiting");
@@ -147,6 +151,10 @@ function applyRoomPresence(value) {
 }
 async function refreshRoomPresence(id) {
   const snapshot = await get(ref(window.__firebaseDatabase, roomPresencePath(id)));
+  resumeDebug("presence:room-read", {
+    connectedPlayers: Object.values(snapshot.val() || {}).filter(connections => Object.keys(connections || {}).length > 0).length,
+    ownConnections: Object.keys(snapshot.val()?.[currentUser?.uid] || {}).length
+  });
   if (roomId === id) applyRoomPresence(snapshot.val());
 }
 const disconnectedPlayers=room=>playerEntries(room).filter(player=>!Object.keys(room?.presence?.[player.uid]||{}).length);
