@@ -1531,14 +1531,7 @@ async function checkStoredRoomSession(){
       storedSessionReconnectAttempted=false;
       return true;
     }
-    // result は接続切断の直後に全 presence が一時的に空になることがある。
-    // ルーレットの正本が揃っている場合は、presence の到着を復帰条件にせず、
-    // この端末の接続を再登録してから表示を復元する。
-    const hasRestorableResult=room.status==="started"&&room.round?.phase==="result"
-      &&Array.isArray(room.round?.roulettePlan?.sequence)
-      &&Array.isArray(room.round?.roulettePlan?.delays)
-      &&Number.isFinite(Number(room.round?.revealCompletedAt));
-    if(!autoResumeSuppressed()&&(hasConnectedPlayer(room)||hasRestorableResult)){
+    if(!autoResumeSuppressed()&&hasConnectedPlayer(room)){
       await resumeStoredRoom();
       storedSessionReconnectAttempted=false;
       return true;
@@ -1564,13 +1557,6 @@ async function resumeStoredRoom(){
   }
   allowAutoResume();
   latestRoom=room;
-  // 宴の顛末は共有時刻を取得してから描画する。復帰開始直後の端末時刻で
-  // elapsed を計算してルーレットを開始してしまうと、復帰処理自体が失敗扱いになり、
-  // 起動側の通常処理がタイトル画面へ戻してしまう。
-  if(room.round?.phase==="result"){
-    try{await waitForServerTimeOffset(window.__firebaseDatabase);}
-    catch(error){console.warn("宴の顛末の共有時刻を初回取得できませんでした。再接続を待ちます。",error);}
-  }
   subscribeRoom(roomId);
   await renderWaiting(room);
 }
