@@ -275,6 +275,7 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .multiplayer-player.is-parent { border-color: #d39a55; }
 .multiplayer-player strong {
   grid-column: 1 / -1;
+  max-width: 4em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
