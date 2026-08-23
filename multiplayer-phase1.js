@@ -1485,18 +1485,9 @@ function stopStoredSessionReconnectRetry() {
   storedSessionReconnectUnsubscribe?.();
   storedSessionReconnectUnsubscribe = null;
 }
-function showStoredSessionReconnectWaiting() {
-  if (!$('[data-screen="title"]:not(.is-hidden)')) return;
-  $("#recovery-title").textContent = "宴へ復帰しています";
-  $("#recovery-message").textContent = "通信の復旧を待っています。";
-  $("#recovery-resume").hidden = true;
-  $("#recovery-retry").hidden = true;
-  show("multiplayer-recovery");
-}
 function retryStoredSessionOnReconnect() {
   const saved = storedRoomSession(), database = window.__firebaseDatabase;
   if (!saved || !database || storedSessionReconnectUnsubscribe) return;
-  showStoredSessionReconnectWaiting();
   storedSessionReconnectUnsubscribe = onValue(ref(database, ".info/connected"), snapshot => {
     if (snapshot.val() !== true) {
       storedSessionReconnectAttempted = false;
