@@ -157,13 +157,16 @@ async function refreshRoomPresence(id) {
   });
   if (roomId === id) applyRoomPresence(snapshot.val());
 }
-async function getCurrentRoomWithPresence() {
+async function getRoomWithPresence(database, id) {
   const [roomSnapshot, presenceSnapshot] = await Promise.all([
-    get(ref(window.__firebaseDatabase, roomPath(roomId))),
-    get(ref(window.__firebaseDatabase, roomPresencePath(roomId)))
+    get(ref(database, roomPath(id))),
+    get(ref(database, roomPresencePath(id)))
   ]);
   const room = roomSnapshot.val();
   return room ? { ...room, presence: presenceSnapshot.val() || {} } : null;
+}
+async function getCurrentRoomWithPresence() {
+  return getRoomWithPresence(window.__firebaseDatabase, roomId);
 }
 const disconnectedPlayers=room=>playerEntries(room).filter(player=>!Object.keys(room?.presence?.[player.uid]||{}).length);
 function waitForDatabaseConnection(database, timeoutMs=CONNECTION_TIMEOUT_MS){
@@ -1649,11 +1652,7 @@ async function checkStoredRoomSession(){
     if(context.user.uid!==saved.uid){resumeDebug("check:uid-mismatch");return false;}
     if(!navigator.onLine){resumeDebug("check:offline");retryStoredSessionOnReconnect();return false;}
     await waitForDatabaseConnection(context.database);
-    const [roomSnapshot,presenceSnapshot]=await Promise.all([
-      get(ref(context.database,roomPath(saved.roomId))),
-      get(ref(context.database,roomPresencePath(saved.roomId)))
-    ]);
-    const room={...(roomSnapshot.val()||{}),presence:presenceSnapshot.val()||{}};
+    const room=await getRoomWithPresence(context.database,saved.roomId);
     if(!room){resumeDebug("check:room-missing");retryStoredSessionOnReconnect();return false;}
     const valid=storedSessionMatchesRoom(room,saved,context.user.uid);
     resumeDebug("check:room-read",{status:room.status,phase:room.round?.phase||null,valid,connectedPlayers:playerEntries(room).filter(player=>Object.keys(room?.presence?.[player.uid]||{}).length).length});
@@ -1696,11 +1695,7 @@ async function resumeStoredRoom(){
   resumeDebug("resume:start",{phase:latestRoom?.round?.phase||null});
   await startPresence();
   resumeDebug("resume:presence-started");
-  const [roomSnapshot,presenceSnapshot]=await Promise.all([
-    get(ref(window.__firebaseDatabase,roomPath(roomId))),
-    get(ref(window.__firebaseDatabase,roomPresencePath(roomId)))
-  ]);
-  const room={...(roomSnapshot.val()||{}),presence:presenceSnapshot.val()||{}};
+  const room=await getRoomWithPresence(window.__firebaseDatabase,roomId);
   if(!storedSessionMatchesRoom(room,saved,currentUser.uid)){
     resumeDebug("resume:session-invalid-after-presence");
     stopPresence();
