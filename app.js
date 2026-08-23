@@ -185,7 +185,7 @@ function finalCardRecapMarkup(cards){
   return cards.map((card,index)=>{
     const distance=index-midpoint;
     const x=Math.round(distance*11),y=Math.abs(distance)*3,rotation=(distance*3.1).toFixed(1);
-    const miniX=Math.round(distance*24),miniRotation=(distance*5.4).toFixed(1);
+    const miniX=Math.round(distance*20),miniRotation=(distance*5.4).toFixed(1);
     const last=index===cards.length-1?" is-last":"";
     return `<img class="final-recap-card${last}" src="${esc(cardImagePath(card.image))}" alt="${roundSeatLabel(card.round)}のお題カード" style="--entry-delay:${index*300}ms;--card-x:${x}px;--card-y:${y}px;--card-rotate:${rotation}deg;--mini-x:${miniX}px;--mini-rotate:${miniRotation}deg;--stack-order:${index}">`;
   }).join("");
@@ -196,15 +196,13 @@ function showFinalResults(winners){
   screen.style.setProperty("--final-reveal-delay",`${revealDelay}ms`);
   document.querySelector("#final-winners").innerHTML=winners.map(player=>`<p>${esc(player.name)}</p>`).join("");
   document.querySelector("#final-score-summary").innerHTML=state.players.map(player=>`<div class="final-score${winners.some(winner=>winner.id===player.id)?" is-winner":""}"><span>${esc(player.name)}</span><strong>${player.score}ポイント</strong></div>`).join("");
-  document.querySelector("#final-replay").hidden=true;
-  document.querySelector("#multiplayer-final-guidance").hidden=true;
   screen.classList.remove("is-revealed");
   screen.classList.remove("is-revealing");
   show("final");
   void screen.offsetWidth;
   screen.classList.add("is-revealing");
 }
-window.showMultiplayerFinalResults=(players,winners,cards,{animate=false,cardsChanged=false,presentationChanged=false}={})=>{const screen=document.querySelector('[data-screen="final"]'),recap=document.querySelector("#final-card-recap"),guidance=document.querySelector("#multiplayer-final-guidance"),entering=screen.classList.contains("is-hidden"),revealDelay=cards.length*300+1280;if(animate||cardsChanged){recap.innerHTML=finalCardRecapMarkup(cards);screen.style.setProperty("--final-reveal-delay",`${revealDelay}ms`);}if(animate||presentationChanged){document.querySelector("#final-winners").innerHTML=winners.map(player=>`<p>${esc(player.name)}</p>`).join("");document.querySelector("#final-score-summary").innerHTML=players.map(player=>`<div class="final-score${winners.some(winner=>winner.id===player.id)?" is-winner":""}"><span>${esc(player.name)}</span><strong>${player.score}ポイント</strong></div>`).join("");}document.querySelector("#final-replay").hidden=false;guidance.hidden=false;if(entering)show("final");if(animate){screen.classList.remove("is-revealed","is-revealing");void screen.offsetWidth;screen.classList.add("is-revealing");}else if(cardsChanged){screen.classList.remove("is-revealing");screen.classList.add("is-revealed");}};
+window.showMultiplayerFinalResults=(players,winners,cards,{animate=false,cardsChanged=false,presentationChanged=false}={})=>{const screen=document.querySelector('[data-screen="final"]'),recap=document.querySelector("#final-card-recap"),entering=screen.classList.contains("is-hidden"),revealDelay=cards.length*300+1280;if(animate||cardsChanged){recap.innerHTML=finalCardRecapMarkup(cards);screen.style.setProperty("--final-reveal-delay",`${revealDelay}ms`);}if(animate||presentationChanged){document.querySelector("#final-winners").innerHTML=winners.map(player=>`<p>${esc(player.name)}</p>`).join("");document.querySelector("#final-score-summary").innerHTML=players.map(player=>`<div class="final-score${winners.some(winner=>winner.id===player.id)?" is-winner":""}"><span>${esc(player.name)}</span><strong>${player.score}ポイント</strong></div>`).join("");}if(entering)show("final");if(animate){screen.classList.remove("is-revealed","is-revealing");void screen.offsetWidth;screen.classList.add("is-revealing");}else if(cardsChanged){screen.classList.remove("is-revealing");screen.classList.add("is-revealed");}};
 function handleSingleResultNext(){const scored=scoreRound(currentRound()),{children,correct}=scored;state.players.forEach((player,index)=>{player.score=scored.players[index].score;});const winners=state.players.filter(p=>p.score>=5);if(winners.length){showFinalResults(winners);return;}document.querySelector("#score-summary").innerHTML=state.players.map(p=>`<div class="player-item"><span>${esc(p.name)}</span><span>${p.score}ポイント</span></div>`).join("");document.querySelector("#score-title").textContent=children.length===1?(correct.length===0?"子が不正解":"子が正解"):(correct.length===0?"全員不正解":correct.length===children.length?"全員正解":"一部の子が正解");const nextRoundButton=document.querySelector("#next-round");nextRoundButton.textContent="次の席へ";nextRoundButton.dataset.action="next-round";show("scores");}
 window.__singleResultNextHandler=handleSingleResultNext;
 document.querySelector("#result-next").onclick=handleSingleResultNext;
