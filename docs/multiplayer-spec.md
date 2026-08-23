@@ -359,3 +359,12 @@ Firebase Rulesの正本は、ルートの [`firebase-rules.json`](../firebase-ru
 - 主催者移譲
 - 一定時間後の自動退出・自動終了（条件確定前）
 - 代替プレイヤー・Bot
+
+
+## 配布環境の分離
+
+- GitHub Pagesの本番URL（`/board-game/`）は`main`の`firebase-config.prod.js`を使用し、成果物では`firebase-config.js`として配置する。
+- GitHub Pagesの開発URL（`/board-game/dev/`）は`develop`の`firebase-config.dev.js`を使用し、成果物では`dev/firebase-config.js`として配置する。
+- 通信対戦の名前、保存済み宴、復帰抑止、開発用診断ログのlocalStorageキーは、URLに応じて`board-game:prod:`と`board-game:dev:`へ分離する。
+- 本番ではDEVバッジ、Firebase接続診断表示、復帰診断ログを表示しない。通信対戦のゲーム仕様・復帰・切断処理は両環境で共通とする。
+- `develop`から`main`へゲーム本体を反映する際は、DEV Firebase設定を`main`へコピーせず、本番Firebase設定を維持する。

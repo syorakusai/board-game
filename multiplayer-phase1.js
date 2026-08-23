@@ -4,10 +4,12 @@ import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
 import { scoreRound } from "./game-rules.js";
 
 const ROOM_PREFIX = "rooms";
-const NAME_STORAGE_KEY = "board-game:dev:multiplayer-name";
-const ROOM_SESSION_STORAGE_KEY = "board-game:dev:multiplayer-room-session";
-const ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY = "board-game:dev:multiplayer-auto-resume-suppressed";
-const RESUME_DEBUG_LOG_STORAGE_KEY = "board-game:dev:multiplayer-resume-debug-log";
+const isDevelopment = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
+const multiplayerStoragePrefix = isDevelopment() ? "board-game:dev:" : "board-game:prod:";
+const NAME_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-name`;
+const ROOM_SESSION_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-room-session`;
+const ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-auto-resume-suppressed`;
+const RESUME_DEBUG_LOG_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-resume-debug-log`;
 const RESUME_DEBUG_LOG_LIMIT = 80;
 const LEAVE_RETRY_COUNT = 3;
 const LEAVE_RETRY_DELAY_MS = 700;
@@ -99,7 +101,7 @@ const escape = value => String(value).replace(/[&<>"']/g, character => ({ "&":"&
 const normalizedName = name => name.trim().replace(/\s+/g, " ").toLocaleLowerCase("ja-JP");
 const savedName = () => localStorage.getItem(NAME_STORAGE_KEY) || "";
 const saveName = name => localStorage.setItem(NAME_STORAGE_KEY, name);
-const enabled = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
+const enabled = () => /\/board-game(?:\/dev)?(?:\/|$)/.test(location.pathname);
 const storedRoomSession=()=>{try{const s=JSON.parse(localStorage.getItem(ROOM_SESSION_STORAGE_KEY)||"null");return s&&typeof s==="object"?s:null;}catch{return null;}};
 const saveRoomSession=room=>{if(!roomId||!currentUser?.uid||!room?.feastId)return;localStorage.setItem(ROOM_SESSION_STORAGE_KEY,JSON.stringify({roomId,uid:currentUser.uid,name:room.players?.[currentUser.uid]?.name||savedName(),role:room.hostUid===currentUser.uid?"host":"guest",feastId:room.feastId}));};
 const forgetRoomSession=()=>localStorage.removeItem(ROOM_SESSION_STORAGE_KEY);
@@ -107,7 +109,7 @@ const autoResumeSuppressed=()=>localStorage.getItem(ROOM_AUTO_RESUME_SUPPRESSED_
 const suppressAutoResume=()=>localStorage.setItem(ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY,"true");
 const allowAutoResume=()=>localStorage.removeItem(ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY);
 function resumeDebug(event, detail={}) {
-  if (!enabled()) return;
+  if (!isDevelopment()) return;
   try {
     const entries=JSON.parse(localStorage.getItem(RESUME_DEBUG_LOG_STORAGE_KEY)||"[]");
     const log=Array.isArray(entries)?entries:[];
@@ -1708,11 +1710,13 @@ function initialize() {
   const style = document.createElement("style");
   style.textContent = ".multiplayer-choice-image{max-width:330px;margin:12px auto 18px}.multiplayer-choice-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.multiplayer-choice-buttons .button{width:100%;padding-inline:8px}.multiplayer-choice-back{margin-top:24px}.copy-field{display:flex;gap:8px;align-items:stretch}.copy-field input{min-width:0;flex:1}.copy-icon-button{flex:0 0 42px;width:42px;min-height:42px;border:0;border-radius:11px;background:#eceff1;color:#263238;font-size:1.3rem;line-height:1;display:grid;place-items:center;cursor:pointer}.room-number-row{display:flex;align-items:center;gap:8px}.room-number-row .copy-icon-button{flex-basis:34px;width:34px;min-height:34px;font-size:1.05rem}.multiplayer-summary{margin:14px 0;padding:12px;border:1px solid #68775c;border-radius:12px;background:#192623}.multiplayer-summary p{margin:5px 0}.invite-qr{display:grid;place-items:center;margin:12px auto}.invite-qr canvas{max-width:100%;height:auto;border-radius:8px}.multiplayer-debug-log{max-height:42vh;overflow:auto;white-space:pre-wrap;word-break:break-word;padding:10px;border:1px solid #68775c;border-radius:8px;background:#101a17;color:#eee8dc;font:12px/1.45 ui-monospace,monospace;text-align:left}";
   document.head.append(style);
-  const debugButton=document.createElement("button");
-  debugButton.id="multiplayer-resume-debug"; debugButton.className="button button-secondary"; debugButton.type="button"; debugButton.textContent="復帰診断ログ";
-  debugButton.hidden=resumeDebugEntries().length===0;
-  debugButton.onclick=showResumeDebugLog;
-  $("#howto-button").after(debugButton);
+  if (isDevelopment()) {
+    const debugButton=document.createElement("button");
+    debugButton.id="multiplayer-resume-debug"; debugButton.className="button button-secondary"; debugButton.type="button"; debugButton.textContent="復帰診断ログ";
+    debugButton.hidden=resumeDebugEntries().length===0;
+    debugButton.onclick=showResumeDebugLog;
+    $("#howto-button").after(debugButton);
+  }
   const roundHeader = $("#multiplayer-round-header");
   if (roundHeader && "ResizeObserver" in window) {
     roundHeaderObserver = new ResizeObserver(updateRoundHeaderOffset);

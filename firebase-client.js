@@ -4,6 +4,7 @@ import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gsta
 import { get, getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
 const FIREBASE_TEST_ROOT = "firebase-test";
+const isDevelopment = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
 const FIREBASE_STATUS_ID = "firebase-connection-status";
 
 function showStatus(message, state = "pending") {
@@ -81,4 +82,4 @@ async function startFirebaseConnectionCheck() {
   }
 }
 
-startFirebaseConnectionCheck();
+if (isDevelopment()) startFirebaseConnectionCheck();
