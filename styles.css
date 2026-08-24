@@ -434,30 +434,29 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 /* 通信対戦：宴の待機室 */
 .waiting-room.is-hidden { display: none; }
 .waiting-room:not(.is-hidden) { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; min-height: 100dvh; padding-bottom: 0; overflow: hidden; }
-.waiting-room > h1 { padding-bottom: 18px; }
-.waiting-room-content { display: grid; align-content: start; gap: 14px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 18px; }
-.waiting-section { border: 1px solid #526357; border-radius: 16px; padding: 15px; background: #192623; }
-.waiting-section-title { margin: 0 0 12px; color: #eee8dc; font-size: 1.2rem; }
-.waiting-player-list { display: grid; gap: 7px; }
-.waiting-player { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 10px; background: #263630; }
+.waiting-room > h1 { padding-bottom: 12px; font-size: clamp(1.45rem, 6vw, 1.85rem); }
+.waiting-room-content { display: grid; align-content: start; gap: 10px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; }
+.waiting-section { border: 1px solid #526357; border-radius: 14px; padding: 12px; background: #192623; }
+.waiting-section-title { margin: 0 0 9px; color: #eee8dc; font-size: 1.06rem; }
+.waiting-player-list { display: grid; gap: 6px; }
+.waiting-player { display: flex; min-height: 40px; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border-radius: 10px; background: #263630; font-size: .94rem; }
 .waiting-player-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
-.waiting-player-role { flex: 0 0 auto; color: #d39a55; font-size: .82rem; font-weight: 800; }
-.waiting-player-disconnected { color: #d5b45f; font-size: .82rem; font-weight: 800; }
-.waiting-label, .waiting-settings-label { display: block; color: #c2c1b5; font-size: .84rem; font-weight: 800; }
-.waiting-room-number-row { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
-.waiting-room-number-row strong { min-width: 0; color: #fff8ed; font-size: clamp(1.42rem, 7vw, 2rem); letter-spacing: .06em; }
-.waiting-room .copy-icon-button { flex: 0 0 42px; width: 42px; min-height: 42px; border: 1px solid #68775c; border-radius: 10px; background: #2b3733; color: #eee8dc; }
-.waiting-invite-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
-.waiting-invite-actions .button { min-height: 46px; padding-inline: 8px; font-size: .9rem; }
-.waiting-qr { display: grid; place-items: center; margin: 14px auto 0; }
+.waiting-player-role { flex: 0 0 auto; color: #d39a55; font-size: .78rem; font-weight: 800; }
+.waiting-player-disconnected { color: #d5b45f; font-size: .78rem; font-weight: 800; }
+.waiting-label, .waiting-settings-label { display: block; color: #c2c1b5; font-size: .78rem; font-weight: 800; }
+.waiting-room-number-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.waiting-room-number-row strong { min-width: 0; color: #fff8ed; font-size: clamp(1.25rem, 6vw, 1.7rem); letter-spacing: .05em; }
+.waiting-room .copy-icon-button { flex: 0 0 38px; width: 38px; min-height: 38px; border: 1px solid #68775c; border-radius: 10px; background: #2b3733; color: #eee8dc; }
+.waiting-invite-actions { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+.waiting-invite-actions .button { min-width: 0; min-height: 42px; padding-inline: 6px; font-size: .78rem; white-space: nowrap; }
+.waiting-qr { display: grid; place-items: center; margin: 12px auto 0; }
 .waiting-qr.is-hidden { display: none; }
 .waiting-qr canvas { display: block; width: min(180px, 56vw); height: auto; max-width: 100%; border-radius: 8px; background: #fffdf4; }
-.waiting-settings-section { padding-block: 12px; }
-.waiting-settings-label { margin: 0 0 5px; }
-.waiting-settings-value { margin: 0; color: #eee8dc; font-size: .94rem; font-weight: 700; line-height: 1.5; }
-.waiting-room-actions { z-index: 5; margin-inline: calc(-1 * clamp(16px, 4vw, 28px)); padding: 10px clamp(16px, 4vw, 28px) max(12px, calc(env(safe-area-inset-bottom) + 10px)); border-top: 1px solid #526357; background: #14201ef7; box-shadow: 0 -6px 16px #0005; }
-.waiting-room-message { min-height: 1.35em; margin: 0 0 8px; color: #c2c1b5; font-size: .88rem; line-height: 1.35; }
+.waiting-settings-section { padding-block: 10px; }
+.waiting-settings-label { margin: 0 0 3px; }
+.waiting-settings-value { margin: 0; color: #eee8dc; font-size: .86rem; font-weight: 700; line-height: 1.45; }
+.waiting-room-actions { z-index: 5; margin-inline: calc(-1 * clamp(16px, 4vw, 28px)); padding: 8px clamp(16px, 4vw, 28px) max(10px, calc(env(safe-area-inset-bottom) + 8px)); border-top: 1px solid #526357; background: #14201ef7; box-shadow: 0 -6px 16px #0005; }
+.waiting-room-message { min-height: 1.3em; margin: 0 0 6px; color: #c2c1b5; font-size: .82rem; line-height: 1.3; }
 .waiting-room-message:not(:empty) { color: #eee8dc; }
 .waiting-room-actions .button-row { margin-top: 0; }
-.waiting-room-actions .button { min-height: 52px; }
-@media (max-width: 360px) { .waiting-invite-actions { grid-template-columns: 1fr; } }
+.waiting-room-actions .button { min-height: 48px; }
