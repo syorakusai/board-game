@@ -73,7 +73,7 @@ let multiplayerHistory = {};
 let multiplayerFinalKey = "";
 let multiplayerFinalCardsKey = "";
 let multiplayerFinalPresentationKey = "";
-let inviteQrExpanded = false;
+let inviteQrExpanded = true;
 let reactionUnsubscribe=null,reactionInitial=false,reactionKey="",reactionLast=0;const reactionSeen=new Map(),reactionDisplay=new Map(),reactionTimers=new Map();const REACTION_DURATION=3000,REACTION_COOLDOWN=1000,REACTIONS=[["😊","笑顔"],["😢","泣く"],["🤔","悩む"],["🤨","怪しむ"],["👏","拍手"],["❤️","ハート"],["👍","グッド"],["👎","バッド"]],REACTION_EMOJIS=new Set(REACTIONS.map(item=>item[0]));
 
 const $ = selector => document.querySelector(selector);
@@ -1302,7 +1302,7 @@ function clearInviteUrl() {
 
 function clearRoomSession() {
   clearStoredResumeAvailability();
-  inviteQrExpanded = false;
+  inviteQrExpanded = true;
   stopStoredSessionReconnectRetry();
   roomUnsubscribe?.();
   roomUnsubscribe = null;
