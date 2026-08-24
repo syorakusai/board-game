@@ -429,3 +429,34 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 }
 
 .reaction-control{position:relative}.reaction-control.is-hidden{display:none}.reaction-button{display:grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:8px;background:transparent;color:#d39a55;font-size:1.1rem;cursor:pointer}.reaction-button:hover,.reaction-button:focus-visible,.reaction-control.is-open .reaction-button{background:#263630;color:#f0c36e;outline:none}.reaction-palette{position:absolute;z-index:30;top:calc(100% + 8px);right:0;display:grid;grid-template-columns:repeat(4,38px);gap:5px;padding:7px;border:1px solid #68775c;border-radius:10px;background:#192623;box-shadow:0 8px 20px #0008}.reaction-control:not(.is-open) .reaction-palette{display:none}.reaction-palette button{width:38px;height:38px;border:0;border-radius:7px;background:#263630;font-size:1.2rem;cursor:pointer}.reaction-palette button:hover,.reaction-palette button:focus-visible{background:#3a3026;outline:1px solid #d39a55}.multiplayer-player{position:relative}.multiplayer-reaction-bubble{position:absolute;z-index:3;left:50%;bottom:calc(100% + 5px);transform:translateX(-50%);display:grid;place-items:center;min-width:34px;height:30px;padding:0 5px;border:1px solid #d5b45f;border-radius:9px;background:#fff8ed;box-shadow:0 3px 8px #0008;font-size:1.15rem;line-height:1}.multiplayer-reaction-bubble::after{content:"";position:absolute;left:50%;bottom:-5px;width:8px;height:8px;background:#fff8ed;border-right:1px solid #d5b45f;border-bottom:1px solid #d5b45f;transform:translateX(-50%) rotate(45deg)}
+
+
+/* 通信対戦：宴の待機室 */
+.waiting-room { display: flex; flex-direction: column; min-height: 100dvh; padding-bottom: 0; }
+.waiting-room > h1 { padding-bottom: 18px; }
+.waiting-room-content { display: grid; gap: 14px; padding-bottom: 116px; }
+.waiting-section { border: 1px solid #526357; border-radius: 16px; padding: 15px; background: #192623; }
+.waiting-section-title { margin: 0 0 12px; color: #eee8dc; font-size: 1.2rem; }
+.waiting-player-list { display: grid; gap: 7px; }
+.waiting-player { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 10px; background: #263630; }
+.waiting-player-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+.waiting-player-role { flex: 0 0 auto; color: #d39a55; font-size: .82rem; font-weight: 800; }
+.waiting-player-disconnected { color: #d5b45f; font-size: .82rem; font-weight: 800; }
+.waiting-label, .waiting-settings-label { display: block; color: #c2c1b5; font-size: .84rem; font-weight: 800; }
+.waiting-room-number-row { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
+.waiting-room-number-row strong { min-width: 0; color: #fff8ed; font-size: clamp(1.42rem, 7vw, 2rem); letter-spacing: .06em; }
+.waiting-room .copy-icon-button { flex: 0 0 42px; width: 42px; min-height: 42px; border: 1px solid #68775c; border-radius: 10px; background: #2b3733; color: #eee8dc; }
+.waiting-invite-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.waiting-invite-actions .button { min-height: 46px; padding-inline: 8px; font-size: .9rem; }
+.waiting-qr { display: grid; place-items: center; margin: 14px auto 0; }
+.waiting-qr.is-hidden { display: none; }
+.waiting-qr canvas { display: block; width: min(180px, 56vw); height: auto; max-width: 100%; border-radius: 8px; background: #fffdf4; }
+.waiting-settings-section { padding-block: 12px; }
+.waiting-settings-label { margin: 0 0 5px; }
+.waiting-settings-value { margin: 0; color: #eee8dc; font-size: .94rem; font-weight: 700; line-height: 1.5; }
+.waiting-room-actions { position: sticky; z-index: 5; bottom: 0; margin-inline: calc(-1 * clamp(16px, 4vw, 28px)); padding: 10px clamp(16px, 4vw, 28px) max(12px, calc(env(safe-area-inset-bottom) + 10px)); border-top: 1px solid #526357; background: #14201ef7; box-shadow: 0 -6px 16px #0005; }
+.waiting-room-message { min-height: 1.35em; margin: 0 0 8px; color: #c2c1b5; font-size: .88rem; line-height: 1.35; }
+.waiting-room-message:not(:empty) { color: #eee8dc; }
+.waiting-room-actions .button-row { margin-top: 0; }
+.waiting-room-actions .button { min-height: 52px; }
+@media (max-width: 360px) { .waiting-invite-actions { grid-template-columns: 1fr; } .waiting-room-content { padding-bottom: 124px; } }

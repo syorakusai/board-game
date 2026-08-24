@@ -73,6 +73,7 @@ let multiplayerHistory = {};
 let multiplayerFinalKey = "";
 let multiplayerFinalCardsKey = "";
 let multiplayerFinalPresentationKey = "";
+let inviteQrExpanded = false;
 let reactionUnsubscribe=null,reactionInitial=false,reactionKey="",reactionLast=0;const reactionSeen=new Map(),reactionDisplay=new Map(),reactionTimers=new Map();const REACTION_DURATION=3000,REACTION_COOLDOWN=1000,REACTIONS=[["😊","笑顔"],["😢","泣く"],["🤔","悩む"],["🤨","怪しむ"],["👏","拍手"],["❤️","ハート"],["👍","グッド"],["👎","バッド"]],REACTION_EMOJIS=new Set(REACTIONS.map(item=>item[0]));
 
 const $ = selector => document.querySelector(selector);
@@ -439,13 +440,14 @@ async function renderWaiting(room) {
   const allConnected = entries.length > 0 && disconnected.size === 0;
   const isHost = openedRoom && room.hostUid === currentUser?.uid;
   const discussionMinutes = room.discussionMinutes;
-  $("#room-summary").innerHTML = `<p class="room-number-row"><strong>部屋番号：${escape(roomId)}</strong><button id="copy-room-id" class="copy-icon-button" type="button" aria-label="部屋番号をコピー" title="部屋番号をコピー"><span aria-hidden="true">⧉</span></button></p><p>カードセット：${escape(room.cardSetName)}</p><p>ワードセット：${escape(room.wordSetName)}</p><p>推理時間：${escape(discussionMinutes)}分</p>`;
+  $("#room-participant-count").textContent = `参加者 ${entries.length} / 6`;
   $("#room-players").innerHTML = entries.length ? entries.sort((a,b) => a.joinedAt - b.joinedAt).map(player => {
-    const suffix = player.uid === room.hostUid
-      ? (disconnected.has(player.uid) ? "（主催・切断）" : "（主催）")
-      : (disconnected.has(player.uid) ? "（切断）" : "");
-    return `<div class="player-item"><span>${escape(player.name)}${suffix}</span></div>`;
+    const host = player.uid === room.hostUid;
+    const isDisconnected = disconnected.has(player.uid);
+    const role = host ? (isDisconnected ? "主催・切断" : "主催") : (isDisconnected ? "切断" : "");
+    return `<div class="waiting-player"><span class="waiting-player-name">${escape(player.name)}</span>${role ? `<span class="${isDisconnected ? "waiting-player-disconnected" : "waiting-player-role"}">${role}</span>` : ""}</div>`;
   }).join("") : "";
+  $("#room-settings").textContent = `${room.cardSetName} ・ ${room.wordSetName} ・ ${discussionMinutes}分`;
   const waitingMessage = room.status === "waiting"
     ? (allConnected ? `参加者 ${entries.length}人／2〜6人で開始できます。` : `参加者 ${entries.length}人／切断中の客人の復帰を待っています。`)
     : room.status === "closed" ? "主催者が宴を閉じました。" : "宴を開始しました。";
@@ -462,12 +464,21 @@ async function renderWaiting(room) {
   startButton.classList.toggle("button-secondary", !canStart);
   if (isHost) {
     const url = inviteUrl(roomId);
+    $("#room-id-value").textContent = roomId;
     $("#invite-url").value = url;
     const qr = $("#invite-qr");
-    qr.replaceChildren();
-    const canvas = document.createElement("canvas");
-    qr.append(canvas);
-    await QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark: "#063b2b", light: "#fffdf4" } });
+    const qrToggle = $("#toggle-invite-qr");
+    qr.classList.toggle("is-hidden", !inviteQrExpanded);
+    qrToggle.textContent = inviteQrExpanded ? "QRを閉じる" : "QRを表示";
+    qrToggle.setAttribute("aria-expanded", String(inviteQrExpanded));
+    if (inviteQrExpanded) {
+      qr.replaceChildren();
+      const canvas = document.createElement("canvas");
+      qr.append(canvas);
+      await QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark: "#063b2b", light: "#fffdf4" } });
+    } else {
+      qr.replaceChildren();
+    }
   }
   if (room.status === "started") {
     subscribeHistory(room);
@@ -1291,6 +1302,7 @@ function clearInviteUrl() {
 
 function clearRoomSession() {
   clearStoredResumeAvailability();
+  inviteQrExpanded = false;
   stopStoredSessionReconnectRetry();
   roomUnsubscribe?.();
   roomUnsubscribe = null;
@@ -1463,7 +1475,7 @@ async function startRoom() {
     }
   } catch (error) {
     show("multiplayer-waiting");
-    $("#room-waiting-message").textContent = "宴を開始できませんでした。"+(error.message || "");
+    $("#room-waiting-message").textContent = "宴を開始できませんでした。"+(isDevelopment() && error.message ? ` ${error.message}` : "");
   } finally {
     startingRoom=false;
   }
@@ -1705,6 +1717,12 @@ function initialize() {
   $("#waiting-back").onclick = leaveWaitingRoom;
   const copyWithNotice = async value => { await navigator.clipboard.writeText(value); $("#room-waiting-message").textContent = "コピーしました。"; setTimeout(() => { if (latestRoom?.status === "waiting") $("#room-waiting-message").textContent = `参加者 ${playerEntries(latestRoom).length}人／2〜6人で開始できます。`; }, 1500); };
   $("#copy-invite-url").onclick = () => copyWithNotice($("#invite-url").value);
+  $("#toggle-invite-qr").onclick = () => {
+    inviteQrExpanded = !inviteQrExpanded;
+    renderWaiting(latestRoom).catch(error => {
+      $("#room-waiting-message").textContent = `QRコードを表示できませんでした。${isDevelopment() && error.message ? ` ${error.message}` : ""}`;
+    });
+  };
   document.addEventListener("click", event => { if (event.target.closest("#copy-room-id")) copyWithNotice(roomId); if(!event.target.closest(".reaction-control"))closeReactionPalette(); });
   document.addEventListener("keydown",event=>{if(event.key==="Escape")closeReactionPalette();});
   window.addEventListener("beforeunload", event => {
