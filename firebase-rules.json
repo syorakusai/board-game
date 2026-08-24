@@ -163,6 +163,15 @@
           }
         }
       }
+    },
+    "roomReactions": {
+      "$roomId": {
+        ".read": "auth != null && root.child('rooms').child($roomId).child('players').child(auth.uid).exists()",
+        "$uid": {
+          ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($roomId).child('players').child(auth.uid).exists() && root.child('rooms').child($roomId).child('status').val() == 'started' && !root.child('rooms').child($roomId).child('endedBy').exists() && (!data.exists() || newData.child('sentAt').val() >= data.child('sentAt').val() + 1000)",
+          ".validate": "newData.hasChildren(['emoji','sentAt','nonce']) && newData.child('emoji').isString() && (newData.child('emoji').val() == '😊' || newData.child('emoji').val() == '😢' || newData.child('emoji').val() == '🤔' || newData.child('emoji').val() == '🤨' || newData.child('emoji').val() == '👏' || newData.child('emoji').val() == '❤️' || newData.child('emoji').val() == '👍' || newData.child('emoji').val() == '👎') && newData.child('sentAt').isNumber() && newData.child('nonce').isString() && newData.child('nonce').val().length >= 8 && newData.child('nonce').val().length <= 80"
+        }
+      }
     }
   }
 }

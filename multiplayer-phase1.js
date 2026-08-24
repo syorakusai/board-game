@@ -73,6 +73,7 @@ let multiplayerHistory = {};
 let multiplayerFinalKey = "";
 let multiplayerFinalCardsKey = "";
 let multiplayerFinalPresentationKey = "";
+let reactionUnsubscribe=null,reactionInitial=false,reactionKey="",reactionLast=0;const reactionSeen=new Map(),reactionDisplay=new Map(),reactionTimers=new Map();const REACTION_DURATION=3000,REACTION_COOLDOWN=1000,REACTIONS=[["😊","笑顔"],["😢","泣く"],["🤔","悩む"],["🤨","怪しむ"],["👏","拍手"],["❤️","ハート"],["👍","グッド"],["👎","バッド"]],REACTION_EMOJIS=new Set(REACTIONS.map(item=>item[0]));
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -385,6 +386,15 @@ function setRoundMessage(message) {
   refreshMessageTicker();
 }
 
+function closeReactionPalette(){document.querySelectorAll(".reaction-control.is-open").forEach(c=>{c.classList.remove("is-open");c.querySelector(".reaction-button")?.setAttribute("aria-expanded","false");});}
+function reactionEnabled(room=latestRoom){return room?.status==="started"&&!roomEnded(room);}
+function renderReactionPalette(control){const p=control?.querySelector(".reaction-palette");if(!p||p.childElementCount)return;p.innerHTML=REACTIONS.map(item=>"<button type=\"button\" data-reaction-emoji=\""+item[0]+"\" aria-label=\""+item[1]+"\">"+item[0]+"</button>").join("");p.querySelectorAll("[data-reaction-emoji]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();sendReaction(b.dataset.reactionEmoji);});}
+function updateReactionControls(room=latestRoom){const enabled=reactionEnabled(room);document.querySelectorAll(".reaction-control").forEach(c=>{c.classList.toggle("is-hidden",!enabled);if(!enabled)c.classList.remove("is-open");renderReactionPalette(c);});}
+function toggleReactionPalette(control){if(!reactionEnabled())return;const open=!control.classList.contains("is-open");closeReactionPalette();if(open){control.classList.add("is-open");control.querySelector(".reaction-button")?.setAttribute("aria-expanded","true");}}
+function clearReactionState(){reactionUnsubscribe?.();reactionUnsubscribe=null;reactionKey="";reactionInitial=false;reactionSeen.clear();reactionTimers.forEach(clearTimeout);reactionTimers.clear();reactionDisplay.clear();reactionLast=0;closeReactionPalette();}
+function showReaction(uid,value){const emoji=value?.emoji,nonce=value?.nonce,sentAt=Number(value?.sentAt);if(!REACTION_EMOJIS.has(emoji)||!nonce||!Number.isFinite(sentAt)||serverNow()-sentAt>=REACTION_DURATION)return;clearTimeout(reactionTimers.get(uid));reactionDisplay.set(uid,{emoji,nonce,expiresAt:sentAt+REACTION_DURATION});reactionTimers.set(uid,setTimeout(()=>{if(reactionDisplay.get(uid)?.nonce!==nonce)return;reactionDisplay.delete(uid);reactionTimers.delete(uid);if(latestRoom?.status==="started")renderPlayerBar(latestRoom);},Math.max(0,sentAt+REACTION_DURATION-serverNow())));if(latestRoom?.status==="started")renderPlayerBar(latestRoom);}
+function subscribeReactions(room){if(room?.status!=="started"||!roomId){clearReactionState();return;}if(reactionKey===roomId&&reactionUnsubscribe)return;clearReactionState();reactionKey=roomId;reactionUnsubscribe=onValue(ref(window.__firebaseDatabase,"roomReactions/"+roomId),snap=>{if(reactionKey!==roomId)return;const all=snap.val()||{};if(!reactionInitial){Object.entries(all).forEach(([uid,v])=>reactionSeen.set(uid,v?.nonce||""));reactionInitial=true;return;}Object.entries(all).forEach(([uid,v])=>{if(!v?.nonce||reactionSeen.get(uid)===v.nonce)return;reactionSeen.set(uid,v.nonce);showReaction(uid,v);});});}
+async function sendReaction(emoji){closeReactionPalette();const room=latestRoom,database=window.__firebaseDatabase;if(!REACTION_EMOJIS.has(emoji)||!database||!currentUser?.uid||!reactionEnabled(room)||!navigator.onLine)return;const now=Date.now();if(now-reactionLast<REACTION_COOLDOWN)return;reactionLast=now;try{await set(ref(database,"roomReactions/"+roomId+"/"+currentUser.uid),{emoji,sentAt:serverTimestamp(),nonce:crypto.randomUUID()});}catch(error){reactionLast=0;console.warn("リアクションを送信できませんでした。",error);}}
 function playerPanelState(room, uid, disconnected) {
   if (roomEnded(room) && room.endedBy?.uid === uid) return { label: "退席", className: "is-complete" };
   if (disconnected.has(uid)) return { label: "切断中", className: "is-disconnected" };
@@ -408,7 +418,8 @@ function renderPlayerBar(room, screenName="round") {
     const player=entries.find(item=>item.uid===uid)||{name:"不明"};
     const state=playerPanelState(room,uid,disconnected);
     const isParent = uid === room.parentUid;
-    return `<div class="multiplayer-player${isParent?" is-parent":""}"><strong>${escape(player.name)}</strong><span class="multiplayer-player-score">${Number(player.score)||0}点</span>${isParent?'<b class="multiplayer-player-role">親</b>':""}<small class="${state.className}">${state.label}</small></div>`;
+    const reaction=reactionDisplay.get(uid),bubble=reaction&&reaction.expiresAt>serverNow()?`<span class="multiplayer-reaction-bubble" aria-label="${escape(player.name)}のリアクション">${reaction.emoji}</span>`:"";
+    return `<div class="multiplayer-player${isParent?" is-parent":""}">${bubble}<strong>${escape(player.name)}</strong><span class="multiplayer-player-score">${Number(player.score)||0}点</span>${isParent?'<b class="multiplayer-player-role">親</b>':""}<small class="${state.className}">${state.label}</small></div>`;
   }).join("");
   placeRoundTitleInHeader(screenName);
   header.classList.remove("is-hidden");shell.classList.add("has-multiplayer-round-header");updateRoundHeaderOffset();
@@ -422,6 +433,7 @@ async function renderWaiting(room) {
     hideRoundHeader();
     if ($('[data-screen="round"]:not(.is-hidden)') || $('[data-screen="parent-input"]:not(.is-hidden)')) show("multiplayer-waiting");
   }
+  updateReactionControls(room);
   const entries = playerEntries(room);
   const disconnected = new Set(disconnectedPlayers(room).map(player => player.uid));
   const allConnected = entries.length > 0 && disconnected.size === 0;
@@ -459,6 +471,7 @@ async function renderWaiting(room) {
   }
   if (room.status === "started") {
     subscribeHistory(room);
+    subscribeReactions(room);
     const nextRoundKey=`${roomId}:${currentRoundNumber(room)}`;
     if(observedRoundKey&&observedRoundKey!==nextRoundKey)resetRoundLocalState();
     observedRoundKey=nextRoundKey;
@@ -1297,6 +1310,7 @@ function clearRoomSession() {
   answerSummaryUnsubscribe = null;
   answerSubscriptionKey = "";
   answerSummarySubscriptionKey = "";
+  clearReactionState();
   progressUnsubscribe?.();
   progressUnsubscribe = null;
   progressSubscriptionKey = "";
@@ -1691,7 +1705,8 @@ function initialize() {
   $("#waiting-back").onclick = leaveWaitingRoom;
   const copyWithNotice = async value => { await navigator.clipboard.writeText(value); $("#room-waiting-message").textContent = "コピーしました。"; setTimeout(() => { if (latestRoom?.status === "waiting") $("#room-waiting-message").textContent = `参加者 ${playerEntries(latestRoom).length}人／2〜6人で開始できます。`; }, 1500); };
   $("#copy-invite-url").onclick = () => copyWithNotice($("#invite-url").value);
-  document.addEventListener("click", event => { if (event.target.closest("#copy-room-id")) copyWithNotice(roomId); });
+  document.addEventListener("click", event => { if (event.target.closest("#copy-room-id")) copyWithNotice(roomId); if(!event.target.closest(".reaction-control"))closeReactionPalette(); });
+  document.addEventListener("keydown",event=>{if(event.key==="Escape")closeReactionPalette();});
   window.addEventListener("beforeunload", event => {
     if (!roomId || !latestRoom || latestRoom.status === "closed") return;
     event.preventDefault();
@@ -1699,5 +1714,5 @@ function initialize() {
   });
 }
 
-window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory };
+window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory, toggleReactionPalette };
 initialize();
