@@ -30,15 +30,40 @@
 <button id="recovery-retry" class="button button-primary" type="button" hidden>もう一度確認する</button>
 <button id="recovery-exit" class="button button-secondary" type="button">宴から退出する</button>
 </section>
-<section class="screen is-hidden" data-screen="multiplayer-waiting">
+<section class="screen is-hidden waiting-room" data-screen="multiplayer-waiting">
 <h1>宴の待機室</h1>
-<div id="room-summary" class="multiplayer-summary"></div>
-<div id="room-invitation" class="is-hidden"><label class="field-label">招待URL<span class="copy-field"><input id="invite-url" readonly><button id="copy-invite-url" class="copy-icon-button" type="button" aria-label="招待URLをコピー" title="招待URLをコピー"><span aria-hidden="true">⧉</span></button></span></label><div id="invite-qr" class="invite-qr" aria-label="招待QRコード"></div></div>
-<h2>参加者</h2><div id="room-players" class="player-list"></div>
-<p id="room-waiting-message" class="description"></p>
+<div class="waiting-room-content">
+<section class="waiting-section waiting-participants-section" aria-labelledby="room-participant-count">
+<h2 id="room-participant-count" class="waiting-section-title">参加者 0 / 6</h2>
+<div id="room-players" class="waiting-player-list"></div>
+</section>
+<section id="room-invitation" class="waiting-section waiting-invitation-section is-hidden" aria-labelledby="room-invitation-title">
+<h2 id="room-invitation-title" class="waiting-section-title">招待</h2>
+<div class="waiting-room-number">
+<div class="waiting-room-number-row">
+<span class="waiting-label">部屋番号：</span>
+<strong id="room-id-value"></strong>
+<button id="copy-room-id" class="copy-icon-button" type="button" aria-label="部屋番号をコピー" title="部屋番号をコピー"><span aria-hidden="true">⧉</span></button>
+</div>
+</div>
+<input id="invite-url" type="hidden" readonly>
+<div class="waiting-invite-actions">
+<button id="copy-invite-url" class="button button-secondary" type="button">招待URLをコピー</button>
+<button id="toggle-invite-qr" class="button button-secondary" type="button" aria-expanded="false" aria-controls="invite-qr">QRを表示</button>
+</div>
+<div id="invite-qr" class="waiting-qr is-hidden" aria-label="招待QRコード"></div>
+</section>
+<section class="waiting-section waiting-settings-section" aria-labelledby="room-settings-title">
+<h2 id="room-settings-title" class="waiting-settings-label">宴の設定</h2>
+<p id="room-settings" class="waiting-settings-value"></p>
+</section>
+</div>
+<div class="waiting-room-actions">
+<p id="room-waiting-message" class="waiting-room-message" aria-live="polite"></p>
 <div class="button-row">
 <button id="waiting-back" class="button button-secondary">戻る</button>
 <button id="start-multiplayer-game" class="button button-primary is-hidden">宴を始める</button>
+</div>
 </div>
 </section>
 <div id="multiplayer-round-header" class="multiplayer-round-header is-hidden">

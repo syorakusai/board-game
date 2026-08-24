@@ -73,6 +73,8 @@ let multiplayerHistory = {};
 let multiplayerFinalKey = "";
 let multiplayerFinalCardsKey = "";
 let multiplayerFinalPresentationKey = "";
+let inviteQrExpanded = true;
+let reactionUnsubscribe=null,reactionInitial=false,reactionKey="",reactionLast=0;const reactionSeen=new Map(),reactionDisplay=new Map(),reactionTimers=new Map();const REACTION_DURATION=3000,REACTION_COOLDOWN=1000,REACTIONS=[["😊","笑顔"],["😢","泣く"],["🤔","悩む"],["🤨","怪しむ"],["👏","拍手"],["❤️","ハート"],["👍","グッド"],["👎","バッド"]],REACTION_EMOJIS=new Set(REACTIONS.map(item=>item[0]));
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `${ROOM_PREFIX}/${id}`;
@@ -385,6 +387,15 @@ function setRoundMessage(message) {
   refreshMessageTicker();
 }
 
+function closeReactionPalette(){document.querySelectorAll(".reaction-control.is-open").forEach(c=>{c.classList.remove("is-open");c.querySelector(".reaction-button")?.setAttribute("aria-expanded","false");});}
+function reactionEnabled(room=latestRoom){return room?.status==="started"&&!roomEnded(room);}
+function renderReactionPalette(control){const p=control?.querySelector(".reaction-palette");if(!p||p.childElementCount)return;p.innerHTML=REACTIONS.map(item=>"<button type=\"button\" data-reaction-emoji=\""+item[0]+"\" aria-label=\""+item[1]+"\">"+item[0]+"</button>").join("");p.querySelectorAll("[data-reaction-emoji]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();sendReaction(b.dataset.reactionEmoji);});}
+function updateReactionControls(room=latestRoom){const enabled=reactionEnabled(room);document.querySelectorAll(".reaction-control").forEach(c=>{c.classList.toggle("is-hidden",!enabled);if(!enabled)c.classList.remove("is-open");renderReactionPalette(c);});}
+function toggleReactionPalette(control){if(!reactionEnabled())return;const open=!control.classList.contains("is-open");closeReactionPalette();if(open){control.classList.add("is-open");control.querySelector(".reaction-button")?.setAttribute("aria-expanded","true");}}
+function clearReactionState(){reactionUnsubscribe?.();reactionUnsubscribe=null;reactionKey="";reactionInitial=false;reactionSeen.clear();reactionTimers.forEach(clearTimeout);reactionTimers.clear();reactionDisplay.clear();reactionLast=0;closeReactionPalette();}
+function showReaction(uid,value){const emoji=value?.emoji,nonce=value?.nonce,sentAt=Number(value?.sentAt);if(!REACTION_EMOJIS.has(emoji)||!nonce||!Number.isFinite(sentAt)||serverNow()-sentAt>=REACTION_DURATION)return;clearTimeout(reactionTimers.get(uid));reactionDisplay.set(uid,{emoji,nonce,expiresAt:sentAt+REACTION_DURATION});reactionTimers.set(uid,setTimeout(()=>{if(reactionDisplay.get(uid)?.nonce!==nonce)return;reactionDisplay.delete(uid);reactionTimers.delete(uid);if(latestRoom?.status==="started")renderPlayerBar(latestRoom);},Math.max(0,sentAt+REACTION_DURATION-serverNow())));if(latestRoom?.status==="started")renderPlayerBar(latestRoom);}
+function subscribeReactions(room){if(room?.status!=="started"||!roomId){clearReactionState();return;}if(reactionKey===roomId&&reactionUnsubscribe)return;clearReactionState();reactionKey=roomId;reactionUnsubscribe=onValue(ref(window.__firebaseDatabase,"roomReactions/"+roomId),snap=>{if(reactionKey!==roomId)return;const all=snap.val()||{};if(!reactionInitial){Object.entries(all).forEach(([uid,v])=>reactionSeen.set(uid,v?.nonce||""));reactionInitial=true;return;}Object.entries(all).forEach(([uid,v])=>{if(!v?.nonce||reactionSeen.get(uid)===v.nonce)return;reactionSeen.set(uid,v.nonce);showReaction(uid,v);});});}
+async function sendReaction(emoji){closeReactionPalette();const room=latestRoom,database=window.__firebaseDatabase;if(!REACTION_EMOJIS.has(emoji)||!database||!currentUser?.uid||!reactionEnabled(room)||!navigator.onLine)return;const now=Date.now();if(now-reactionLast<REACTION_COOLDOWN)return;reactionLast=now;try{await set(ref(database,"roomReactions/"+roomId+"/"+currentUser.uid),{emoji,sentAt:serverTimestamp(),nonce:crypto.randomUUID()});}catch(error){reactionLast=0;console.warn("リアクションを送信できませんでした。",error);}}
 function playerPanelState(room, uid, disconnected) {
   if (roomEnded(room) && room.endedBy?.uid === uid) return { label: "退席", className: "is-complete" };
   if (disconnected.has(uid)) return { label: "切断中", className: "is-disconnected" };
@@ -397,8 +408,7 @@ function playerPanelState(room, uid, disconnected) {
   if (phase === "reveal" && isParent) return { label: "開帳", className: "is-action-needed" };
   if (phase === "result" && isParent && resultPresentationFinished(room)) return { label: "得点確認", className: "is-action-needed" };
   if (phase === "score" && isParent) return { label: "次の席へ", className: "is-action-needed" };
-  if (phase === "final" && room?.replayChoices?.[uid] === true) return { label: "再宴希望", className: "is-complete" };
-  if (phase === "final") return { label: "確認中", className: "is-action-needed" };
+  if (phase === "final") return { label: "", className: "" };
   return { label: "", className: "" };
 }
 function renderPlayerBar(room, screenName="round") {
@@ -409,7 +419,8 @@ function renderPlayerBar(room, screenName="round") {
     const player=entries.find(item=>item.uid===uid)||{name:"不明"};
     const state=playerPanelState(room,uid,disconnected);
     const isParent = uid === room.parentUid;
-    return `<div class="multiplayer-player${isParent?" is-parent":""}"><strong>${escape(player.name)}</strong><span class="multiplayer-player-score">${Number(player.score)||0}点</span>${isParent?'<b class="multiplayer-player-role">親</b>':""}<small class="${state.className}">${state.label}</small></div>`;
+    const reaction=reactionDisplay.get(uid),bubble=reaction&&reaction.expiresAt>serverNow()?`<span class="multiplayer-reaction-bubble" aria-label="${escape(player.name)}のリアクション">${reaction.emoji}</span>`:"";
+    return `<div class="multiplayer-player${isParent?" is-parent":""}">${bubble}<strong>${escape(player.name)}</strong><span class="multiplayer-player-score">${Number(player.score)||0}点</span>${isParent?'<b class="multiplayer-player-role">親</b>':""}<small class="${state.className}">${state.label}</small></div>`;
   }).join("");
   placeRoundTitleInHeader(screenName);
   header.classList.remove("is-hidden");shell.classList.add("has-multiplayer-round-header");updateRoundHeaderOffset();
@@ -423,18 +434,20 @@ async function renderWaiting(room) {
     hideRoundHeader();
     if ($('[data-screen="round"]:not(.is-hidden)') || $('[data-screen="parent-input"]:not(.is-hidden)')) show("multiplayer-waiting");
   }
+  updateReactionControls(room);
   const entries = playerEntries(room);
   const disconnected = new Set(disconnectedPlayers(room).map(player => player.uid));
   const allConnected = entries.length > 0 && disconnected.size === 0;
   const isHost = openedRoom && room.hostUid === currentUser?.uid;
   const discussionMinutes = room.discussionMinutes;
-  $("#room-summary").innerHTML = `<p class="room-number-row"><strong>部屋番号：${escape(roomId)}</strong><button id="copy-room-id" class="copy-icon-button" type="button" aria-label="部屋番号をコピー" title="部屋番号をコピー"><span aria-hidden="true">⧉</span></button></p><p>カードセット：${escape(room.cardSetName)}</p><p>ワードセット：${escape(room.wordSetName)}</p><p>推理時間：${escape(discussionMinutes)}分</p>`;
+  $("#room-participant-count").textContent = `参加者 ${entries.length} / 6`;
   $("#room-players").innerHTML = entries.length ? entries.sort((a,b) => a.joinedAt - b.joinedAt).map(player => {
-    const suffix = player.uid === room.hostUid
-      ? (disconnected.has(player.uid) ? "（主催・切断）" : "（主催）")
-      : (disconnected.has(player.uid) ? "（切断）" : "");
-    return `<div class="player-item"><span>${escape(player.name)}${suffix}</span></div>`;
+    const host = player.uid === room.hostUid;
+    const isDisconnected = disconnected.has(player.uid);
+    const role = host ? (isDisconnected ? "主催・切断" : "主催") : (isDisconnected ? "切断" : "");
+    return `<div class="waiting-player"><span class="waiting-player-name">${escape(player.name)}</span>${role ? `<span class="${isDisconnected ? "waiting-player-disconnected" : "waiting-player-role"}">${role}</span>` : ""}</div>`;
   }).join("") : "";
+  $("#room-settings").textContent = `${room.cardSetName} ・ ${room.wordSetName} ・ ${discussionMinutes}分`;
   const waitingMessage = room.status === "waiting"
     ? (allConnected ? `参加者 ${entries.length}人／2〜6人で開始できます。` : `参加者 ${entries.length}人／切断中の客人の復帰を待っています。`)
     : room.status === "closed" ? "主催者が宴を閉じました。" : "宴を開始しました。";
@@ -451,15 +464,25 @@ async function renderWaiting(room) {
   startButton.classList.toggle("button-secondary", !canStart);
   if (isHost) {
     const url = inviteUrl(roomId);
+    $("#room-id-value").textContent = roomId;
     $("#invite-url").value = url;
     const qr = $("#invite-qr");
-    qr.replaceChildren();
-    const canvas = document.createElement("canvas");
-    qr.append(canvas);
-    await QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark: "#063b2b", light: "#fffdf4" } });
+    const qrToggle = $("#toggle-invite-qr");
+    qr.classList.toggle("is-hidden", !inviteQrExpanded);
+    qrToggle.textContent = inviteQrExpanded ? "QRを閉じる" : "QRを表示";
+    qrToggle.setAttribute("aria-expanded", String(inviteQrExpanded));
+    if (inviteQrExpanded) {
+      qr.replaceChildren();
+      const canvas = document.createElement("canvas");
+      qr.append(canvas);
+      await QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark: "#063b2b", light: "#fffdf4" } });
+    } else {
+      qr.replaceChildren();
+    }
   }
   if (room.status === "started") {
     subscribeHistory(room);
+    subscribeReactions(room);
     const nextRoundKey=`${roomId}:${currentRoundNumber(room)}`;
     if(observedRoundKey&&observedRoundKey!==nextRoundKey)resetRoundLocalState();
     observedRoundKey=nextRoundKey;
@@ -539,50 +562,6 @@ function shuffledWords(words) {
     [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
   }
   return result;
-}
-function allReplayChoices(room) {
-  return Array.isArray(room?.seats) && room.seats.length >= 2
-    && room.seats.every(uid => room.replayChoices?.[uid] === true);
-}
-async function chooseFinalReplay() {
-  const room = latestRoom;
-  const uid = currentUser?.uid;
-  if (!room || !uid || room.round?.phase !== "final" || roomEnded(room) || room.replayChoices?.[uid] === true) return;
-  await set(ref(window.__firebaseDatabase, `${roomPath(roomId)}/replayChoices/${uid}`), true);
-}
-async function restartFinalFeast() {
-  const room = latestRoom;
-  if (!room || room.round?.phase !== "final" || roomEnded(room) || !canProgress(room) || room.parentUid !== currentUser?.uid || !allReplayChoices(room) || phaseTransitionPending) return;
-  phaseTransitionPending = true;
-  try {
-    const seats = shuffledWords(room.seats);
-    const updates = {
-      [`${roomPath(roomId)}/seats`]: seats,
-      [`${roomPath(roomId)}/parentUid`]: seats[0],
-      [`${roomPath(roomId)}/round/number`]: 1,
-      [`${roomPath(roomId)}/round/phase`]: "draw",
-      [`${roomPath(roomId)}/round/cardId`]: null,
-      [`${roomPath(roomId)}/round/cardImage`]: null,
-      [`${roomPath(roomId)}/round/publicWords`]: null,
-      [`${roomPath(roomId)}/round/publicAnswers`]: null,
-      [`${roomPath(roomId)}/round/discussionStartedAt`]: null,
-      [`${roomPath(roomId)}/round/discussionDurationSeconds`]: null,
-      [`${roomPath(roomId)}/round/answerStartedAt`]: null,
-      [`${roomPath(roomId)}/round/revealStartedAt`]: null,
-      [`${roomPath(roomId)}/round/revealCompletedAt`]: null,
-      [`${roomPath(roomId)}/round/parentCandidateIndex`]: null,
-      [`${roomPath(roomId)}/round/roulettePlan`]: null,
-      [`${roomPath(roomId)}/replayChoices`]: null,
-      [`${historyPath(roomId)}`]: null,
-      [`roomSecrets/${roomId}`]: null,
-      [`roomProgress/${roomId}`]: null,
-      [`roomAnswers/${roomId}`]: null
-    };
-    playerEntries(room).forEach(player => { updates[`${roomPath(roomId)}/players/${player.uid}/score`] = 0; });
-    await update(ref(window.__firebaseDatabase), updates);
-  } finally {
-    phaseTransitionPending = false;
-  }
 }
 function stopDiscussionTimer() {
   clearInterval(discussionTimer);
@@ -976,7 +955,6 @@ function enterMultiplayerFinalScreen(room) {
   const cards = Object.values(multiplayerHistory || {})
     .sort((a, b) => Number(a.round) - Number(b.round))
     .map(record => ({ round: record.round, image: record.cardImage || record.image }));
-  const ended = roomEnded(room);
   const finalKey = `${roomId}:${room.round?.number}:${room.round?.cardId}`;
   const finalRoundHistoryReady = Object.prototype.hasOwnProperty.call(multiplayerHistory, String(currentRoundNumber(room)));
   const firstFinalEntry = multiplayerFinalKey !== finalKey;
@@ -999,7 +977,7 @@ function enterMultiplayerFinalScreen(room) {
     try { await exitStartedFeast(); }
     catch (error) { setRoundMessage(`退出できませんでした。${error.message || ""}`); }
   };
-  setRoundMessage(ended ? "宴はお開きとなりました。「タイトルへ」を選んでください。" : "宴の結果をご確認ください。");
+  setRoundMessage("宴の結果をご確認ください。");
 }
 function enterResultScreen(room) {
   stopResultVisibilitySync();
@@ -1324,6 +1302,7 @@ function clearInviteUrl() {
 
 function clearRoomSession() {
   clearStoredResumeAvailability();
+  inviteQrExpanded = true;
   stopStoredSessionReconnectRetry();
   roomUnsubscribe?.();
   roomUnsubscribe = null;
@@ -1343,6 +1322,7 @@ function clearRoomSession() {
   answerSummaryUnsubscribe = null;
   answerSubscriptionKey = "";
   answerSummarySubscriptionKey = "";
+  clearReactionState();
   progressUnsubscribe?.();
   progressUnsubscribe = null;
   progressSubscriptionKey = "";
@@ -1495,7 +1475,7 @@ async function startRoom() {
     }
   } catch (error) {
     show("multiplayer-waiting");
-    $("#room-waiting-message").textContent = "宴を開始できませんでした。"+(error.message || "");
+    $("#room-waiting-message").textContent = "宴を開始できませんでした。"+(isDevelopment() && error.message ? ` ${error.message}` : "");
   } finally {
     startingRoom=false;
   }
@@ -1737,7 +1717,14 @@ function initialize() {
   $("#waiting-back").onclick = leaveWaitingRoom;
   const copyWithNotice = async value => { await navigator.clipboard.writeText(value); $("#room-waiting-message").textContent = "コピーしました。"; setTimeout(() => { if (latestRoom?.status === "waiting") $("#room-waiting-message").textContent = `参加者 ${playerEntries(latestRoom).length}人／2〜6人で開始できます。`; }, 1500); };
   $("#copy-invite-url").onclick = () => copyWithNotice($("#invite-url").value);
-  document.addEventListener("click", event => { if (event.target.closest("#copy-room-id")) copyWithNotice(roomId); });
+  $("#toggle-invite-qr").onclick = () => {
+    inviteQrExpanded = !inviteQrExpanded;
+    renderWaiting(latestRoom).catch(error => {
+      $("#room-waiting-message").textContent = `QRコードを表示できませんでした。${isDevelopment() && error.message ? ` ${error.message}` : ""}`;
+    });
+  };
+  document.addEventListener("click", event => { if (event.target.closest("#copy-room-id")) copyWithNotice(roomId); if(!event.target.closest(".reaction-control"))closeReactionPalette(); });
+  document.addEventListener("keydown",event=>{if(event.key==="Escape")closeReactionPalette();});
   window.addEventListener("beforeunload", event => {
     if (!roomId || !latestRoom || latestRoom.status === "closed") return;
     event.preventDefault();
@@ -1745,5 +1732,5 @@ function initialize() {
   });
 }
 
-window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory };
+window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory, toggleReactionPalette };
 initialize();
