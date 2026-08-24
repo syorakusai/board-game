@@ -4,63 +4,63 @@
   "cards": [
     {
       "id": 1,
-      "image": "card-001-apple-duck.png"
+      "image": "card-001-apple-duck.webp"
     },
     {
       "id": 2,
-      "image": "card-002-umbrella-fishing.png"
+      "image": "card-002-umbrella-fishing.webp"
     },
     {
       "id": 3,
-      "image": "card-003-office-chair-race.png"
+      "image": "card-003-office-chair-race.webp"
     },
     {
       "id": 4,
-      "image": "card-004-ramen-balloon.png"
+      "image": "card-004-ramen-balloon.webp"
     },
     {
       "id": 5,
-      "image": "card-005-elephant-teacup.png"
+      "image": "card-005-elephant-teacup.webp"
     },
     {
       "id": 6,
-      "image": "card-006-pigeon-post.png"
+      "image": "card-006-pigeon-post.webp"
     },
     {
       "id": 7,
-      "image": "card-007-dog-show.png"
+      "image": "card-007-dog-show.webp"
     },
     {
       "id": 8,
-      "image": "card-008-feather-duster.png"
+      "image": "card-008-feather-duster.webp"
     },
     {
       "id": 9,
-      "image": "card-009-snail-station.png"
+      "image": "card-009-snail-station.webp"
     },
     {
       "id": 10,
-      "image": "card-010-giant-cake.png"
+      "image": "card-010-giant-cake.webp"
     },
     {
       "id": 11,
-      "image": "card-011-library-avalanche.png"
+      "image": "card-011-library-avalanche.webp"
     },
     {
       "id": 12,
-      "image": "card-012-candle-fire-brigade.png"
+      "image": "card-012-candle-fire-brigade.webp"
     },
     {
       "id": 13,
-      "image": "card-013-cat-orchestra.png"
+      "image": "card-013-cat-orchestra.webp"
     },
     {
       "id": 14,
-      "image": "card-014-giant-kite.png"
+      "image": "card-014-giant-kite.webp"
     },
     {
       "id": 15,
-      "image": "card-015-museum-monkeys.png"
+      "image": "card-015-museum-monkeys.webp"
     }
   ],
   "wordSets": [
