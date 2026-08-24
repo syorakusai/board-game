@@ -432,9 +432,10 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 
 
 /* 通信対戦：宴の待機室 */
-.waiting-room { display: flex; flex-direction: column; min-height: 100dvh; padding-bottom: 0; }
+.waiting-room.is-hidden { display: none; }
+.waiting-room:not(.is-hidden) { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; min-height: 100dvh; padding-bottom: 0; overflow: hidden; }
 .waiting-room > h1 { padding-bottom: 18px; }
-.waiting-room-content { display: grid; gap: 14px; padding-bottom: 116px; }
+.waiting-room-content { display: grid; align-content: start; gap: 14px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 18px; }
 .waiting-section { border: 1px solid #526357; border-radius: 16px; padding: 15px; background: #192623; }
 .waiting-section-title { margin: 0 0 12px; color: #eee8dc; font-size: 1.2rem; }
 .waiting-player-list { display: grid; gap: 7px; }
@@ -454,9 +455,9 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .waiting-settings-section { padding-block: 12px; }
 .waiting-settings-label { margin: 0 0 5px; }
 .waiting-settings-value { margin: 0; color: #eee8dc; font-size: .94rem; font-weight: 700; line-height: 1.5; }
-.waiting-room-actions { position: sticky; z-index: 5; bottom: 0; margin-inline: calc(-1 * clamp(16px, 4vw, 28px)); padding: 10px clamp(16px, 4vw, 28px) max(12px, calc(env(safe-area-inset-bottom) + 10px)); border-top: 1px solid #526357; background: #14201ef7; box-shadow: 0 -6px 16px #0005; }
+.waiting-room-actions { z-index: 5; margin-inline: calc(-1 * clamp(16px, 4vw, 28px)); padding: 10px clamp(16px, 4vw, 28px) max(12px, calc(env(safe-area-inset-bottom) + 10px)); border-top: 1px solid #526357; background: #14201ef7; box-shadow: 0 -6px 16px #0005; }
 .waiting-room-message { min-height: 1.35em; margin: 0 0 8px; color: #c2c1b5; font-size: .88rem; line-height: 1.35; }
 .waiting-room-message:not(:empty) { color: #eee8dc; }
 .waiting-room-actions .button-row { margin-top: 0; }
 .waiting-room-actions .button { min-height: 52px; }
-@media (max-width: 360px) { .waiting-invite-actions { grid-template-columns: 1fr; } .waiting-room-content { padding-bottom: 124px; } }
+@media (max-width: 360px) { .waiting-invite-actions { grid-template-columns: 1fr; } }
