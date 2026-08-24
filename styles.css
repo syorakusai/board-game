@@ -444,8 +444,9 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .waiting-player-role { flex: 0 0 auto; color: #d39a55; font-size: .78rem; font-weight: 800; }
 .waiting-player-disconnected { color: #d5b45f; font-size: .78rem; font-weight: 800; }
 .waiting-label, .waiting-settings-label { display: block; color: #c2c1b5; font-size: .78rem; font-weight: 800; }
-.waiting-room-number-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
-.waiting-room-number-row strong { min-width: 0; color: #fff8ed; font-size: clamp(1.25rem, 6vw, 1.7rem); letter-spacing: .05em; }
+.waiting-room-number-row { display: flex; align-items: center; gap: 5px; }
+.waiting-room-number-row .waiting-label { flex: 0 0 auto; display: inline; color: #eee8dc; font-size: .86rem; }
+.waiting-room-number-row strong { min-width: 0; color: #fff8ed; font-size: clamp(1.1rem, 5.4vw, 1.45rem); letter-spacing: .05em; }
 .waiting-room .copy-icon-button { flex: 0 0 38px; width: 38px; min-height: 38px; border: 1px solid #68775c; border-radius: 10px; background: #2b3733; color: #eee8dc; }
 .waiting-invite-actions { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 8px; margin-top: 10px; }
 .waiting-invite-actions .button { min-width: 0; min-height: 42px; padding-inline: 6px; font-size: .78rem; white-space: nowrap; }
