@@ -4,203 +4,203 @@
   "cards": [
     {
       "id": 1,
-      "image": "card-001-pigeon-maitre-d.png"
+      "image": "card-001-pigeon-maitre-d.webp"
     },
     {
       "id": 2,
-      "image": "card-002-dog-throne.png"
+      "image": "card-002-dog-throne.webp"
     },
     {
       "id": 3,
-      "image": "card-003-kitchen-band.png"
+      "image": "card-003-kitchen-band.webp"
     },
     {
       "id": 4,
-      "image": "card-004-snail-grand-prix.png"
+      "image": "card-004-snail-grand-prix.webp"
     },
     {
       "id": 5,
-      "image": "card-005-raincoat-lighthouse.png"
+      "image": "card-005-raincoat-lighthouse.webp"
     },
     {
       "id": 6,
-      "image": "card-006-library-weightlifting.png"
+      "image": "card-006-library-weightlifting.webp"
     },
     {
       "id": 7,
-      "image": "card-007-key-wedding.png"
+      "image": "card-007-key-wedding.webp"
     },
     {
       "id": 8,
-      "image": "card-008-museum-lunchbox.png"
+      "image": "card-008-museum-lunchbox.webp"
     },
     {
       "id": 9,
-      "image": "card-009-cloud-fishing.png"
+      "image": "card-009-cloud-fishing.webp"
     },
     {
       "id": 10,
-      "image": "card-010-elephant-magic.png"
+      "image": "card-010-elephant-magic.webp"
     },
     {
       "id": 11,
-      "image": "card-011-cloud-barber.png"
+      "image": "card-011-cloud-barber.webp"
     },
     {
       "id": 12,
-      "image": "card-012-walking-bus-stop.png"
+      "image": "card-012-walking-bus-stop.webp"
     },
     {
       "id": 13,
-      "image": "card-013-fish-crane.png"
+      "image": "card-013-fish-crane.webp"
     },
     {
       "id": 14,
-      "image": "card-014-teapot-firefighter.png"
+      "image": "card-014-teapot-firefighter.webp"
     },
     {
       "id": 15,
-      "image": "card-015-giraffe-goalkeeper.png"
+      "image": "card-015-giraffe-goalkeeper.webp"
     },
     {
       "id": 16,
-      "image": "card-016-scissors-ceremony.png"
+      "image": "card-016-scissors-ceremony.webp"
     },
     {
       "id": 17,
-      "image": "card-017-feet-train.png"
+      "image": "card-017-feet-train.webp"
     },
     {
       "id": 18,
-      "image": "card-018-alarm-clock-nurse.png"
+      "image": "card-018-alarm-clock-nurse.webp"
     },
     {
       "id": 19,
-      "image": "card-019-mountain-tailor.png"
+      "image": "card-019-mountain-tailor.webp"
     },
     {
       "id": 20,
-      "image": "card-020-octopus-pianos.png"
+      "image": "card-020-octopus-pianos.webp"
     },
     {
       "id": 21,
-      "image": "card-021-many-teeth-dentist.png"
+      "image": "card-021-many-teeth-dentist.webp"
     },
     {
       "id": 22,
-      "image": "card-022-hair-comb-demon.png"
+      "image": "card-022-hair-comb-demon.webp"
     },
     {
       "id": 23,
-      "image": "card-023-moon-laundry.png"
+      "image": "card-023-moon-laundry.webp"
     },
     {
       "id": 24,
-      "image": "card-024-fish-entrance-ceremony.png"
+      "image": "card-024-fish-entrance-ceremony.webp"
     },
     {
       "id": 25,
-      "image": "card-025-shadow-lost.png"
+      "image": "card-025-shadow-lost.webp"
     },
     {
       "id": 26,
-      "image": "card-026-library-moving.png"
+      "image": "card-026-library-moving.webp"
     },
     {
       "id": 27,
-      "image": "card-027-giant-shoelace.png"
+      "image": "card-027-giant-shoelace.webp"
     },
     {
       "id": 28,
-      "image": "card-028-crow-trial.png"
+      "image": "card-028-crow-trial.webp"
     },
     {
       "id": 29,
-      "image": "card-029-sun-rain-shelter.png"
+      "image": "card-029-sun-rain-shelter.webp"
     },
     {
       "id": 30,
-      "image": "card-030-hourglass-cleaning.png"
+      "image": "card-030-hourglass-cleaning.webp"
     },
     {
       "id": 31,
-      "image": "card-031-gear-bread-bakery.png"
+      "image": "card-031-gear-bread-bakery.webp"
     },
     {
       "id": 32,
-      "image": "card-032-sneezing-statue-museum.png"
+      "image": "card-032-sneezing-statue-museum.webp"
     },
     {
       "id": 33,
-      "image": "card-033-cloud-fishing-stairs.png"
+      "image": "card-033-cloud-fishing-stairs.webp"
     },
     {
       "id": 34,
-      "image": "card-034-elephant-tea-party.png"
+      "image": "card-034-elephant-tea-party.webp"
     },
     {
       "id": 35,
-      "image": "card-035-penguin-tailor.png"
+      "image": "card-035-penguin-tailor.webp"
     },
     {
       "id": 36,
-      "image": "card-036-whale-bubble-bath.png"
+      "image": "card-036-whale-bubble-bath.webp"
     },
     {
       "id": 37,
-      "image": "card-037-sunrise-postman.png"
+      "image": "card-037-sunrise-postman.webp"
     },
     {
       "id": 38,
-      "image": "card-038-folding-mountain.png"
+      "image": "card-038-folding-mountain.webp"
     },
     {
       "id": 39,
-      "image": "card-039-deep-sea-lighthouse.png"
+      "image": "card-039-deep-sea-lighthouse.webp"
     },
     {
       "id": 40,
-      "image": "card-040-floating-balloon-cathedral.png"
+      "image": "card-040-floating-balloon-cathedral.webp"
     },
     {
       "id": 41,
-      "image": "card-041-upside-down-market.png"
+      "image": "card-041-upside-down-market.webp"
     },
     {
       "id": 42,
-      "image": "card-042-clocktower-alarm.png"
+      "image": "card-042-clocktower-alarm.webp"
     },
     {
       "id": 43,
-      "image": "card-043-keyhole-city.png"
+      "image": "card-043-keyhole-city.webp"
     },
     {
       "id": 44,
-      "image": "card-044-balloon-greenhouse.png"
+      "image": "card-044-balloon-greenhouse.webp"
     },
     {
       "id": 45,
-      "image": "card-045-coastline-carrying-bird.png"
+      "image": "card-045-coastline-carrying-bird.webp"
     },
     {
       "id": 46,
-      "image": "card-046-transparent-umbrella-zoo.png"
+      "image": "card-046-transparent-umbrella-zoo.webp"
     },
     {
       "id": 47,
-      "image": "card-047-rolling-road.png"
+      "image": "card-047-rolling-road.webp"
     },
     {
       "id": 48,
-      "image": "card-048-bottled-sunset-harbor.png"
+      "image": "card-048-bottled-sunset-harbor.webp"
     },
     {
       "id": 49,
-      "image": "card-049-shadow-shoeshine.png"
+      "image": "card-049-shadow-shoeshine.webp"
     },
     {
       "id": 50,
-      "image": "card-050-moon-aquarium.png"
+      "image": "card-050-moon-aquarium.webp"
     }
   ],
   "wordSets": [
