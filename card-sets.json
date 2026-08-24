@@ -1,4 +1,8 @@
 {
   "defaultCardSet": "vol1",
-  "cardSetIds": ["test", "vol1"]
+  "cardSetIds": [
+    "test",
+    "vol1",
+    "yokai1"
+  ]
 }
