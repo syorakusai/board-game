@@ -108,9 +108,10 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .button:disabled { opacity: .55; cursor: not-allowed; }
 .missing-card { min-height: 180px; display: grid; place-items: center; background: #263630; border-radius: 14px; color: #aaa99e; }
 .word-list { display: grid; gap: 10px; margin: 18px 0 22px; }
-.word { position: relative; padding: 10px 12px; border: 1px solid #46534d; border-radius: 12px; background: #1d2b28; color: #eee8dc; font-size: 1rem; font-weight: 700; text-align: center; }
-.word-number { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #d39a55; font-variant-numeric: tabular-nums; }
-.word-text { display: block; text-align: center; }
+.word { padding: 10px 12px; border: 1px solid #46534d; border-radius: 12px; background: #1d2b28; color: #eee8dc; font-size: 1rem; font-weight: 700; text-align: center; }
+.word:has(.word-number) { display: grid; grid-template-columns: 2rem minmax(0, 1fr) 2rem; align-items: center; }
+.word-number { grid-column: 1; color: #d39a55; font-variant-numeric: tabular-nums; text-align: left; }
+.word-text { grid-column: 2; min-width: 0; text-align: center; }
 .official { background: #263630; }
 .word-button { width: 100%; cursor: pointer; font: inherit; }
 .word-button:hover, .word-button:focus-visible { border-color: #c58b48; background: #3a3026; outline: none; }
@@ -460,3 +461,22 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .waiting-room-message:not(:empty) { color: #eee8dc; }
 .waiting-room-actions .button-row { margin-top: 0; }
 .waiting-room-actions .button { min-height: 48px; }
+
+
+/* セット・推理時間の選択肢は、端末標準の大きな選択画面ではなく宴の意匠で表示する。 */
+.set-select-native { position: absolute !important; inline-size: 1px !important; block-size: 1px !important; margin: -1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; white-space: nowrap !important; border: 0 !important; opacity: 0 !important; pointer-events: none !important; }
+.set-picker { position: relative; width: 100%; }
+.set-picker-trigger { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; border: 1px solid #46534d; border-radius: 12px; padding: 0 14px; background: #1d2b28; color: #eee8dc; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.set-picker-trigger:focus-visible, .set-picker.is-open .set-picker-trigger { border-color: #c58b48; outline: 3px solid #76552f; outline-offset: 1px; }
+.set-picker-trigger-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-picker-chevron { margin-left: 12px; color: #d6ae67; font-size: 1.25em; line-height: 1; transition: transform .15s ease; }
+.set-picker.is-open .set-picker-chevron { transform: rotate(180deg); }
+.set-picker-panel { position: fixed; z-index: 60; top: 50%; left: 50%; width: min(440px, calc(100vw - 32px)); max-height: min(560px, calc(100dvh - 48px)); transform: translate(-50%, -50%); overflow: hidden; border: 1px solid #b88747; border-radius: 14px; background: linear-gradient(155deg, #263b34, #182824); box-shadow: 0 14px 28px #000b, inset 0 0 0 1px #f0c36e22; }
+.set-picker-panel[hidden] { display: none; }
+.set-picker-title { margin: 0; padding: 10px 14px 8px; border-bottom: 1px solid #92713c88; color: #f0c36e; font-family: Georgia, "Noto Serif JP", serif; font-size: .82rem; font-weight: 700; letter-spacing: .08em; }
+.set-picker-options { max-height: min(420px, calc(100dvh - 122px)); overflow-y: auto; overscroll-behavior: contain; }
+.set-picker-option { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; border: 0; border-bottom: 1px solid #46534d; padding: 9px 14px; background: transparent; color: #eee8dc; font: inherit; font-size: .92rem; font-weight: 700; line-height: 1.35; text-align: left; cursor: pointer; }
+.set-picker-option:last-child { border-bottom: 0; }
+.set-picker-option:hover, .set-picker-option:focus-visible { background: #3a3026; color: #fff4d8; outline: none; }
+.set-picker-option[aria-selected="true"] { background: #3a3026; color: #f0c36e; }
+.set-picker-option-mark { min-width: 1.3em; margin-left: 12px; color: #f0c36e; text-align: right; }
