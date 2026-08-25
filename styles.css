@@ -108,9 +108,9 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .button:disabled { opacity: .55; cursor: not-allowed; }
 .missing-card { min-height: 180px; display: grid; place-items: center; background: #263630; border-radius: 14px; color: #aaa99e; }
 .word-list { display: grid; gap: 10px; margin: 18px 0 22px; }
-.word { position: relative; padding: 10px 12px; border: 1px solid #46534d; border-radius: 12px; background: #1d2b28; color: #eee8dc; font-size: 1rem; font-weight: 700; text-align: center; }
-.word-number { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #d39a55; font-variant-numeric: tabular-nums; }
-.word-text { display: block; text-align: center; }
+.word { display: grid; grid-template-columns: 2rem minmax(0, 1fr) 2rem; align-items: center; padding: 10px 12px; border: 1px solid #46534d; border-radius: 12px; background: #1d2b28; color: #eee8dc; font-size: 1rem; font-weight: 700; text-align: center; }
+.word-number { grid-column: 1; color: #d39a55; font-variant-numeric: tabular-nums; text-align: left; }
+.word-text { grid-column: 2; min-width: 0; text-align: center; }
 .official { background: #263630; }
 .word-button { width: 100%; cursor: pointer; font: inherit; }
 .word-button:hover, .word-button:focus-visible { border-color: #c58b48; background: #3a3026; outline: none; }
