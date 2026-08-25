@@ -3,6 +3,7 @@ import { createRouletteController } from "./roulette.js";
 import { validateCardSetData } from "./card-data.js";
 import { createRoundCandidates, isOfficialWord } from "./round-candidates.js";
 import { evaluateRound, nextParentIndex, orderedChildren, scoreRound } from "./game-rules.js";
+import { enhanceSetSelect, refreshSetSelect } from "./set-picker.js";
 
 const multiplayerReady = /\/board-game\/dev(?:\/|$)/.test(location.pathname) ? import("./multiplayer-phase1.js").catch(() => {}) : Promise.resolve();
 
@@ -70,8 +71,8 @@ function prepareCard(){if(state.preparedCard)return state.cardPreparation||Promi
 async function chooseCard(){await prepareCard();const prepared=state.preparedCard;if(!prepared)return;state.card=prepared.card;state.official=prepared.official;state.usedCards.add(state.card.id);state.preparedCard=null;state.cardPreparation=null;}
 async function fetchCardSet(setId){const r=await fetch(`cards/${setId}/cards.json`);if(!r.ok)throw Error("カードセットを読み込めませんでした。");return validateCardSetData(await r.json(),setId);}
 function saveWordSetSelection(){try{const saved=readWordSetSelections();saved[state.cardSet]=state.wordSet;localStorage.setItem(WORD_SET_STORAGE_KEY,JSON.stringify(saved));}catch{}}
-function renderWordSetOptions(){const select=document.querySelector("#word-set-select");if(!select)return;const data=state.setCatalog[state.cardSet];const sets=data?.wordSets||[];select.replaceChildren(...sets.map(set=>{const option=document.createElement("option");option.value=set.id;option.textContent=set.name;return option;}));if(!sets.some(set=>set.id===state.wordSet))state.wordSet=sets[0]?.id||"";select.value=state.wordSet;}
-function renderCardSetOptions(){const select=document.querySelector("#card-set-select");if(!select)return;select.replaceChildren(...Object.values(state.setCatalog).map(data=>{const option=document.createElement("option");option.value=data.id;option.textContent=data.name;return option;}));if(!state.setCatalog[state.cardSet])state.cardSet=state.defaultCardSet;select.value=state.cardSet;renderWordSetOptions();}
+function renderWordSetOptions(){const select=document.querySelector("#word-set-select");if(!select)return;const data=state.setCatalog[state.cardSet];const sets=data?.wordSets||[];select.replaceChildren(...sets.map(set=>{const option=document.createElement("option");option.value=set.id;option.textContent=set.name;return option;}));if(!sets.some(set=>set.id===state.wordSet))state.wordSet=sets[0]?.id||"";select.value=state.wordSet;refreshSetSelect(select);}
+function renderCardSetOptions(){const select=document.querySelector("#card-set-select");if(!select)return;select.replaceChildren(...Object.values(state.setCatalog).map(data=>{const option=document.createElement("option");option.value=data.id;option.textContent=data.name;return option;}));if(!state.setCatalog[state.cardSet])state.cardSet=state.defaultCardSet;select.value=state.cardSet;refreshSetSelect(select);renderWordSetOptions();}
 function setCatalogError(message){state.catalogReady=false;document.querySelector("#card-set-error").textContent=message;updatePlayerCountNext();}
 async function loadCardSetCatalog(){const response=await fetch("card-sets.json");if(!response.ok)throw Error("カードセット一覧を読み込めませんでした。");const config=await response.json(),ids=config.cardSetIds;if(!Array.isArray(ids)||!ids.length)throw Error("カードセット一覧の形式が正しくありません。");const entries=await Promise.all(ids.map(fetchCardSet));entries.forEach(data=>state.setCatalog[data.id]=data);state.defaultCardSet=state.setCatalog[config.defaultCardSet]?config.defaultCardSet:Object.keys(state.setCatalog)[0];state.catalogReady=true;document.querySelector("#card-set-error").textContent="";renderCardSetOptions();updatePlayerCountNext();}
 async function loadCards(){try{const d=state.setCatalog[state.cardSet]||await fetchCardSet(state.cardSet);state.cardSetData=d;state.cards=d.cards;state.wordSets=d.wordSets;const saved=readWordSetSelections()[state.cardSet]||state.wordSet;state.wordSet=state.wordSets.some(set=>set.id===saved)?saved:state.wordSets[0].id;renderWordSetOptions();saveWordSetSelection();}catch{state.cards=[{id:1,image:""}];state.wordSets=[{id:"standard-1",name:"標準セット",cards:[{cardId:1,officialWords:["りんご","鴨","奇妙な組み合わせ"]}]}];state.wordSet="standard-1";}}
@@ -86,7 +87,7 @@ function showReady(){
 const playerCountNext=document.querySelector("#player-count-next");
 function updatePlayerCountNext(){playerCountNext.disabled=!state.catalogReady||!Number.isInteger(state.playerCount)||state.playerCount<2||state.playerCount>6;}
 function readSavedPlayerCount(){try{const n=Number(localStorage.getItem(PLAYER_COUNT_STORAGE_KEY));return Number.isInteger(n)&&n>=2&&n<=6?n:0;}catch{return 0;}}
-function setDiscussionMinutes(minutes){state.discussionMinutes=minutes;document.querySelector("#discussion-time-select").value=String(minutes);}
+function setDiscussionMinutes(minutes){state.discussionMinutes=minutes;const select=document.querySelector("#discussion-time-select");select.value=String(minutes);refreshSetSelect(select);}
 function defaultDiscussionMinutes(playerCount){return playerCount>=5?3:2;}
 function restorePlayerCountSelection(){const n=readSavedPlayerCount();state.playerCount=n;const button=[...document.querySelectorAll(".count-button")].find(x=>x.textContent===`${n}人`);document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===button));setDiscussionMinutes(defaultDiscussionMinutes(n));updatePlayerCountNext();}
 function renderPlayerNames(){
@@ -121,6 +122,7 @@ if(savedPlayerCount)restorePlayerCountSelection();
 updatePlayerCountNext();
 playerCountNext.onclick=()=>{if(state.playerCount)renderPlayerNames();};
 document.querySelector("#player-count-back").onclick=()=>show("title");
+["#card-set-select","#word-set-select","#discussion-time-select"].forEach(selector=>enhanceSetSelect(document.querySelector(selector)));
 document.querySelector("#card-set-select").onchange=e=>{state.cardSet=e.target.value;state.wordSet=readWordSetSelections()[state.cardSet]||"standard-1";try{localStorage.setItem(CARD_SET_STORAGE_KEY,state.cardSet);}catch{}renderWordSetOptions();saveWordSetSelection();updatePlayerCountNext();};
 document.querySelector("#word-set-select").onchange=e=>{state.wordSet=e.target.value;saveWordSetSelection();updatePlayerCountNext();};
 document.querySelector("#discussion-time-select").onchange=e=>{state.discussionMinutes=Number(e.target.value);};
