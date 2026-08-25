@@ -2,6 +2,7 @@ import { getFirebaseContext } from "./firebase-client.js";
 import { get, onDisconnect, onValue, push, ref, remove, runTransaction, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
 import { scoreRound } from "./game-rules.js";
+import { enhanceSetSelect, refreshSetSelect } from "./set-picker.js";
 
 const ROOM_PREFIX = "rooms";
 const isDevelopment = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
@@ -262,6 +263,7 @@ function setOptions(select, items, selected) {
     return option;
   }));
   select.value = selected || items[0]?.id || "";
+  refreshSetSelect(select);
 }
 
 function ensureMultiplayerName() {
@@ -269,8 +271,10 @@ function ensureMultiplayerName() {
   if (!input.value) input.value = savedName() || "客人";
 }
 async function prepareCreateForm() {
+  ["#host-card-set", "#host-word-set", "#host-discussion-time"].forEach(selector => enhanceSetSelect($(selector)));
   ensureMultiplayerName();
   if (!$("#host-discussion-time").value) $("#host-discussion-time").value = "2";
+  refreshSetSelect($("#host-discussion-time"));
   try {
     const sets = await ensureCatalog();
     setOptions($("#host-card-set"), sets, $("#host-card-set").value || sets[0]?.id);
@@ -411,7 +415,12 @@ function playerPanelState(room, uid, disconnected) {
   if (phase === "final") return { label: "", className: "" };
   return { label: "", className: "" };
 }
-function renderPlayerBar(room, screenName="round") {
+function screenNameForPhase(room) {
+  const phase = room?.round?.phase;
+  return ({ "parent-word": "parent-input", discussion: "discussion", answer: "answer", reveal: "result-open", result: "result", score: "scores", final: "final" })[phase] || "round";
+}
+
+function renderPlayerBar(room, screenName=screenNameForPhase(room)) {
   const header=$("#multiplayer-round-header"),bar=$("#multiplayer-player-bar"),shell=$(".app-shell");
   if(!header||!bar||!shell||!room?.seats){hideRoundHeader();return;}
   const entries=playerEntries(room),disconnected=new Set(disconnectedPlayers(room).map(player=>player.uid));
