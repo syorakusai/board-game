@@ -14,10 +14,10 @@ function closePicker(picker) {
 }
 
 function renderPicker(picker) {
-  const { select, triggerText, options, title } = picker;
+  const { select, triggerText, options, heading } = picker;
   const selected = select.options[select.selectedIndex];
   triggerText.textContent = selected?.textContent || "選択してください";
-  title.textContent = picker.label;
+  heading.textContent = picker.label;
   options.replaceChildren(...[...select.options].map(option => {
     const button = document.createElement("button");
     button.type = "button";
@@ -78,7 +78,7 @@ export function enhanceSetSelect(select, label) {
   picker.trigger = trigger;
   picker.triggerText = triggerText;
   picker.panel = panel;
-  picker.title = title;
+  picker.heading = title;
   picker.options = options;
   picker.label = labelFor(select, label);
   select.classList.add("set-select-native");
