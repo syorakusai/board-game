@@ -415,7 +415,12 @@ function playerPanelState(room, uid, disconnected) {
   if (phase === "final") return { label: "", className: "" };
   return { label: "", className: "" };
 }
-function renderPlayerBar(room, screenName="round") {
+function screenNameForPhase(room) {
+  const phase = room?.round?.phase;
+  return ({ "parent-word": "parent-input", discussion: "discussion", answer: "answer", reveal: "result-open", result: "result", score: "scores", final: "final" })[phase] || "round";
+}
+
+function renderPlayerBar(room, screenName=screenNameForPhase(room)) {
   const header=$("#multiplayer-round-header"),bar=$("#multiplayer-player-bar"),shell=$(".app-shell");
   if(!header||!bar||!shell||!room?.seats){hideRoundHeader();return;}
   const entries=playerEntries(room),disconnected=new Set(disconnectedPlayers(room).map(player=>player.uid));
