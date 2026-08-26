@@ -451,3 +451,20 @@ node scripts/update-yokai-lore.mjs yokai2
 
 - GitHub: https://github.com/syorakusai/board-game
 - GitHub Pages: https://syorakusai.github.io/board-game/
+
+
+## 妖怪物語データ同期
+
+妖怪情報の正本はGoogle Drive上の `yokai` スプレッドシートです。使用するのは `LIST` シートのA列（妖怪番号）、B列（妖怪名）、D列（出現）、E列（特質）です。
+
+GitHub側には、完成済み行だけを中間データ `source/yokai.json` として保持します。未完成行はこのJSONに含めません。Googleスプレッドシートから `source/yokai.json` を更新する作業と、カードの物語を同期する作業は別の依頼・別のタイミングで行います。
+
+`cards/yokai*/cards.json` の `lore` は、次のコマンドで `source/yokai.json` から生成・更新します。
+
+```bash
+npm run sync:yokai-lore
+```
+
+同期対象のカードセットは自動探索します。画像名は `XXX_妖怪番号_妖怪名.webp` とし、`XXX` はVOL内の連番です。照合にはアンダースコア区切りの第2要素である、桁数可変の妖怪固有番号を使います。VOLを追加しても同期スクリプトの変更は不要です。
+
+通常運用では、AIがカードごとの `lore` を手作業で転記しません。既存の `source/yokai.xlsx` は今回削除せず、妖怪物語同期の正本には使用しません。

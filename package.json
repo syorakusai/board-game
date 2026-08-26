@@ -5,9 +5,7 @@
     "check:data": "node tests/check-card-data.mjs",
     "check:candidates": "node tests/check-round-candidates.mjs",
     "check:rules": "node tests/check-game-rules.mjs",
-    "update:yokai-lore": "node scripts/update-yokai-lore.mjs"
-  },
-  "devDependencies": {
-    "xlsx": "^0.18.5"
+    "update:yokai-lore": "npm run sync:yokai-lore",
+    "sync:yokai-lore": "node scripts/update-yokai-lore.mjs"
   }
 }
