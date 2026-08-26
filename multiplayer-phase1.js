@@ -715,12 +715,52 @@ function enterDrawScreen(room) {
   deck.onclick=isParent?drawMultiplayerCard:null;
   deck.onkeydown=isParent?(event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();drawMultiplayerCard();}}):null;
 }
+let parentWordLoreCatalogPromise = null;
+function roundCardMetadata(room) {
+  const cardSet = catalog.find(set => set.id === room?.cardSet);
+  return cardSet?.cards?.find(item => String(item.id) === String(room?.round?.cardId)) || null;
+}
+function renderParentWordLore(room, isParent) {
+  const loreElement = $("#parent-card-lore");
+  if (!loreElement) return;
+  const lore = isParent ? null : roundCardMetadata(room)?.lore;
+  loreElement.hidden = !lore;
+  loreElement.innerHTML = lore ? (() => {
+    const number = Number(lore.number);
+    const numberLabel = Number.isInteger(number) && number > 0 ? `No.${String(number).padStart(4, "0")}` : "";
+    return `<section class="parent-card-lore-panel" aria-label="妖怪紹介">
+      <h2 class="parent-card-lore-name">${escape(lore.name || "")}</h2>
+      <div class="parent-card-lore-entry">
+        <h3>【出現】</h3>
+        <p>${escape(lore.appearance || "")}</p>
+      </div>
+      <div class="parent-card-lore-entry">
+        <h3>【特質】</h3>
+        <p>${escape(lore.traits || "")}</p>
+      </div>
+      <p class="parent-card-lore-number">${escape(numberLabel)}</p>
+    </section>`;
+  })() : "";
+  if (!isParent && !lore && !catalog.length && !parentWordLoreCatalogPromise) {
+    parentWordLoreCatalogPromise = ensureCatalog()
+      .then(() => {
+        const currentRoom = latestRoom;
+        if (currentRoom?.round?.phase === "parent-word" && currentRoom.parentUid !== currentUser?.uid) {
+          renderParentWordLore(currentRoom, false);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { parentWordLoreCatalogPromise = null; });
+  }
+}
+
 function enterParentWordScreen(room) {
   const isParent=room.parentUid===currentUser?.uid, disconnected=disconnectedPlayers(room), card=room.round;
   show("parent-input"); renderPlayerBar(room, "parent-input");
   const title=roundTitleRow("parent-input")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　親のひそめごと`;
   const parentSubtitle=$('[data-screen="parent-input"] .screen-subtitle'); if(parentSubtitle)parentSubtitle.hidden=true;
   $("#parent-card-area").innerHTML=multiplayerCardMarkup(card?.cardImage);
+  renderParentWordLore(room, isParent);
   $("#parent-secret-description").textContent="4つ目にあなたのワードを入力してください。";
   $("#parent-secret-description").hidden=!isParent;
   $("#official-preview").hidden=!isParent;
