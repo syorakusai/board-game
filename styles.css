@@ -102,6 +102,13 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .handoff-actions { display: flex; gap: 10px; margin-top: 12px; }
 .handoff-actions .button { width: auto; margin-top: 0; }
 .card-area img { display: block; width: auto; max-width: 100%; height: auto; max-height: min(48vh, calc(100dvh - 240px)); margin: 0 auto; object-fit: contain; border-radius: 14px; }
+.parent-card-lore { margin: -6px 0 24px; }
+.parent-card-lore-panel { padding: 18px; border: 1px solid #46534d; border-radius: 14px; background: #192623; overflow-wrap: anywhere; }
+.parent-card-lore-name { margin: 0 0 18px; color: #eee8dc; font-size: clamp(1.2rem, 5.5vw, 1.55rem); font-weight: 800; line-height: 1.45; text-align: center; overflow-wrap: anywhere; }
+.parent-card-lore-entry + .parent-card-lore-entry { margin-top: 18px; }
+.parent-card-lore-entry h3 { margin: 0 0 5px; color: #d39a55; font-size: .95rem; font-weight: 800; }
+.parent-card-lore-entry p { margin: 0; color: #e3dfd2; line-height: 1.8; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
+.parent-card-lore-number { margin: 18px 0 0; color: #aaa99e; font-size: .8rem; font-variant-numeric: tabular-nums; text-align: right; }
 .card-zoom-trigger { cursor: zoom-in; touch-action: manipulation; }
 .card-zoom-trigger:focus-visible { outline: 3px solid #a05b37; outline-offset: 4px; }
 .compact-card img { max-height: min(30vh, calc(100dvh - 260px)); }
