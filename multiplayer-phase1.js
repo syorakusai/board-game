@@ -715,15 +715,54 @@ function enterDrawScreen(room) {
   deck.onclick=isParent?drawMultiplayerCard:null;
   deck.onkeydown=isParent?(event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();drawMultiplayerCard();}}):null;
 }
-let parentWordLoreCatalogPromise = null;
-function roundCardMetadata(room) {
-  const cardSet = catalog.find(set => set.id === room?.cardSet);
-  return cardSet?.cards?.find(item => String(item.id) === String(room?.round?.cardId)) || null;
+let yokaiByNumber = null;
+let yokaiCatalogPromise = null;
+
+function yokaiNumberFromImage(image) {
+  const filename = typeof image === "string" ? image.split("/").pop() : "";
+  if (!filename?.endsWith(".webp")) return null;
+  const parts = filename.slice(0, -".webp".length).split("_");
+  if (parts.length < 3 || !/^\d+$/.test(parts[1])) return null;
+  const number = Number(parts[1]);
+  return Number.isSafeInteger(number) && number >= 0 ? number : null;
 }
+
+async function ensureYokaiCatalog() {
+  if (yokaiByNumber) return yokaiByNumber;
+  if (yokaiCatalogPromise) return yokaiCatalogPromise;
+
+  yokaiCatalogPromise = fetch("data/yokai.json")
+    .then(response => response.ok ? response.json() : [])
+    .then(entries => {
+      const next = new Map();
+      if (Array.isArray(entries)) {
+        for (const entry of entries) {
+          const number = Number(entry?.number);
+          if (Number.isSafeInteger(number) && number >= 0) next.set(number, entry);
+        }
+      }
+      yokaiByNumber = next;
+      return yokaiByNumber;
+    })
+    .catch(() => {
+      yokaiByNumber = new Map();
+      return yokaiByNumber;
+    })
+    .finally(() => { yokaiCatalogPromise = null; });
+
+  return yokaiCatalogPromise;
+}
+
+function loreForRoundCard(room) {
+  const number = yokaiNumberFromImage(room?.round?.cardImage);
+  return number === null ? null : yokaiByNumber?.get(number) || null;
+}
+
 function renderParentWordLore(room, isParent) {
   const loreElement = $("#parent-card-lore");
   if (!loreElement) return;
-  const lore = isParent ? null : roundCardMetadata(room)?.lore;
+
+  const lore = isParent ? null : loreForRoundCard(room);
   loreElement.hidden = !lore;
   loreElement.innerHTML = lore ? (() => {
     const number = Number(lore.number);
@@ -741,16 +780,14 @@ function renderParentWordLore(room, isParent) {
       <p class="parent-card-lore-number">${escape(numberLabel)}</p>
     </section>`;
   })() : "";
-  if (!isParent && !lore && !catalog.length && !parentWordLoreCatalogPromise) {
-    parentWordLoreCatalogPromise = ensureCatalog()
-      .then(() => {
-        const currentRoom = latestRoom;
-        if (currentRoom?.round?.phase === "parent-word" && currentRoom.parentUid !== currentUser?.uid) {
-          renderParentWordLore(currentRoom, false);
-        }
-      })
-      .catch(() => {})
-      .finally(() => { parentWordLoreCatalogPromise = null; });
+
+  if (!isParent && !yokaiByNumber && !yokaiCatalogPromise) {
+    ensureYokaiCatalog().then(() => {
+      const currentRoom = latestRoom;
+      if (currentRoom?.round?.phase === "parent-word" && currentRoom.parentUid !== currentUser?.uid) {
+        renderParentWordLore(currentRoom, false);
+      }
+    });
   }
 }
 

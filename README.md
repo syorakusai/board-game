@@ -275,17 +275,17 @@ cards/
 - 新しいワードセットを追加すると、同じカード画像で別の公式ワード群を使用できます。
 - ワードセットを追加する場合は、対象カードセットの `cards.json` に `wordSets` を追加します。選択画面は登録済みの `wordSets` から選択肢を自動生成するため、通常はHTMLやJavaScriptの変更は不要です。
 
-## 妖怪物語データの管理・同期
+## 妖怪物語データの管理
 
 ### データの役割
 
 - Google Drive上の `yokai` スプレッドシート：妖怪情報の正本
-- `source/yokai.json`：GitHub上の同期用中間データ
-- `cards/yokai*/cards.json`：ゲーム実行時に使用するデータ
+- `data/yokai.json`：ゲームで直接参照する妖怪情報データ
+- `cards/yokai*/cards.json`：カード画像・公式ワードなどのカードゲーム用データ
 
-妖怪情報は、Google Drive上の `yokai` スプレッドシートの `LIST` シートから取得します。使用する列はA列（妖怪番号）、B列（妖怪名）、D列（出現）、E列（特質）です。GitHubには、A・B・D・E列が揃った行だけを `source/yokai.json` として保持します。未完成行は含めません。
+妖怪情報は、Google Drive上の `yokai` スプレッドシートの `LIST` シートから取得します。使用する列はA列（妖怪番号）、B列（妖怪名）、D列（出現）、E列（特質）です。GitHubには、A・B・D・E列が揃った行だけを `data/yokai.json` として保持します。未完成行は含めません。
 
-ブラウザはGoogle Driveや `source/yokai.json` を直接読み込みません。ゲーム実行時には、`cards/yokai*/cards.json` に同期済みの `lore` を読み込みます。物語本文はFirebaseへ保存しません。
+ゲーム実行時には、`data/yokai.json` を必要に応じて一度だけ読み込み、カード画像名に含まれる妖怪固有番号で照合します。物語本文はFirebaseへ保存しません。
 
 ### ファイル名と妖怪固有番号の照合
 
@@ -294,9 +294,9 @@ cards/
 - 第1要素 `XXX` はカードセットVOL内の連番です。
 - 第2要素は全妖怪で共通の固有番号です。
 - 固有番号の桁数は固定しません。 `005`、`999`、`1000`、`1234` を同じ規則で数値として扱います。
-- Google Drive上の `yokai` スプレッドシートの `LIST` シートA列との照合には、第2要素だけを使用します。
+- Google Drive上の `yokai` スプレッドシートの `LIST` シートA列、および `data/yokai.json` の `number` との照合には、第2要素だけを使用します。
 
-`LIST` シートから `source/yokai.json` へ反映する対応は、A列→`number`、B列→`name`、D列→`appearance`、E列→`traits` です。本文は要約・言い換え・整形による内容変更をせずに保存します。
+`LIST` シートから `data/yokai.json` へ反映する対応は、A列→`number`、B列→`name`、D列→`appearance`、E列→`traits` です。本文は要約・言い換え・整形による内容変更をせずに保存します。
 
 `number` はJSONでは数値として保存します。ゲーム画面では最低4桁のゼロ埋めで `No.0005`、`No.0087`、`No.0999`、`No.1000` のように表示し、1000以上の番号を切り詰めません。
 
@@ -304,40 +304,13 @@ cards/
 
 Google Drive `yokai`
 ↓
-`source/yokai.json`
+`data/yokai.json`
 ↓
-`npm run sync:yokai-lore`
-↓
-`cards/yokai*/cards.json`
+ゲームから直接参照
 
-Googleスプレッドシートから `source/yokai.json` を更新する作業と、`source/yokai.json` から各 `cards.json` へ同期する作業は、別作業・別タイミングで行います。
+Googleスプレッドシートから `data/yokai.json` を更新する作業だけを、妖怪物語データの更新作業とします。AIが `cards.json` へ妖怪物語を手作業で転記したり、物語同期スクリプトを実行したりする運用は行いません。
 
-### 同期コマンド
-
-```bash
-npm run sync:yokai-lore
-node scripts/update-yokai-lore.mjs yokai2
-```
-
-引数なしでは `cards/` 配下の `yokai1`、`yokai2` のような妖怪カードセットを自動検出して全件処理します。引数を付けると指定した妖怪カードセットだけを処理します。スクリプトは `source/yokai.json` と `cards.json` の同期だけを行い、Git操作・commit・pushは行いません。
-
-カード画像名、`source/yokai.json` の必須項目、JSON、妖怪固有番号の重複を検証します。エラーが1件でもあれば成功扱いにせず、検証が完了するまで `cards.json` は更新しません。実行結果には対象カードセット・対象カード数・更新件数・変更なし件数・エラー件数を出力します。
-
-### 今後の作業手順
-
-「最新のyokaiスプレッドシートを反映して」「妖怪の物語をJSONへ反映して」「追加した妖怪をcards.jsonへ反映して」など、同趣旨の依頼を受けた場合、AIがカードごとの `lore` を手作業で転記してはいけません。次の手順で行います。
-
-1. 対象ブランチの最新HEADとREADMEを確認する。
-2. Google Drive上の `yokai` スプレッドシートから `source/yokai.json` を更新する必要があるか、依頼内容に応じて判断する。
-3. `source/yokai.json` から同期する依頼では、専用の同期スクリプトを実行する。
-4. スクリプトのエラー・更新件数を確認する。
-5. 変更された `cards/yokai*/cards.json` の差分を確認する。
-6. `lore` 以外に意図しない変更がないことを確認する。
-7. カードデータの既存検証を実行する。
-8. 対象ブランチへコミット・反映する。
-9. 必要な場合はGitHub Pages上でもゲーム動作を確認する。
-
-対象ブランチは依頼で指定されたブランチおよび本READMEのブランチ運用ルールに従います。同期スクリプトがブランチを決定したり、Git操作を行ったりしてはいけません。
+対象ブランチは依頼で指定されたブランチおよび本READMEのブランチ運用ルールに従います。
 
 ## カード追加・公開手順
 
