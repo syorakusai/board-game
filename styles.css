@@ -165,7 +165,7 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .deck-stack-image.is-loading { opacity: .48; filter: saturate(.5); cursor: wait; pointer-events: none; }
 .deck-stack-image:focus-visible { outline: 2px solid #d5b45f; outline-offset: 4px; }
 .draw-status { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 24px; margin: -14px 0 14px; color: #d39a55; font-size: .95rem; font-weight: 800; }
-.draw-status.is-hidden { display: none; }
+.draw-status[hidden] { display: none; }
 .draw-status-spinner { width: 16px; height: 16px; border: 2px solid #d39a5566; border-top-color: #f0c36e; border-radius: 50%; animation: draw-status-spin .7s linear infinite; }
 @keyframes draw-status-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .draw-status-spinner { animation: none; } }
