@@ -702,6 +702,7 @@ function enterDrawScreen(room) {
   const isParent=room.parentUid===currentUser?.uid,parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親",disconnected=disconnectedPlayers(room);
   show("round"); renderPlayerBar(room, "round");const title=roundTitleRow("round")?.querySelector("[data-round-title]");if(title)title.textContent=`${roundLabel(room)}　札選び`;$("#round-title").textContent="";
   $("#round-card-message").textContent="";$("#round-card-message").hidden=true;
+  $("#draw-status").hidden=true;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else setRoundMessage(isParent?`${parentName}さん、伏せ札の山から1枚引いてください。`:`${parentName}さんが札を選んでいます。`);
   const enabled=canProgress(room)&&isParent, deck=$("#deck-stack-image"), button=$("#round-start-button");
@@ -1269,7 +1270,7 @@ async function submitAnswer() {
 async function drawMultiplayerCard() {
   const room=latestRoom;
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="draw"||!canProgress(room))return;
-  const button=$("#round-start-button"); button.disabled=true; $("#draw-card").textContent="お題を準備しています…";
+  const button=$("#round-start-button"); button.disabled=true; $("#draw-status").hidden=false;
   try {
     await ensureCatalog();
     const cardSet=catalog.find(set=>set.id===room.cardSet), wordSet=cardSet?.wordSets?.find(set=>set.id===room.wordSet);
@@ -1289,7 +1290,7 @@ async function drawMultiplayerCard() {
     } catch (error) {
       throw Error(`札の公開状態を保存できませんでした。${error.message||""}`);
     }
-  } catch(error) { $("#round-card-message").hidden=false; $("#round-card-message").textContent=`札を引けませんでした。${error.message||""}`; button.disabled=false; $("#draw-card").textContent="伏せ札を引く"; }
+  } catch(error) { $("#round-card-message").hidden=false; $("#round-card-message").textContent=`札を引けませんでした。${error.message||""}`; button.disabled=false; $("#draw-status").hidden=true; $("#draw-card").textContent="伏せ札を引く"; }
 }
 async function redrawMultiplayerCard() {
   const room=latestRoom;
