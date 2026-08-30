@@ -228,7 +228,7 @@
 <img id="deck-stack-image" class="deck-stack-image" src="assets/deck-stack.jpg" alt="山札を引く" role="button" tabindex="0">
 <div id="round-card-message" class="description">
 </div>
-<p id="draw-status" class="draw-status is-hidden" role="status" aria-live="polite">
+<p id="draw-status" class="draw-status" role="status" aria-live="polite" hidden>
 <span class="draw-status-spinner" aria-hidden="true"></span>お題を準備しています…
 </p>
 <button id="round-start-button" class="button button-primary">
@@ -253,6 +253,8 @@
 </h1>
 <p class="screen-subtitle">親ワード入力</p>
 <div id="parent-card-area" class="card-area">
+</div>
+<div id="parent-card-lore" class="parent-card-lore" hidden>
 </div>
 <p id="parent-secret-description" class="description">4つ目にあなたのワードを入力してください。</p>
 <div id="official-preview" class="word-list">

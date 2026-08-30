@@ -702,6 +702,7 @@ function enterDrawScreen(room) {
   const isParent=room.parentUid===currentUser?.uid,parentName=playerEntries(room).find(player=>player.uid===room.parentUid)?.name||"親",disconnected=disconnectedPlayers(room);
   show("round"); renderPlayerBar(room, "round");const title=roundTitleRow("round")?.querySelector("[data-round-title]");if(title)title.textContent=`${roundLabel(room)}　札選び`;$("#round-title").textContent="";
   $("#round-card-message").textContent="";$("#round-card-message").hidden=true;
+  $("#draw-status").hidden=true;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else setRoundMessage(isParent?`${parentName}さん、伏せ札の山から1枚引いてください。`:`${parentName}さんが札を選んでいます。`);
   const enabled=canProgress(room)&&isParent, deck=$("#deck-stack-image"), button=$("#round-start-button");
@@ -715,12 +716,89 @@ function enterDrawScreen(room) {
   deck.onclick=isParent?drawMultiplayerCard:null;
   deck.onkeydown=isParent?(event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();drawMultiplayerCard();}}):null;
 }
+let yokaiByNumber = null;
+let yokaiCatalogPromise = null;
+
+function yokaiNumberFromImage(image) {
+  const filename = typeof image === "string" ? image.split("/").pop() : "";
+  if (!filename?.endsWith(".webp")) return null;
+  const parts = filename.slice(0, -".webp".length).split("_");
+  if (parts.length < 3 || !/^\d+$/.test(parts[1])) return null;
+  const number = Number(parts[1]);
+  return Number.isSafeInteger(number) && number >= 0 ? number : null;
+}
+
+async function ensureYokaiCatalog() {
+  if (yokaiByNumber) return yokaiByNumber;
+  if (yokaiCatalogPromise) return yokaiCatalogPromise;
+
+  yokaiCatalogPromise = fetch("data/yokai.json")
+    .then(response => response.ok ? response.json() : [])
+    .then(entries => {
+      const next = new Map();
+      if (Array.isArray(entries)) {
+        for (const entry of entries) {
+          const number = Number(entry?.number);
+          if (Number.isSafeInteger(number) && number >= 0) next.set(number, entry);
+        }
+      }
+      yokaiByNumber = next;
+      return yokaiByNumber;
+    })
+    .catch(() => {
+      yokaiByNumber = new Map();
+      return yokaiByNumber;
+    })
+    .finally(() => { yokaiCatalogPromise = null; });
+
+  return yokaiCatalogPromise;
+}
+
+function loreForRoundCard(room) {
+  const number = yokaiNumberFromImage(room?.round?.cardImage);
+  return number === null ? null : yokaiByNumber?.get(number) || null;
+}
+
+function renderParentWordLore(room, isParent) {
+  const loreElement = $("#parent-card-lore");
+  if (!loreElement) return;
+
+  const lore = isParent ? null : loreForRoundCard(room);
+  loreElement.hidden = !lore;
+  loreElement.innerHTML = lore ? (() => {
+    const number = Number(lore.number);
+    const numberLabel = Number.isInteger(number) && number > 0 ? `No.${String(number).padStart(4, "0")}` : "";
+    return `<section class="parent-card-lore-panel" aria-label="妖怪紹介">
+      <h2 class="parent-card-lore-name">${escape(lore.name || "")}</h2>
+      <div class="parent-card-lore-entry">
+        <h3>【出現】</h3>
+        <p>${escape(lore.appearance || "")}</p>
+      </div>
+      <div class="parent-card-lore-entry">
+        <h3>【特質】</h3>
+        <p>${escape(lore.traits || "")}</p>
+      </div>
+      <p class="parent-card-lore-number">${escape(numberLabel)}</p>
+    </section>`;
+  })() : "";
+
+  if (!isParent && !yokaiByNumber && !yokaiCatalogPromise) {
+    ensureYokaiCatalog().then(() => {
+      const currentRoom = latestRoom;
+      if (currentRoom?.round?.phase === "parent-word" && currentRoom.parentUid !== currentUser?.uid) {
+        renderParentWordLore(currentRoom, false);
+      }
+    });
+  }
+}
+
 function enterParentWordScreen(room) {
   const isParent=room.parentUid===currentUser?.uid, disconnected=disconnectedPlayers(room), card=room.round;
   show("parent-input"); renderPlayerBar(room, "parent-input");
   const title=roundTitleRow("parent-input")?.querySelector("[data-round-title]"); if(title)title.textContent=`${roundLabel(room)}　親のひそめごと`;
   const parentSubtitle=$('[data-screen="parent-input"] .screen-subtitle'); if(parentSubtitle)parentSubtitle.hidden=true;
   $("#parent-card-area").innerHTML=multiplayerCardMarkup(card?.cardImage);
+  renderParentWordLore(room, isParent);
   $("#parent-secret-description").textContent="4つ目にあなたのワードを入力してください。";
   $("#parent-secret-description").hidden=!isParent;
   $("#official-preview").hidden=!isParent;
@@ -1192,7 +1270,7 @@ async function submitAnswer() {
 async function drawMultiplayerCard() {
   const room=latestRoom;
   if(!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="draw"||!canProgress(room))return;
-  const button=$("#round-start-button"); button.disabled=true; $("#draw-card").textContent="お題を準備しています…";
+  const button=$("#round-start-button"); button.disabled=true; $("#draw-status").hidden=false;
   try {
     await ensureCatalog();
     const cardSet=catalog.find(set=>set.id===room.cardSet), wordSet=cardSet?.wordSets?.find(set=>set.id===room.wordSet);
@@ -1212,7 +1290,7 @@ async function drawMultiplayerCard() {
     } catch (error) {
       throw Error(`札の公開状態を保存できませんでした。${error.message||""}`);
     }
-  } catch(error) { $("#round-card-message").hidden=false; $("#round-card-message").textContent=`札を引けませんでした。${error.message||""}`; button.disabled=false; $("#draw-card").textContent="伏せ札を引く"; }
+  } catch(error) { $("#round-card-message").hidden=false; $("#round-card-message").textContent=`札を引けませんでした。${error.message||""}`; button.disabled=false; $("#draw-status").hidden=true; $("#draw-card").textContent="伏せ札を引く"; }
 }
 async function redrawMultiplayerCard() {
   const room=latestRoom;
