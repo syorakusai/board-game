@@ -395,11 +395,18 @@ Googleスプレッドシートから `data/yokai.json` を更新する作業だ�
 
 勝利画面では、今回の宴で使用した全ラウンドのお題カードを、左右から交互に中央へ滑り込ませて重ねる。カード束はその後に上部へ小さく退き、「今宵の勝者」、勝利イラスト、勝者名、得点一覧の順で表示する。勝者が複数いる場合も、カードは特定の勝者の戦果として扱わず、「今宵を彩った札」として全員共通の演出にする。端末が動きを減らす設定の場合は、カード束と結果を即時表示する。
 
-## DEV Firebaseデータの清掃
+## Firebaseデータの清掃
 
-`Cleanup DEV Firebase` ワークフローは、DEV Realtime Databaseの `rooms/{roomId}/createdAt` が実行時点から7日より前の部屋と、その部屋IDにひもづくデータを削除します。`firebase-test` は `connectedAt` が7日より前のデータを削除します。作成時刻を判定できないデータは削除しません。
+`Cleanup Firebase` ワークフローは、DEV・本番それぞれのRealtime Databaseで、`rooms/{roomId}/createdAt` が実行時点から7日より前の部屋と、その部屋IDにひもづくデータを削除します。`firebase-test` は `connectedAt` が7日より前のデータを削除します。作成時刻を判定できないデータは削除しません。
 
-実行には、DEV FirebaseプロジェクトのサービスアカウントJSONをRepository secret `FIREBASE_SERVICE_ACCOUNT_DEV` に登録する必要があります。GitHubの仕様上、`workflow_dispatch` と `schedule` はワークフローファイルがデフォルトブランチに存在するときだけ有効です。現在は `develop` 配置のため実行できません。`main` へ反映するときに手動実行を有効にし、1日1回実行する `schedule` を追加します。
+手動実行では `all`（DEV・本番）、`dev`、`prod` を選択できます。定期実行は毎日03:15（日本時間）にDEV・本番の両方を清掃します。
+
+実行には、各FirebaseプロジェクトのサービスアカウントJSONを次のRepository secretsへ登録します。
+
+- DEV：`FIREBASE_SERVICE_ACCOUNT_DEV`
+- 本番：`FIREBASE_SERVICE_ACCOUNT_PROD`
+
+`.github/workflows/cleanup-firebase.yml`、`scripts/cleanup-firebase.mjs`、`tests/check-firebase-cleanup.mjs` は、`main` と `develop` で同一内容を維持する共通運用ファイルです。`develop` から `main` へ差分を反映するときは、これらを削除したり、旧 `.github/workflows/cleanup-dev-firebase.yml` に戻したりせず、差分がないことを確認します。
 
 ## 開発方針
 

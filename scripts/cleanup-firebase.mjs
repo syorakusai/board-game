@@ -46,7 +46,7 @@ export function staleFirebaseTestUids(entries, cutoffMs) {
 
 async function accessToken(serviceAccount) {
   if (!serviceAccount?.client_email || !serviceAccount?.private_key) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_DEV must contain client_email and private_key.");
+    throw new Error("FIREBASE_SERVICE_ACCOUNT must contain client_email and private_key.");
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -68,7 +68,7 @@ async function accessToken(serviceAccount) {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      grant_type: "urn:ietf:params:oauth2:grant-type:jwt-bearer",
       assertion
     })
   });
@@ -133,16 +133,16 @@ export async function cleanup({ databaseUrl, serviceAccount, retentionDays = 7, 
 }
 
 async function main() {
-  const databaseUrl = process.env.FIREBASE_DATABASE_URL_DEV;
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_DEV;
-  if (!databaseUrl) throw new Error("FIREBASE_DATABASE_URL_DEV is not set.");
-  if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT_DEV repository secret is not set.");
+  const databaseUrl = process.env.FIREBASE_DATABASE_URL;
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!databaseUrl) throw new Error("FIREBASE_DATABASE_URL is not set.");
+  if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT repository secret is not set.");
 
   let serviceAccount;
   try {
     serviceAccount = JSON.parse(serviceAccountJson);
   } catch {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_DEV is not valid JSON.");
+    throw new Error("FIREBASE_SERVICE_ACCOUNT is not valid JSON.");
   }
 
   await cleanup({
