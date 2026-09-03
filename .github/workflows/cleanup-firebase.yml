@@ -1,11 +1,6 @@
 name: Cleanup Firebase
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/cleanup-firebase.yml"
   workflow_dispatch:
     inputs:
       target:
@@ -37,7 +32,7 @@ jobs:
         run: node tests/check-firebase-cleanup.mjs
 
   cleanup-dev:
-    if: github.event_name == 'push' || github.event_name == 'schedule' || inputs.target == 'all' || inputs.target == 'dev'
+    if: github.event_name == 'schedule' || inputs.target == 'all' || inputs.target == 'dev'
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -51,7 +46,7 @@ jobs:
         run: node scripts/cleanup-firebase.mjs
 
   cleanup-prod:
-    if: github.event_name == 'push' || github.event_name == 'schedule' || inputs.target == 'all' || inputs.target == 'prod'
+    if: github.event_name == 'schedule' || inputs.target == 'all' || inputs.target == 'prod'
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
