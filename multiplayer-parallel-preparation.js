@@ -1,5 +1,5 @@
 import { getFirebaseContext } from "./firebase-client.js";
-import { get, onValue, ref, runTransaction, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+import { get, onValue, ref, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
 // develop専用。
 // 各「席」の冒頭で全員が自分の将来の親番を同時並行で準備し、
@@ -602,29 +602,28 @@ async function maybeActivatePreparedTurn(room = latestRoom) {
       preparationStatuses: Array.isArray(room.seats) ? room.seats.map(uid => preparationStatus(uid)) : []
     });
     try {
-      const result = await runTransaction(ref(database, roomPath(roomId)), current => {
-        if (!current
-          || current.status !== "started"
-          || current.round?.phase !== "draw"
-          || Number(current.round?.number) !== roundNumber
-          || Number(current.round?.cycleNumber) !== cycleNumber
-          || Number(current.round?.turnNumber) !== 0
-          || current.parentUid
-          || !current.players?.[user.uid]
-          || !Array.isArray(current.seats)
-          || !current.seats.length) return;
-        return {
-          ...current,
-          parentUid: current.seats[0],
-          round: { ...current.round, turnNumber: 1 }
-        };
-      }, { applyLocally: false });
+      const firstParentUid = room.seats[0];
+      await update(ref(database, roomPath(roomId)), {
+        parentUid: firstParentUid,
+        "round/turnNumber": 1
+      });
+      const activatedRoom = (await get(ref(database, roomPath(roomId)))).val();
       activationDebug("start-result", {
-        committed: result.committed,
-        resultingTurnNumber: Number(result.snapshot?.val()?.round?.turnNumber) || 0,
-        resultingHasParent: Boolean(result.snapshot?.val()?.parentUid)
+        committed: activatedRoom?.parentUid === firstParentUid && Number(activatedRoom?.round?.turnNumber) === 1,
+        resultingTurnNumber: Number(activatedRoom?.round?.turnNumber) || 0,
+        resultingHasParent: Boolean(activatedRoom?.parentUid)
       });
     } catch (error) {
+      const activatedRoom = (await get(ref(database, roomPath(roomId))).catch(() => null))?.val?.();
+      if (activatedRoom?.parentUid === activatedRoom?.seats?.[0] && Number(activatedRoom?.round?.turnNumber) === 1) {
+        activationDebug("start-result", {
+          committed: true,
+          resultingTurnNumber: 1,
+          resultingHasParent: true,
+          completedByAnotherClient: true
+        });
+        return;
+      }
       activationDebug("start-error", { code: error?.code || null, message: error?.message || String(error) });
       console.warn("一番手を開始できませんでした。", error);
       setRoundMessage(`一番手を開始できませんでした。${error.message || ""}`);
