@@ -1,0 +1,32 @@
+name: Cleanup DEV Firebase
+
+on:
+  workflow_dispatch:
+
+# Scheduled workflows only run from the default branch. When this workflow is
+# promoted to main, add a daily schedule here (for example 18:15 UTC / 03:15 JST).
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup-dev-firebase
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out develop
+        uses: actions/checkout@v4
+
+      - name: Verify cleanup selection logic
+        run: node tests/check-firebase-cleanup.mjs
+
+      - name: Delete DEV Firebase data older than 7 days
+        env:
+          FIREBASE_DATABASE_URL_DEV: https://hisomegoto-default-rtdb.firebaseio.com/
+          FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+          RETENTION_DAYS: "7"
+        run: node scripts/cleanup-firebase.mjs
