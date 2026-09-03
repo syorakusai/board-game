@@ -107,7 +107,7 @@ function allPreparationsComplete(room = latestRoom) {
 
 function isPreparationPhase(room = latestRoom) {
   const { turnNumber } = turnInfo(room);
-  return room?.status === "started" && room?.round?.phase === "draw" && turnNumber === 0 && !room?.parentUid;
+  return room?.status === "started" && !room?.endedBy && room?.round?.phase === "draw" && turnNumber === 0 && !room?.parentUid;
 }
 
 function showScreen(name) {
@@ -735,7 +735,7 @@ function subscribeHistory(id) {
 
 function handleRoom(room) {
   latestRoom = room;
-  if (!room || room.status !== "started") return;
+  if (!room || room.status !== "started" || room.endedBy) return;
   subscribePreparationProgress(room);
   subscribeOwnPreparation(room);
   wrapHistoryRenderer();
@@ -772,6 +772,7 @@ function detachRoom() {
   progressSubscriptionKey = "";
   activationKey = "";
   editingKey = "";
+  window.multiplayerPhase1?.clearRoundChrome?.();
 }
 
 async function attachFromStoredSession() {

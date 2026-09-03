@@ -381,6 +381,14 @@ function hideRoundHeader() {
   shell?.style.removeProperty("--multiplayer-round-header-height");
 }
 
+function clearRoundChrome() {
+  document.querySelectorAll(".game-menu.is-open").forEach(menu => {
+    menu.classList.remove("is-open");
+    menu.querySelector(".menu-button")?.setAttribute("aria-expanded", "false");
+  });
+  hideRoundHeader();
+}
+
 function setRoundMessage(message) {
   const track = $("#multiplayer-message-text");
   if (!track) return;
@@ -435,6 +443,7 @@ function renderPlayerBar(room, screenName=screenNameForPhase(room)) {
   header.classList.remove("is-hidden");shell.classList.add("has-multiplayer-round-header");updateRoundHeaderOffset();
 }
 async function renderWaiting(room) {
+  const renderRoomId = roomId;
   latestRoom = room;
   if (room?.round?.phase !== "final") { multiplayerFinalKey = ""; multiplayerFinalCardsKey = ""; multiplayerFinalPresentationKey = ""; }
   if (leavingWaitingRoom) return;
@@ -471,7 +480,7 @@ async function renderWaiting(room) {
   startButton.disabled = !canStart;
   startButton.classList.toggle("button-primary", canStart);
   startButton.classList.toggle("button-secondary", !canStart);
-  if (isHost) {
+  if (isHost && room.status === "waiting") {
     const url = inviteUrl(roomId);
     $("#room-id-value").textContent = roomId;
     $("#invite-url").value = url;
@@ -489,6 +498,7 @@ async function renderWaiting(room) {
       qr.replaceChildren();
     }
   }
+  if (!renderRoomId || roomId !== renderRoomId || latestRoom !== room) return;
   if (room.status === "started") {
     subscribeHistory(room);
     subscribeReactions(room);
@@ -1444,7 +1454,7 @@ function clearRoomSession() {
   roomId = "";
   openedRoom = false;
   forgetRoomSession();
-  hideRoundHeader();
+  clearRoundChrome();
 }
 
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -1827,5 +1837,5 @@ function initialize() {
   });
 }
 
-window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory, toggleReactionPalette };
+window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory, toggleReactionPalette, clearRoundChrome };
 initialize();
