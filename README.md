@@ -399,7 +399,7 @@ Googleスプレッドシートから `data/yokai.json` を更新する作業だ�
 
 `Cleanup DEV Firebase` ワークフローは、DEV Realtime Databaseの `rooms/{roomId}/createdAt` が実行時点から7日より前の部屋と、その部屋IDにひもづくデータを削除します。`firebase-test` は `connectedAt` が7日より前のデータを削除します。作成時刻を判定できないデータは削除しません。
 
-実行には、DEV FirebaseプロジェクトのサービスアカウントJSONをRepository secret `FIREBASE_SERVICE_ACCOUNT_DEV` に登録する必要があります。現在は `develop` 配置のため `workflow_dispatch` による手動実行だけです。`main` へ反映するときに、GitHubのデフォルトブランチ上で1日1回実行する `schedule` を追加します。
+実行には、DEV FirebaseプロジェクトのサービスアカウントJSONをRepository secret `FIREBASE_SERVICE_ACCOUNT_DEV` に登録する必要があります。GitHubの仕様上、`workflow_dispatch` と `schedule` はワークフローファイルがデフォルトブランチに存在するときだけ有効です。現在は `develop` 配置のため実行できません。`main` へ反映するときに手動実行を有効にし、1日1回実行する `schedule` を追加します。
 
 ## 開発方針
 
