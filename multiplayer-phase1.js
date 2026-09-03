@@ -122,6 +122,7 @@ function resumeDebug(event, detail={}) {
     if(button)button.hidden=false;
   } catch (error) { console.warn("復帰診断ログを保存できませんでした。",error); }
 }
+window.__multiplayerResumeDebug = resumeDebug;
 function resumeDebugEntries() {
   try { const entries=JSON.parse(localStorage.getItem(RESUME_DEBUG_LOG_STORAGE_KEY)||"[]"); return Array.isArray(entries)?entries:[]; }
   catch { return []; }

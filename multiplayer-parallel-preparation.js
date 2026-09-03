@@ -105,6 +105,10 @@ function allPreparationsComplete(room = latestRoom) {
     && room.seats.every(uid => preparationStatus(uid) === "complete");
 }
 
+function activationDebug(event, detail = {}) {
+  window.__multiplayerResumeDebug?.(`preparation:${event}`, detail);
+}
+
 function isPreparationPhase(room = latestRoom) {
   const { turnNumber } = turnInfo(room);
   return room?.status === "started" && !room?.endedBy && room?.round?.phase === "draw" && turnNumber === 0 && !room?.parentUid;
@@ -585,8 +589,20 @@ async function maybeActivatePreparedTurn(room = latestRoom) {
     const startKey = `${roomId}:${roundNumber}:start-activation`;
     if (activationKey === startKey) return;
     activationKey = startKey;
+    activationDebug("start-attempt", {
+      phase: room.round?.phase || null,
+      roundNumber,
+      cycleNumber,
+      turnNumber,
+      hasParent: Boolean(room.parentUid),
+      currentUserInPlayers: Boolean(room.players?.[user.uid]),
+      currentUserIsHost: room.hostUid === user.uid,
+      seatCount: Array.isArray(room.seats) ? room.seats.length : 0,
+      allConnected: allPlayersConnected(room),
+      preparationStatuses: Array.isArray(room.seats) ? room.seats.map(uid => preparationStatus(uid)) : []
+    });
     try {
-      await runTransaction(ref(database, roomPath(roomId)), current => {
+      const result = await runTransaction(ref(database, roomPath(roomId)), current => {
         if (!current
           || current.status !== "started"
           || current.round?.phase !== "draw"
@@ -603,7 +619,13 @@ async function maybeActivatePreparedTurn(room = latestRoom) {
           round: { ...current.round, turnNumber: 1 }
         };
       }, { applyLocally: false });
+      activationDebug("start-result", {
+        committed: result.committed,
+        resultingTurnNumber: Number(result.snapshot?.val()?.round?.turnNumber) || 0,
+        resultingHasParent: Boolean(result.snapshot?.val()?.parentUid)
+      });
     } catch (error) {
+      activationDebug("start-error", { code: error?.code || null, message: error?.message || String(error) });
       console.warn("一番手を開始できませんでした。", error);
       setRoundMessage(`一番手を開始できませんでした。${error.message || ""}`);
     } finally {
