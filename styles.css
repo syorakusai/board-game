@@ -115,6 +115,7 @@ section[data-screen="ready"] .player-item .player-name { color: #fff; }
 .button:disabled { opacity: .55; cursor: not-allowed; }
 .missing-card { min-height: 180px; display: grid; place-items: center; background: #263630; border-radius: 14px; color: #aaa99e; }
 .word-list { display: grid; gap: 10px; margin: 18px 0 22px; }
+#official-preview[hidden], #parent-secret-description[hidden], #parent-word[hidden], #parent-error[hidden] { display: none !important; }
 .word { padding: 10px 12px; border: 1px solid #46534d; border-radius: 12px; background: #1d2b28; color: #eee8dc; font-size: 1rem; font-weight: 700; text-align: center; }
 .word:has(.word-number) { display: grid; grid-template-columns: 2rem minmax(0, 1fr) 2rem; align-items: center; }
 .word-number { grid-column: 1; color: #d39a55; font-variant-numeric: tabular-nums; text-align: left; }

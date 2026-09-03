@@ -293,9 +293,9 @@ async function ensureYokaiCatalog() {
 
 async function renderCompletedLore(preparation) {
   const element = $("#parent-card-lore");
-  if (!element) return;
+  if (!element) return false;
   await ensureYokaiCatalog();
-  if (ownPreparation !== preparation || preparation?.status !== "complete") return;
+  if (ownPreparation !== preparation || preparation?.status !== "complete") return false;
   const number = yokaiNumberFromImage(preparation.cardImage);
   const lore = number === null ? null : yokaiByNumber?.get(number) || null;
   element.hidden = !lore;
@@ -309,6 +309,7 @@ async function renderCompletedLore(preparation) {
       <p class="parent-card-lore-number">${escapeHtml(numberLabel)}</p>
     </section>`;
   })() : "";
+  return Boolean(lore);
 }
 
 function preparationError(message) {
@@ -409,8 +410,22 @@ function renderPreparationComplete(room, preparation) {
     const element = $(selector);
     if (element) element.hidden = true;
   });
-  setRoundMessage("全員のひそめごとが終わるまでお待ちください。待ち時間の間にこのイラストの物語をご堪能ください。");
-  void renderCompletedLore(preparation);
+  const official = $("#official-preview");
+  if (official) official.replaceChildren();
+  const input = $("#parent-word");
+  if (input) input.value = "";
+  const allComplete = allPreparationsComplete(room);
+  setRoundMessage(allComplete
+    ? "全員のひそめごとが完了しました。一番手を開始しています。"
+    : "全員のひそめごとが終わるまでお待ちください。");
+  void renderCompletedLore(preparation).then(hasLore => {
+    if (!hasLore
+      || allComplete
+      || ownPreparation !== preparation
+      || !isPreparationPhase(latestRoom)
+      || allPreparationsComplete(latestRoom)) return;
+    setRoundMessage("全員のひそめごとが終わるまでお待ちください。待ち時間の間にこのイラストの物語をご堪能ください。");
+  });
 }
 
 function renderPreparation(room = latestRoom) {
@@ -566,10 +581,10 @@ async function maybeActivatePreparedTurn(room = latestRoom) {
   if (!room || !database || !user?.uid || room.status !== "started" || room.round?.phase !== "draw" || !allPlayersConnected(room)) return;
   const { cycleNumber, turnNumber, roundNumber } = turnInfo(room);
   if (turnNumber === 0) {
-    if (room.hostUid !== user.uid || !allPreparationsComplete(room)) return;
-    const hostKey = `${roomId}:${roundNumber}:host-activation`;
-    if (activationKey === hostKey) return;
-    activationKey = hostKey;
+    if (!room.players?.[user.uid] || !allPreparationsComplete(room)) return;
+    const startKey = `${roomId}:${roundNumber}:start-activation`;
+    if (activationKey === startKey) return;
+    activationKey = startKey;
     try {
       await runTransaction(ref(database, roomPath(roomId)), current => {
         if (!current
@@ -579,6 +594,7 @@ async function maybeActivatePreparedTurn(room = latestRoom) {
           || Number(current.round?.cycleNumber) !== cycleNumber
           || Number(current.round?.turnNumber) !== 0
           || current.parentUid
+          || !current.players?.[user.uid]
           || !Array.isArray(current.seats)
           || !current.seats.length) return;
         return {
