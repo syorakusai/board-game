@@ -1,13 +1,11 @@
 import { getFirebaseContext } from "./firebase-client.js";
-import { get, onDisconnect, onValue, ref, remove, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+import { get, onValue, ref, runTransaction, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
 // develop専用。
 // 各「席」の冒頭で全員が自分の将来の親番を同時並行で準備し、
 // 全員の「ひそめる」完了後は既存の multiplayer-phase1.js の番手進行へ接続する。
 
 const SESSION_KEY = "board-game:dev:multiplayer-room-session";
-const PREP_CONNECTION_PREFIX = "prep-";
-const PRIVATE_ROOT = "boardGamePreparations";
 const ATTACH_INTERVAL_MS = 500;
 
 let database = null;
@@ -15,14 +13,16 @@ let user = null;
 let roomId = "";
 let latestRoom = null;
 let roomPresence = {};
+let preparationProgress = {};
 let ownPreparation = null;
 let multiplayerHistory = {};
 let roomUnsubscribe = null;
 let presenceUnsubscribe = null;
+let progressUnsubscribe = null;
 let preparationUnsubscribe = null;
 let historyUnsubscribe = null;
 let preparationSubscriptionKey = "";
-let presenceStatusKey = "";
+let progressSubscriptionKey = "";
 let activationKey = "";
 let drawPending = false;
 let submitPending = false;
@@ -38,7 +38,8 @@ const $ = selector => document.querySelector(selector);
 const roomPath = id => `rooms/${id}`;
 const presencePath = id => `roomPresence/${id}`;
 const reservationPath = (id, cardId) => `roomCardReservations/${id}/${cardId}`;
-const privatePreparationPath = (uid, id, cycleNumber) => `firebase-test/${uid}/${PRIVATE_ROOT}/${id}/cycles/${cycleNumber}`;
+const privatePreparationPath = (id, cycleNumber, uid) => `roomPreparations/${id}/cycles/${cycleNumber}/${uid}`;
+const preparationProgressPath = (id, cycleNumber, uid = "") => `roomPreparationProgress/${id}/cycles/${cycleNumber}${uid ? `/${uid}` : ""}`;
 const roundSecretPath = (id, roundNumber, uid) => `roomSecrets/${id}/rounds/${roundNumber}/${uid}`;
 const historyPath = id => `roomHistories/${id}`;
 
@@ -65,12 +66,14 @@ function japaneseNumber(number) {
 function turnInfo(room = latestRoom) {
   const count = Array.isArray(room?.seats) ? room.seats.length : 0;
   const roundNumber = Math.max(1, Number(room?.round?.number) || 1);
-  if (!count) return { count: 0, roundNumber, cycleNumber: 1, turnNumber: 1 };
+  const explicitCycle = Number(room?.round?.cycleNumber);
+  const explicitTurn = Number(room?.round?.turnNumber);
+  if (!count) return { count: 0, roundNumber, cycleNumber: 1, turnNumber: 0 };
   return {
     count,
     roundNumber,
-    cycleNumber: Math.floor((roundNumber - 1) / count) + 1,
-    turnNumber: ((roundNumber - 1) % count) + 1
+    cycleNumber: Number.isInteger(explicitCycle) && explicitCycle >= 1 ? explicitCycle : Math.floor((roundNumber - 1) / count) + 1,
+    turnNumber: Number.isInteger(explicitTurn) && explicitTurn >= 0 ? explicitTurn : ((roundNumber - 1) % count) + 1
   };
 }
 
@@ -82,40 +85,29 @@ function turnLabel(turnNumber) {
   return `${japaneseNumber(turnNumber)}番手`;
 }
 
-function isActualConnectionKey(key) {
-  return !String(key).startsWith(PREP_CONNECTION_PREFIX);
-}
-
 function isConnected(uid) {
-  return Object.keys(roomPresence?.[uid] || {}).some(isActualConnectionKey);
+  return Object.keys(roomPresence?.[uid] || {}).length > 0;
 }
 
 function allPlayersConnected(room = latestRoom) {
   return Array.isArray(room?.seats) && room.seats.length > 0 && room.seats.every(isConnected);
 }
 
-function statusConnectionKey(cycleNumber, status) {
-  return `${PREP_CONNECTION_PREFIX}${cycleNumber}-${status}`;
-}
-
-function preparationStatus(uid, cycleNumber) {
-  const keys = Object.keys(roomPresence?.[uid] || {});
-  if (keys.includes(statusConnectionKey(cycleNumber, "complete"))) return "complete";
-  if (keys.includes(statusConnectionKey(cycleNumber, "hiding"))) return "hiding";
-  if (keys.includes(statusConnectionKey(cycleNumber, "draw"))) return "draw";
-  return "draw";
+function preparationStatus(uid) {
+  const status = preparationProgress?.[uid]?.status;
+  return status === "complete" || status === "hiding" ? status : "draw";
 }
 
 function allPreparationsComplete(room = latestRoom) {
   const { cycleNumber } = turnInfo(room);
   return Array.isArray(room?.seats)
     && room.seats.length > 0
-    && room.seats.every(uid => preparationStatus(uid, cycleNumber) === "complete");
+    && room.seats.every(uid => preparationStatus(uid) === "complete");
 }
 
 function isPreparationPhase(room = latestRoom) {
   const { turnNumber } = turnInfo(room);
-  return room?.status === "started" && room?.round?.phase === "draw" && turnNumber === 1;
+  return room?.status === "started" && room?.round?.phase === "draw" && turnNumber === 0 && !room?.parentUid;
 }
 
 function showScreen(name) {
@@ -206,7 +198,7 @@ function patchPreparationPlayerBar(room, cycleNumber) {
       status.classList.add("is-disconnected");
       return;
     }
-    const state = preparationStatus(uid, cycleNumber);
+    const state = preparationStatus(uid);
     status.textContent = state === "complete" ? "完了" : state === "hiding" ? "ひそめ中" : "札選び中";
     status.classList.add(state === "complete" ? "is-complete" : "is-action-needed");
   });
@@ -425,34 +417,30 @@ function renderPreparation(room = latestRoom) {
   if (!room || !user || !isPreparationPhase(room)) return;
   const { cycleNumber } = turnInfo(room);
   patchPreparationPlayerBar(room, cycleNumber);
-  const status = preparationStatus(user.uid, cycleNumber);
+  const status = preparationStatus(user.uid);
   if (status === "complete" && ownPreparation?.status === "complete") renderPreparationComplete(room, ownPreparation);
   else if (status === "hiding" && ownPreparation?.cardId) renderPreparationHiding(room, ownPreparation);
   else renderPreparationDraw(room);
 }
 
-async function setPresencePreparationStatus(cycleNumber, status) {
+async function setPreparationStatus(cycleNumber, status) {
   if (!database || !roomId || !user?.uid) return;
-  const nextKey = statusConnectionKey(cycleNumber, status);
-  if (presenceStatusKey === nextKey && roomPresence?.[user.uid]?.[nextKey]) return;
-  const nextRef = ref(database, `${presencePath(roomId)}/${user.uid}/${nextKey}`);
-  try {
-    await onDisconnect(nextRef).remove();
-    await set(nextRef, true);
-    if (presenceStatusKey && presenceStatusKey !== nextKey) {
-      await remove(ref(database, `${presencePath(roomId)}/${user.uid}/${presenceStatusKey}`)).catch(() => {});
-    }
-    presenceStatusKey = nextKey;
-  } catch (error) {
-    console.warn("仕込み状態を共有できませんでした。", error);
-  }
+  if (preparationProgress?.[user.uid]?.status === status) return;
+  await set(ref(database, preparationProgressPath(roomId, cycleNumber, user.uid)), {
+    status,
+    updatedAt: serverTimestamp()
+  });
 }
 
 async function restoreOwnPresenceStatus() {
   if (!latestRoom || !user?.uid || !isPreparationPhase(latestRoom)) return;
   const { cycleNumber } = turnInfo(latestRoom);
   const status = ownPreparation?.status === "complete" ? "complete" : ownPreparation?.cardId ? "hiding" : "draw";
-  await setPresencePreparationStatus(cycleNumber, status);
+  try {
+    await setPreparationStatus(cycleNumber, status);
+  } catch (error) {
+    console.warn("仕込み状態を共有できませんでした。", error);
+  }
 }
 
 async function claimReservation(room, cycleNumber, cardId) {
@@ -501,10 +489,10 @@ async function drawPreparedCard() {
       officialWords,
       createdAt: Date.now()
     };
-    await set(ref(database, privatePreparationPath(user.uid, roomId, cycleNumber)), preparation);
+    await set(ref(database, privatePreparationPath(roomId, cycleNumber, user.uid)), preparation);
     ownPreparation = preparation;
     editingKey = "";
-    await setPresencePreparationStatus(cycleNumber, "hiding");
+    await setPreparationStatus(cycleNumber, "hiding");
   } catch (error) {
     const message = $("#round-card-message");
     if (message) {
@@ -524,10 +512,10 @@ async function redrawPreparedCard() {
   redrawPending = true;
   try {
     const replacement = { status: "draw", cycleNumber, updatedAt: Date.now() };
-    await set(ref(database, privatePreparationPath(user.uid, roomId, cycleNumber)), replacement);
+    await set(ref(database, privatePreparationPath(roomId, cycleNumber, user.uid)), replacement);
     ownPreparation = replacement;
     editingKey = "";
-    await setPresencePreparationStatus(cycleNumber, "draw");
+    await setPreparationStatus(cycleNumber, "draw");
   } catch (error) {
     preparationError(`札を引き直せませんでした。${error.message || ""}`);
   } finally {
@@ -561,9 +549,9 @@ async function confirmPreparedWord() {
       parentCandidateIndex,
       parentWordConfirmedAt: Date.now()
     };
-    await set(ref(database, privatePreparationPath(user.uid, roomId, cycleNumber)), completed);
+    await set(ref(database, privatePreparationPath(roomId, cycleNumber, user.uid)), completed);
     ownPreparation = completed;
-    await setPresencePreparationStatus(cycleNumber, "complete");
+    await setPreparationStatus(cycleNumber, "complete");
     editingKey = "";
   } catch (error) {
     preparationError(`親ワードをひそめられませんでした。${error.message || ""}`);
@@ -577,13 +565,42 @@ async function confirmPreparedWord() {
 async function maybeActivatePreparedTurn(room = latestRoom) {
   if (!room || !database || !user?.uid || room.status !== "started" || room.round?.phase !== "draw" || !allPlayersConnected(room)) return;
   const { cycleNumber, turnNumber, roundNumber } = turnInfo(room);
-  if (turnNumber === 1 && !allPreparationsComplete(room)) return;
+  if (turnNumber === 0) {
+    if (room.hostUid !== user.uid || !allPreparationsComplete(room)) return;
+    const hostKey = `${roomId}:${roundNumber}:host-activation`;
+    if (activationKey === hostKey) return;
+    activationKey = hostKey;
+    try {
+      await runTransaction(ref(database, roomPath(roomId)), current => {
+        if (!current
+          || current.status !== "started"
+          || current.round?.phase !== "draw"
+          || Number(current.round?.number) !== roundNumber
+          || Number(current.round?.cycleNumber) !== cycleNumber
+          || Number(current.round?.turnNumber) !== 0
+          || current.parentUid
+          || !Array.isArray(current.seats)
+          || !current.seats.length) return;
+        return {
+          ...current,
+          parentUid: current.seats[0],
+          round: { ...current.round, turnNumber: 1 }
+        };
+      }, { applyLocally: false });
+    } catch (error) {
+      console.warn("一番手を開始できませんでした。", error);
+      setRoundMessage(`一番手を開始できませんでした。${error.message || ""}`);
+    } finally {
+      activationKey = "";
+    }
+    return;
+  }
   if (room.parentUid !== user.uid) return;
   const key = `${roomId}:${roundNumber}:${room.parentUid}`;
   if (activationKey === key) return;
   activationKey = key;
   try {
-    const preparation = (await get(ref(database, privatePreparationPath(user.uid, roomId, cycleNumber)))).val();
+    const preparation = (await get(ref(database, privatePreparationPath(roomId, cycleNumber, user.uid)))).val();
     const parentIndex = Number(preparation?.parentCandidateIndex);
     if (!preparation
       || preparation.status !== "complete"
@@ -623,9 +640,6 @@ async function maybeActivatePreparedTurn(room = latestRoom) {
       discussionStartedAt: serverTimestamp(),
       discussionDurationSeconds
     });
-    const completeKey = statusConnectionKey(cycleNumber, "complete");
-    await remove(ref(database, `${presencePath(roomId)}/${user.uid}/${completeKey}`)).catch(() => {});
-    if (presenceStatusKey === completeKey) presenceStatusKey = "";
   } catch (error) {
     console.warn("仕込み済みの番手を開始できませんでした。", error);
     if (latestRoom?.round?.phase === "draw") setRoundMessage(`番手を開始できませんでした。${error.message || ""}`);
@@ -643,13 +657,30 @@ function subscribeOwnPreparation(room) {
   preparationUnsubscribe = null;
   preparationSubscriptionKey = key;
   ownPreparation = null;
-  preparationUnsubscribe = onValue(ref(database, privatePreparationPath(user.uid, roomId, cycleNumber)), snapshot => {
+  preparationUnsubscribe = onValue(ref(database, privatePreparationPath(roomId, cycleNumber, user.uid)), snapshot => {
     if (preparationSubscriptionKey !== key) return;
     ownPreparation = snapshot.val();
     void restoreOwnPresenceStatus();
     if (isPreparationPhase(latestRoom)) requestAnimationFrame(() => renderPreparation(latestRoom));
     void maybeActivatePreparedTurn(latestRoom);
   }, error => console.warn("仕込み情報を復元できませんでした。", error));
+}
+
+function subscribePreparationProgress(room) {
+  if (!roomId || room?.status !== "started") return;
+  const { cycleNumber } = turnInfo(room);
+  const key = `${roomId}:${cycleNumber}`;
+  if (progressSubscriptionKey === key) return;
+  progressUnsubscribe?.();
+  progressUnsubscribe = null;
+  progressSubscriptionKey = key;
+  preparationProgress = {};
+  progressUnsubscribe = onValue(ref(database, preparationProgressPath(roomId, cycleNumber)), snapshot => {
+    if (progressSubscriptionKey !== key) return;
+    preparationProgress = snapshot.val() || {};
+    if (isPreparationPhase(latestRoom)) requestAnimationFrame(() => renderPreparation(latestRoom));
+    void maybeActivatePreparedTurn(latestRoom);
+  }, error => console.warn("一斉仕込みの進捗を受信できませんでした。", error));
 }
 
 function patchHistoryLabels() {
@@ -689,6 +720,7 @@ function subscribeHistory(id) {
 function handleRoom(room) {
   latestRoom = room;
   if (!room || room.status !== "started") return;
+  subscribePreparationProgress(room);
   subscribeOwnPreparation(room);
   wrapHistoryRenderer();
   if (isPreparationPhase(room)) {
@@ -706,22 +738,22 @@ function handleRoom(room) {
 function detachRoom() {
   roomUnsubscribe?.();
   presenceUnsubscribe?.();
+  progressUnsubscribe?.();
   preparationUnsubscribe?.();
   historyUnsubscribe?.();
   roomUnsubscribe = null;
   presenceUnsubscribe = null;
+  progressUnsubscribe = null;
   preparationUnsubscribe = null;
   historyUnsubscribe = null;
-  if (database && roomId && user?.uid && presenceStatusKey) {
-    remove(ref(database, `${presencePath(roomId)}/${user.uid}/${presenceStatusKey}`)).catch(() => {});
-  }
   roomId = "";
   latestRoom = null;
   roomPresence = {};
+  preparationProgress = {};
   ownPreparation = null;
   multiplayerHistory = {};
   preparationSubscriptionKey = "";
-  presenceStatusKey = "";
+  progressSubscriptionKey = "";
   activationKey = "";
   editingKey = "";
 }

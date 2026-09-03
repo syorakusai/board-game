@@ -1244,10 +1244,18 @@ async function advanceToNextSeat() {
     if(!current||current.parentUid!==currentUser?.uid||current.round?.phase!=="score"||!canProgress(current)||hasWinner(current))throw Error("次の席へ進める状態ではありません。");
     const index=current.seats.indexOf(current.parentUid);
     if(index<0)throw Error("現在の親を席次から確認できません。");
-    const nextRound={number:currentRoundNumber(current)+1,phase:"draw"};
+    const currentCycle=Math.max(1,Number(current.round?.cycleNumber)||Math.floor((currentRoundNumber(current)-1)/current.seats.length)+1);
+    const currentTurn=Math.max(1,Number(current.round?.turnNumber)||index+1);
+    const isLastTurn=currentTurn>=current.seats.length;
+    const nextRound={
+      number:currentRoundNumber(current)+1,
+      cycleNumber:isLastTurn?currentCycle+1:currentCycle,
+      turnNumber:isLastTurn?0:currentTurn+1,
+      phase:"draw"
+    };
     if(current.round?.usedCardIds)nextRound.usedCardIds=current.round.usedCardIds;
     await update(ref(window.__firebaseDatabase),{
-      [`${roomPath(roomId)}/parentUid`]:current.seats[(index+1)%current.seats.length],
+      [`${roomPath(roomId)}/parentUid`]:isLastTurn?null:current.seats[index+1],
       [`${roomPath(roomId)}/round`]:nextRound
     });
     resetRoundLocalState();
@@ -1553,7 +1561,7 @@ async function startRoom() {
         const other = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1);
         [seats[index], seats[other]] = [seats[other], seats[index]];
       }
-      return { ...current, players, nameIndex, joinSlots: null, status: "started", startedAt: Date.now(), round: { number: 1, phase: "draw" }, seats, parentUid: seats[0] };
+      return { ...current, players, nameIndex, joinSlots: null, status: "started", startedAt: Date.now(), round: { number: 1, cycleNumber: 1, turnNumber: 0, phase: "draw" }, seats, parentUid: null };
     }, { applyLocally: false });
     if (!transaction.committed) {
       const current = transaction.snapshot?.val();
