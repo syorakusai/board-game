@@ -1,9 +1,9 @@
 import { getFirebaseContext } from "./firebase-client.js";
 import { get, onDisconnect, onValue, ref, remove, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
-// develop専用: 各席の開始時に、全員が将来の親番を同時並行で仕込む。
-// 既存の番手本体（discussion以降）は multiplayer-phase1.js を正本として利用し、
-// 仕込み部分だけをこのモジュールが担当する。
+// develop専用。
+// 各「席」の冒頭で全員が自分の将来の親番を同時並行で準備し、
+// 全員の「ひそめる」完了後は既存の multiplayer-phase1.js の番手進行へ接続する。
 
 const SESSION_KEY = "board-game:dev:multiplayer-room-session";
 const PREP_CONNECTION_PREFIX = "prep-";
@@ -108,12 +108,14 @@ function preparationStatus(uid, cycleNumber) {
 
 function allPreparationsComplete(room = latestRoom) {
   const { cycleNumber } = turnInfo(room);
-  return Array.isArray(room?.seats) && room.seats.length > 0 && room.seats.every(uid => preparationStatus(uid, cycleNumber) === "complete");
+  return Array.isArray(room?.seats)
+    && room.seats.length > 0
+    && room.seats.every(uid => preparationStatus(uid, cycleNumber) === "complete");
 }
 
 function isPreparationPhase(room = latestRoom) {
   const { turnNumber } = turnInfo(room);
-  return room?.status === "started" && room?.round?.phase === "draw" && turnNumber === 1 && !allPreparationsComplete(room);
+  return room?.status === "started" && room?.round?.phase === "draw" && turnNumber === 1;
 }
 
 function showScreen(name) {
@@ -132,8 +134,7 @@ function placeRoundTitle(screenName, text) {
   if (!slot || !screen) return;
   const previous = slot.querySelector(".screen-title-row");
   if (previous?.dataset.multiplayerScreen && previous.dataset.multiplayerScreen !== screenName) {
-    const previousScreen = document.querySelector(`[data-screen="${previous.dataset.multiplayerScreen}"]`);
-    previousScreen?.prepend(previous);
+    document.querySelector(`[data-screen="${previous.dataset.multiplayerScreen}"]`)?.prepend(previous);
   }
   const row = screen.querySelector(".screen-title-row") || (previous?.dataset.multiplayerScreen === screenName ? previous : null);
   if (row) {
@@ -160,7 +161,8 @@ function setRoundMessage(message) {
   const viewport = $("#multiplayer-message-bar");
   const track = $("#multiplayer-message-text");
   if (!viewport || !track) return;
-  cancelAnimationFrame(Number(track.dataset.prepTickerFrame) || 0);
+  const previousFrame = Number(track.dataset.prepTickerFrame);
+  if (Number.isFinite(previousFrame)) cancelAnimationFrame(previousFrame);
   track.classList.remove("is-scrolling");
   track.style.removeProperty("--multiplayer-message-duration");
   track.style.removeProperty("--multiplayer-message-distance");
@@ -224,26 +226,21 @@ function patchScorePlayerBar(room) {
   const button = $("#next-round");
   if (button) button.textContent = nextLabel;
   const parentName = room.players?.[room.parentUid]?.name || "親";
-  setRoundMessage(`得点が反映されました。${parentName}さん、${nextLabel}進んでください。`.replace("へ進", "へ進"));
+  setRoundMessage(`得点が反映されました。${parentName}さん、${nextLabel}進んでください。`);
 }
 
-function activePhaseTitle(room) {
+function patchActivePhase(room) {
+  if (!room || room.status !== "started") return;
   const { cycleNumber, turnNumber } = turnInfo(room);
-  const screenNames = {
+  const phases = {
     discussion: ["discussion", "宴の推理"],
     answer: ["answer", "推理結果の記帳"],
     reveal: ["result-open", "ひそめごと開帳"],
     result: ["result", "宴の顛末"],
     score: ["scores", "得点の記録"]
   };
-  const selected = screenNames[room?.round?.phase];
-  if (!selected) return;
-  placeRoundTitle(selected[0], `${seatLabel(cycleNumber)}　${turnLabel(turnNumber)}　${selected[1]}`);
-}
-
-function patchActivePhase(room) {
-  if (!room || room.status !== "started") return;
-  activePhaseTitle(room);
+  const selected = phases[room?.round?.phase];
+  if (selected) placeRoundTitle(selected[0], `${seatLabel(cycleNumber)}　${turnLabel(turnNumber)}　${selected[1]}`);
   patchScorePlayerBar(room);
 }
 
@@ -452,17 +449,15 @@ async function setPresencePreparationStatus(cycleNumber, status) {
 }
 
 async function restoreOwnPresenceStatus() {
-  if (!latestRoom || !user?.uid || latestRoom.status !== "started") return;
-  const { cycleNumber, turnNumber } = turnInfo(latestRoom);
-  if (latestRoom.round?.phase !== "draw" || turnNumber !== 1 || allPreparationsComplete(latestRoom)) return;
+  if (!latestRoom || !user?.uid || !isPreparationPhase(latestRoom)) return;
+  const { cycleNumber } = turnInfo(latestRoom);
   const status = ownPreparation?.status === "complete" ? "complete" : ownPreparation?.cardId ? "hiding" : "draw";
   await setPresencePreparationStatus(cycleNumber, status);
 }
 
 async function claimReservation(room, cycleNumber, cardId) {
-  const target = ref(database, reservationPath(roomId, cardId));
   try {
-    await set(target, {
+    await set(ref(database, reservationPath(roomId, cardId)), {
       uid: user.uid,
       feastId: room.feastId,
       cycleNumber,
@@ -470,7 +465,8 @@ async function claimReservation(room, cycleNumber, cardId) {
     });
     return true;
   } catch (error) {
-    if (String(error?.code || "").includes("PERMISSION_DENIED") || String(error?.message || "").toLowerCase().includes("permission")) return false;
+    const description = `${error?.code || ""} ${error?.message || ""}`.toLowerCase();
+    if (description.includes("permission")) return false;
     throw error;
   }
 }
@@ -509,7 +505,6 @@ async function drawPreparedCard() {
     ownPreparation = preparation;
     editingKey = "";
     await setPresencePreparationStatus(cycleNumber, "hiding");
-    renderPreparation(latestRoom);
   } catch (error) {
     const message = $("#round-card-message");
     if (message) {
@@ -543,8 +538,7 @@ async function redrawPreparedCard() {
 
 async function confirmPreparedWord() {
   const room = latestRoom;
-  const input = $("#parent-word");
-  const value = input?.value.trim() || "";
+  const value = $("#parent-word")?.value.trim() || "";
   if (!room || submitPending || !isPreparationPhase(room) || !allPlayersConnected(room) || !ownPreparation?.cardId) return;
   if (!value) {
     preparationError("親ワードを入力してください。");
@@ -556,7 +550,6 @@ async function confirmPreparedWord() {
   }
   const { cycleNumber } = turnInfo(room);
   submitPending = true;
-  renderPreparationHiding(room, ownPreparation);
   try {
     const publicWords = secureShuffle([...ownPreparation.officialWords, value]);
     const parentCandidateIndex = publicWords.indexOf(value);
@@ -584,16 +577,25 @@ async function confirmPreparedWord() {
 async function maybeActivatePreparedTurn(room = latestRoom) {
   if (!room || !database || !user?.uid || room.status !== "started" || room.round?.phase !== "draw" || !allPlayersConnected(room)) return;
   const { cycleNumber, turnNumber, roundNumber } = turnInfo(room);
-  const allReady = allPreparationsComplete(room);
-  if (turnNumber === 1 && !allReady) return;
+  if (turnNumber === 1 && !allPreparationsComplete(room)) return;
   if (room.parentUid !== user.uid) return;
   const key = `${roomId}:${roundNumber}:${room.parentUid}`;
   if (activationKey === key) return;
   activationKey = key;
   try {
-    const snapshot = await get(ref(database, privatePreparationPath(user.uid, roomId, cycleNumber)));
-    const preparation = snapshot.val();
-    if (!preparation || preparation.status !== "complete" || !preparation.cardId || !preparation.cardImage || !Array.isArray(preparation.officialWords) || preparation.officialWords.length !== 3 || !Array.isArray(preparation.publicWords) || preparation.publicWords.length !== 4 || !Number.isInteger(Number(preparation.parentCandidateIndex))) return;
+    const preparation = (await get(ref(database, privatePreparationPath(user.uid, roomId, cycleNumber)))).val();
+    const parentIndex = Number(preparation?.parentCandidateIndex);
+    if (!preparation
+      || preparation.status !== "complete"
+      || !preparation.cardId
+      || !preparation.cardImage
+      || !Array.isArray(preparation.officialWords)
+      || preparation.officialWords.length !== 3
+      || !Array.isArray(preparation.publicWords)
+      || preparation.publicWords.length !== 4
+      || !Number.isInteger(parentIndex)
+      || parentIndex < 0
+      || parentIndex > 3) return;
     const secret = {
       officialWords: preparation.officialWords,
       cardId: preparation.cardId,
@@ -601,7 +603,7 @@ async function maybeActivatePreparedTurn(room = latestRoom) {
       parentWord: preparation.parentWord,
       parentWordConfirmedAt: Number(preparation.parentWordConfirmedAt) || Date.now(),
       publicWords: preparation.publicWords,
-      parentCandidateIndex: Number(preparation.parentCandidateIndex)
+      parentCandidateIndex: parentIndex
     };
     await set(ref(database, roundSecretPath(roomId, roundNumber, user.uid)), secret);
     const fresh = (await get(ref(database, roomPath(roomId)))).val();
@@ -621,14 +623,12 @@ async function maybeActivatePreparedTurn(room = latestRoom) {
       discussionStartedAt: serverTimestamp(),
       discussionDurationSeconds
     });
-    const ownStatusRef = ref(database, `${presencePath(roomId)}/${user.uid}/${statusConnectionKey(cycleNumber, "complete")}`);
-    await remove(ownStatusRef).catch(() => {});
-    presenceStatusKey = "";
+    const completeKey = statusConnectionKey(cycleNumber, "complete");
+    await remove(ref(database, `${presencePath(roomId)}/${user.uid}/${completeKey}`)).catch(() => {});
+    if (presenceStatusKey === completeKey) presenceStatusKey = "";
   } catch (error) {
     console.warn("仕込み済みの番手を開始できませんでした。", error);
-    if (latestRoom?.round?.phase === "draw") {
-      setRoundMessage(`番手を開始できませんでした。${error.message || ""}`);
-    }
+    if (latestRoom?.round?.phase === "draw") setRoundMessage(`番手を開始できませんでした。${error.message || ""}`);
   } finally {
     activationKey = "";
   }
@@ -648,7 +648,7 @@ function subscribeOwnPreparation(room) {
     ownPreparation = snapshot.val();
     void restoreOwnPresenceStatus();
     if (isPreparationPhase(latestRoom)) requestAnimationFrame(() => renderPreparation(latestRoom));
-    else void maybeActivatePreparedTurn(latestRoom);
+    void maybeActivatePreparedTurn(latestRoom);
   }, error => console.warn("仕込み情報を復元できませんでした。", error));
 }
 
@@ -691,23 +691,16 @@ function handleRoom(room) {
   if (!room || room.status !== "started") return;
   subscribeOwnPreparation(room);
   wrapHistoryRenderer();
-  const { cycleNumber } = turnInfo(room);
   if (isPreparationPhase(room)) {
     void restoreOwnPresenceStatus();
     requestAnimationFrame(() => {
       if (isPreparationPhase(latestRoom)) renderPreparation(latestRoom);
     });
+    void maybeActivatePreparedTurn(room);
     return;
   }
   requestAnimationFrame(() => patchActivePhase(room));
   if (room.round?.phase === "draw") void maybeActivatePreparedTurn(room);
-  if (room.round?.phase !== "draw") {
-    const ownPrepKey = statusConnectionKey(cycleNumber, "complete");
-    if (presenceStatusKey === ownPrepKey) {
-      remove(ref(database, `${presencePath(roomId)}/${user.uid}/${ownPrepKey}`)).catch(() => {});
-      presenceStatusKey = "";
-    }
-  }
 }
 
 function detachRoom() {
@@ -757,10 +750,8 @@ async function attachFromStoredSession() {
       if (roomId !== session.roomId) return;
       roomPresence = snapshot.val() || {};
       if (isPreparationPhase(latestRoom)) requestAnimationFrame(() => renderPreparation(latestRoom));
-      else {
-        requestAnimationFrame(() => patchActivePhase(latestRoom));
-        void maybeActivatePreparedTurn(latestRoom);
-      }
+      else requestAnimationFrame(() => patchActivePhase(latestRoom));
+      void maybeActivatePreparedTurn(latestRoom);
     }, error => console.warn("一斉仕込み用の接続状態を受信できませんでした。", error));
     subscribeHistory(roomId);
   } catch (error) {
@@ -769,12 +760,6 @@ async function attachFromStoredSession() {
     attachPending = false;
   }
 }
-
-new MutationObserver(() => {
-  wrapHistoryRenderer();
-  patchHistoryLabels();
-  if (isPreparationPhase(latestRoom)) requestAnimationFrame(() => renderPreparation(latestRoom));
-}).observe(document.documentElement, { childList: true, subtree: true });
 
 setInterval(() => { void attachFromStoredSession(); }, ATTACH_INTERVAL_MS);
 void attachFromStoredSession();
