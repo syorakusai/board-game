@@ -3,8 +3,9 @@ name: Cleanup DEV Firebase
 on:
   workflow_dispatch:
 
-# Scheduled workflows only run from the default branch. When this workflow is
-# promoted to main, add a daily schedule here (for example 18:15 UTC / 03:15 JST).
+# workflow_dispatch and scheduled workflows are only available when this file
+# exists on the default branch. When promoted to main, manual execution becomes
+# available and a daily schedule must be added (for example 18:15 UTC / 03:15 JST).
 
 permissions:
   contents: read
