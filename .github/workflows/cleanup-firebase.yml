@@ -1,0 +1,60 @@
+name: Cleanup Firebase
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Firebase environment to clean
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - dev
+          - prod
+  schedule:
+    - cron: "15 18 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup-firebase
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify cleanup selection logic
+        run: node tests/check-firebase-cleanup.mjs
+
+  cleanup-dev:
+    if: github.event_name == 'schedule' || inputs.target == 'all' || inputs.target == 'dev'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete DEV Firebase data older than 7 days
+        env:
+          FIREBASE_DATABASE_URL: https://hisomegoto-default-rtdb.firebaseio.com/
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+          RETENTION_DAYS: "7"
+        run: node scripts/cleanup-firebase.mjs
+
+  cleanup-prod:
+    if: github.event_name == 'schedule' || inputs.target == 'all' || inputs.target == 'prod'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete PROD Firebase data older than 7 days
+        env:
+          FIREBASE_DATABASE_URL: https://pj-hisomegoto-default-rtdb.firebaseio.com/
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}
+          RETENTION_DAYS: "7"
+        run: node scripts/cleanup-firebase.mjs
