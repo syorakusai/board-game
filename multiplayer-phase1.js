@@ -515,12 +515,12 @@ async function renderWaiting(room) {
     else if (room.round?.phase === "score") enterScoreScreen(room);
     else if (room.round?.phase === "final") enterMultiplayerFinalScreen(room);
     else if (room.round?.phase === "parent-word") enterParentWordScreen(room);
-    else enterDrawScreen(room);
+    else if (!(room.round?.phase === "draw" && Number(room.round?.turnNumber) === 0 && !room.parentUid)) enterDrawScreen(room);
     reevaluateAutomaticTransition(room);
   }
 }
 
-function roundLabel(room) { return `第${["","一","二","三","四","五","六","七","八","九","十"][Number(room?.round?.number || 1)] || Number(room?.round?.number || 1)}席`; }
+function roundLabel(room) { const number=Number(room?.round?.cycleNumber)||Number(room?.round?.number)||1;return `第${["","一","二","三","四","五","六","七","八","九","十"][number] || number}席`; }
 function roundLabelForNumber(roundNumber) { return `第${["","一","二","三","四","五","六","七","八","九","十"][Number(roundNumber)] || Number(roundNumber)}席`; }
 function multiplayerCardMarkup(image) {
   return image ? `<img class="card-zoom-trigger" src="${escape(image)}" alt="お題カード。タップで拡大表示">` : `<div class="missing-card">カード画像を読み込めません</div>`;

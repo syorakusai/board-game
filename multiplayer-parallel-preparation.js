@@ -29,6 +29,7 @@ let preparationUnsubscribe = null;
 let historyUnsubscribe = null;
 let preparationSubscriptionKey = "";
 let progressSubscriptionKey = "";
+let progressLoadedKey = "";
 let activationKey = "";
 let drawPending = false;
 let submitPending = false;
@@ -109,8 +110,11 @@ function preparationStatus(uid) {
 
 function allPreparationsComplete(room = latestRoom) {
   const { cycleNumber } = turnInfo(room);
+  const expectedKey = `${roomId}:${cycleNumber}`;
   return Array.isArray(room?.seats)
     && room.seats.length > 0
+    && progressSubscriptionKey === expectedKey
+    && progressLoadedKey === expectedKey
     && room.seats.every(uid => preparationStatus(uid) === "complete");
 }
 
@@ -807,10 +811,13 @@ function subscribePreparationProgress(room) {
   progressUnsubscribe?.();
   progressUnsubscribe = null;
   progressSubscriptionKey = key;
+  progressLoadedKey = "";
   preparationProgress = {};
+  syncDiscussionIntro(room);
   progressUnsubscribe = onValue(ref(database, preparationProgressPath(roomId, cycleNumber)), snapshot => {
     if (progressSubscriptionKey !== key) return;
     preparationProgress = snapshot.val() || {};
+    progressLoadedKey = key;
     syncDiscussionIntro(latestRoom);
     if (isPreparationPhase(latestRoom)) requestAnimationFrame(() => renderPreparation(latestRoom));
     void maybeActivatePreparedTurn(latestRoom);
@@ -853,10 +860,13 @@ function subscribeHistory(id) {
 
 function handleRoom(room) {
   latestRoom = room;
-  syncDiscussionIntro(room);
-  if (!room || room.status !== "started" || room.endedBy) return;
+  if (!room || room.status !== "started" || room.endedBy) {
+    syncDiscussionIntro(room);
+    return;
+  }
   subscribePreparationProgress(room);
   subscribeOwnPreparation(room);
+  syncDiscussionIntro(room);
   wrapHistoryRenderer();
   if (isPreparationPhase(room)) {
     void restoreOwnPresenceStatus();
@@ -889,6 +899,7 @@ function detachRoom() {
   multiplayerHistory = {};
   preparationSubscriptionKey = "";
   progressSubscriptionKey = "";
+  progressLoadedKey = "";
   activationKey = "";
   editingKey = "";
   completedDiscussionIntros.clear();
@@ -919,10 +930,11 @@ async function attachFromStoredSession() {
     presenceUnsubscribe = onValue(ref(database, presencePath(roomId)), snapshot => {
       if (roomId !== session.roomId) return;
       roomPresence = snapshot.val() || {};
-      syncDiscussionIntro(latestRoom);
-      if (isPreparationPhase(latestRoom)) requestAnimationFrame(() => renderPreparation(latestRoom));
-      else requestAnimationFrame(() => patchActivePhase(latestRoom));
-      void maybeActivatePreparedTurn(latestRoom);
+      const activeRoomId = roomId;
+      void get(ref(database, roomPath(activeRoomId))).then(roomSnapshot => {
+        if (roomId !== activeRoomId || roomId !== session.roomId) return;
+        handleRoom(roomSnapshot.val());
+      }).catch(error => console.warn("再接続後の宴情報を確認できませんでした。", error));
     }, error => console.warn("一斉仕込み用の接続状態を受信できませんでした。", error));
     subscribeHistory(roomId);
   } catch (error) {
