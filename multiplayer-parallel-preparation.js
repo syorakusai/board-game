@@ -284,7 +284,8 @@ function setRoundMessage(message) {
   track.dataset.prepTickerFrame = String(frame);
 }
 
-function patchPreparationPlayerBar(room, cycleNumber) {
+function patchPreparationPlayerBar(room, screenName) {
+  window.multiplayerPhase1?.renderPlayerBar?.(room, screenName);
   const bar = $("#multiplayer-player-bar");
   if (!bar || !Array.isArray(room?.seats)) return;
   const panels = [...bar.querySelectorAll(".multiplayer-player")];
@@ -427,7 +428,7 @@ function renderPreparationDraw(room) {
   const { cycleNumber } = turnInfo(room);
   showScreen("round");
   placeRoundTitle("round", `${seatLabel(cycleNumber)}　札選び`);
-  patchPreparationPlayerBar(room, cycleNumber);
+  patchPreparationPlayerBar(room, "round");
   const deck = $("#deck-stack-image");
   const button = $("#round-start-button");
   const drawText = $("#draw-card");
@@ -465,7 +466,7 @@ function renderPreparationHiding(room, preparation) {
   const { cycleNumber } = turnInfo(room);
   showScreen("parent-input");
   placeRoundTitle("parent-input", `${seatLabel(cycleNumber)}　親のひそめごと`);
-  patchPreparationPlayerBar(room, cycleNumber);
+  patchPreparationPlayerBar(room, "parent-input");
   $("#parent-card-area").innerHTML = cardMarkup(preparation?.cardImage);
   const lore = $("#parent-card-lore");
   if (lore) { lore.hidden = true; lore.innerHTML = ""; }
@@ -507,7 +508,7 @@ function renderPreparationComplete(room, preparation) {
   const { cycleNumber } = turnInfo(room);
   showScreen("parent-input");
   placeRoundTitle("parent-input", `${seatLabel(cycleNumber)}　親のひそめごと`);
-  patchPreparationPlayerBar(room, cycleNumber);
+  patchPreparationPlayerBar(room, "parent-input");
   $("#parent-card-area").innerHTML = cardMarkup(preparation?.cardImage);
   ["#parent-secret-description", "#official-preview", "#parent-word", "#parent-error", "#parent-submit", "#parent-redraw-button"].forEach(selector => {
     const element = $(selector);
@@ -533,8 +534,6 @@ function renderPreparationComplete(room, preparation) {
 
 function renderPreparation(room = latestRoom) {
   if (!room || !user || !isPreparationPhase(room)) return;
-  const { cycleNumber } = turnInfo(room);
-  patchPreparationPlayerBar(room, cycleNumber);
   const status = preparationStatus(user.uid);
   if (status === "complete" && ownPreparation?.status === "complete") renderPreparationComplete(room, ownPreparation);
   else if (status === "hiding" && ownPreparation?.cardId) renderPreparationHiding(room, ownPreparation);

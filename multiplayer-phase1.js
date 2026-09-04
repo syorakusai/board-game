@@ -1674,6 +1674,7 @@ function setMultiplayerSetupMode(mode, { clearInvitation=false } = {}) {
   if(mode==="host") prepareCreateForm();
 }
 function openFeastSetup({ mode="single", multiplayerMode="host", restoreSingle=true } = {}) {
+  clearRoundChrome();
   if(mode==="single"&&restoreSingle) window.startSingleDeviceGame?.();
   else show("player-count");
   $("#setup-mode-choice").hidden=false;
@@ -1839,5 +1840,5 @@ function initialize() {
   });
 }
 
-window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory, toggleReactionPalette, clearRoundChrome, serverNow };
+window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory, renderPlayerBar, toggleReactionPalette, clearRoundChrome, serverNow };
 initialize();
