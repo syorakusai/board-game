@@ -7,6 +7,12 @@ import { get, onValue, ref, serverTimestamp, set, update } from "https://www.gst
 
 const SESSION_KEY = "board-game:dev:multiplayer-room-session";
 const ATTACH_INTERVAL_MS = 500;
+const DISCUSSION_INTRO_MIDDLE_MS = 800;
+const DISCUSSION_INTRO_BOTTOM_MS = 1600;
+const DISCUSSION_INTRO_FADE_MS = 3100;
+const DISCUSSION_INTRO_DURATION_MS = 3600;
+
+window.__multiplayerDiscussionIntroDurationMs = DISCUSSION_INTRO_DURATION_MS;
 
 let database = null;
 let user = null;
@@ -33,6 +39,9 @@ let catalog = [];
 let yokaiByNumber = null;
 let yokaiCatalogPromise = null;
 let historyWrapped = false;
+let discussionIntroKey = "";
+let discussionIntroTimers = [];
+const completedDiscussionIntros = new Set();
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `rooms/${id}`;
@@ -107,6 +116,92 @@ function allPreparationsComplete(room = latestRoom) {
 
 function activationDebug(event, detail = {}) {
   window.__multiplayerResumeDebug?.(`preparation:${event}`, detail);
+}
+
+function clearDiscussionIntroTimers() {
+  discussionIntroTimers.forEach(clearTimeout);
+  discussionIntroTimers = [];
+}
+
+function discussionIntroOverlay() {
+  let overlay = $("#multiplayer-discussion-intro");
+  if (overlay) return overlay;
+  overlay = document.createElement("div");
+  overlay.id = "multiplayer-discussion-intro";
+  overlay.className = "multiplayer-discussion-intro is-hidden";
+  overlay.setAttribute("aria-hidden", "true");
+  overlay.innerHTML = `<div class="multiplayer-discussion-intro-panel" role="status" aria-live="polite">
+    <div class="multiplayer-discussion-intro-line multiplayer-discussion-intro-position"></div>
+    <div class="multiplayer-discussion-intro-line multiplayer-discussion-intro-parent"></div>
+    <div class="multiplayer-discussion-intro-line multiplayer-discussion-intro-start">推理開始</div>
+  </div>`;
+  document.body.append(overlay);
+  return overlay;
+}
+
+function hideDiscussionIntro() {
+  clearDiscussionIntroTimers();
+  discussionIntroKey = "";
+  const overlay = $("#multiplayer-discussion-intro");
+  overlay?.classList.add("is-hidden");
+  overlay?.setAttribute("aria-hidden", "true");
+}
+
+function setDiscussionIntroStage(stage) {
+  const overlay = discussionIntroOverlay();
+  overlay.classList.remove("is-hidden", "is-leaving", "is-stage-1", "is-stage-2", "is-stage-3");
+  overlay.classList.add(`is-stage-${stage}`);
+  overlay.setAttribute("aria-hidden", "false");
+}
+
+function scheduleDiscussionIntroStage(stage, delay) {
+  if (delay <= 0) return;
+  discussionIntroTimers.push(setTimeout(() => setDiscussionIntroStage(stage), delay));
+}
+
+function syncDiscussionIntro(room = latestRoom) {
+  const { cycleNumber, turnNumber, roundNumber } = turnInfo(room);
+  const waitingForFirstTurn = isPreparationPhase(room) && allPreparationsComplete(room) && allPlayersConnected(room);
+  const activeTurnNumber = waitingForFirstTurn ? 1 : turnNumber;
+  const parentUid = waitingForFirstTurn ? room?.seats?.[0] : room?.parentUid;
+  const supportedPhase = waitingForFirstTurn || (activeTurnNumber > 0 && ["draw", "parent-word", "discussion"].includes(room?.round?.phase));
+  if (!room || room.status !== "started" || room.endedBy || !parentUid || !supportedPhase) {
+    hideDiscussionIntro();
+    return;
+  }
+  const key = `${roomId}:${roundNumber}`;
+  if (completedDiscussionIntros.has(key)) {
+    hideDiscussionIntro();
+    return;
+  }
+  const overlay = discussionIntroOverlay();
+  overlay.querySelector(".multiplayer-discussion-intro-position").textContent = `${seatLabel(cycleNumber)}　${turnLabel(activeTurnNumber)}`;
+  overlay.querySelector(".multiplayer-discussion-intro-parent").textContent = `親：${room.players?.[parentUid]?.name || "親"}`;
+  if (discussionIntroKey !== key) {
+    clearDiscussionIntroTimers();
+    discussionIntroKey = key;
+    setDiscussionIntroStage(1);
+  }
+  const startedAt = Number(room.round?.discussionStartedAt);
+  if (room.round?.phase !== "discussion" || !Number.isFinite(startedAt)) return;
+  clearDiscussionIntroTimers();
+  const now = window.multiplayerPhase1?.serverNow?.() || Date.now();
+  const elapsed = Math.max(0, now - startedAt);
+  if (elapsed >= DISCUSSION_INTRO_DURATION_MS) {
+    completedDiscussionIntros.add(key);
+    hideDiscussionIntro();
+    return;
+  }
+  if (elapsed >= DISCUSSION_INTRO_BOTTOM_MS) setDiscussionIntroStage(3);
+  else if (elapsed >= DISCUSSION_INTRO_MIDDLE_MS) setDiscussionIntroStage(2);
+  else setDiscussionIntroStage(1);
+  scheduleDiscussionIntroStage(2, DISCUSSION_INTRO_MIDDLE_MS - elapsed);
+  scheduleDiscussionIntroStage(3, DISCUSSION_INTRO_BOTTOM_MS - elapsed);
+  discussionIntroTimers.push(setTimeout(() => overlay.classList.add("is-leaving"), Math.max(0, DISCUSSION_INTRO_FADE_MS - elapsed)));
+  discussionIntroTimers.push(setTimeout(() => {
+    completedDiscussionIntros.add(key);
+    hideDiscussionIntro();
+  }, Math.max(0, DISCUSSION_INTRO_DURATION_MS - elapsed)));
 }
 
 function isPreparationPhase(room = latestRoom) {
@@ -624,6 +719,7 @@ async function maybeActivatePreparedTurn(room = latestRoom) {
         });
         return;
       }
+      hideDiscussionIntro();
       activationDebug("start-error", { code: error?.code || null, message: error?.message || String(error) });
       console.warn("一番手を開始できませんでした。", error);
       setRoundMessage(`一番手を開始できませんでした。${error.message || ""}`);
@@ -715,6 +811,7 @@ function subscribePreparationProgress(room) {
   progressUnsubscribe = onValue(ref(database, preparationProgressPath(roomId, cycleNumber)), snapshot => {
     if (progressSubscriptionKey !== key) return;
     preparationProgress = snapshot.val() || {};
+    syncDiscussionIntro(latestRoom);
     if (isPreparationPhase(latestRoom)) requestAnimationFrame(() => renderPreparation(latestRoom));
     void maybeActivatePreparedTurn(latestRoom);
   }, error => console.warn("一斉仕込みの進捗を受信できませんでした。", error));
@@ -756,6 +853,7 @@ function subscribeHistory(id) {
 
 function handleRoom(room) {
   latestRoom = room;
+  syncDiscussionIntro(room);
   if (!room || room.status !== "started" || room.endedBy) return;
   subscribePreparationProgress(room);
   subscribeOwnPreparation(room);
@@ -793,6 +891,8 @@ function detachRoom() {
   progressSubscriptionKey = "";
   activationKey = "";
   editingKey = "";
+  completedDiscussionIntros.clear();
+  hideDiscussionIntro();
   window.multiplayerPhase1?.clearRoundChrome?.();
 }
 
@@ -819,6 +919,7 @@ async function attachFromStoredSession() {
     presenceUnsubscribe = onValue(ref(database, presencePath(roomId)), snapshot => {
       if (roomId !== session.roomId) return;
       roomPresence = snapshot.val() || {};
+      syncDiscussionIntro(latestRoom);
       if (isPreparationPhase(latestRoom)) requestAnimationFrame(() => renderPreparation(latestRoom));
       else requestAnimationFrame(() => patchActivePhase(latestRoom));
       void maybeActivatePreparedTurn(latestRoom);

@@ -855,12 +855,12 @@ function enterDiscussionScreen(room) {
   $("#discussion-end").onclick=completeDiscussion;
   if(roomEnded(room))setRoundMessage(`${room.endedBy.name}が退出したため、宴はお開きとなります。右上メニューの「退出」から退出してください。`);
   else setRoundMessage(isChild?"会話しながら、親がひそめたワードを推理してください。":"子が親ワードを推理しています。高貴に振る舞いましょう。");
-  const startedAt=Number(round.discussionStartedAt), duration=Number(round.discussionDurationSeconds);
+  const startedAt=Number(round.discussionStartedAt), duration=Number(round.discussionDurationSeconds), introDuration=Math.max(0,Number(window.__multiplayerDiscussionIntroDurationMs)||0);
   const timerKey=`${round.number}:${startedAt}:${duration}`;
   if(discussionTimerRound===timerKey)return;
   stopDiscussionTimer(); discussionTimerRound=timerKey;
   const tick=()=>{
-    const remaining=startedAt&&duration?startedAt+duration*1000-serverNow():0;
+    const remaining=startedAt&&duration?Math.min(duration*1000,startedAt+introDuration+duration*1000-serverNow()):0;
     $("#timer").textContent=discussionTimeLabel(remaining/1000);
     if(remaining<=0){
       stopDiscussionTimer();
@@ -882,7 +882,8 @@ async function maybeAdvanceToAnswer(room) {
   if(phaseTransitionPending||!room||room.parentUid!==currentUser?.uid||room.round?.phase!=="discussion"||!canProgress(room))return;
   const children=playerEntries(room).filter(player=>player.uid!==room.parentUid);
   const allComplete=children.length>0&&children.every(player=>roundProgress?.discussion?.[player.uid]===true);
-  const timedOut=Number(room.round?.discussionStartedAt)&&Number(room.round?.discussionDurationSeconds)&&Number(room.round.discussionStartedAt)+Number(room.round.discussionDurationSeconds)*1000<=serverNow();
+  const introDuration=Math.max(0,Number(window.__multiplayerDiscussionIntroDurationMs)||0);
+  const timedOut=Number(room.round?.discussionStartedAt)&&Number(room.round?.discussionDurationSeconds)&&Number(room.round.discussionStartedAt)+introDuration+Number(room.round.discussionDurationSeconds)*1000<=serverNow();
   if(!allComplete&&!timedOut)return;
   phaseTransitionPending=true;
   try { await update(ref(window.__firebaseDatabase,`${roomPath(roomId)}/round`),{phase:"answer",answerStartedAt:serverTimestamp()}); }
@@ -1838,5 +1839,5 @@ function initialize() {
   });
 }
 
-window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory, toggleReactionPalette, clearRoundChrome };
+window.multiplayerPhase1 = { isEnabled: enabled, openFeastSetup, openJoinFromUrl, checkStoredRoomSession, requestExit, renderHistory: renderMultiplayerHistory, toggleReactionPalette, clearRoundChrome, serverNow };
 initialize();

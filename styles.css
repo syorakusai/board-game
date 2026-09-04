@@ -178,6 +178,22 @@ section[data-screen="title"] .button + .button { margin-top: 10px; }
 .discussion-screen .word { padding: 10px 12px; font-size: 1rem; }
 .discussion-screen .timer { margin: 0; font-size: clamp(2.25rem, 11vw, 3.5rem); }
 .discussion-screen .button-primary { margin-top: 8px; }
+.multiplayer-discussion-intro { position: fixed; z-index: 2600; inset: 0; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); background: radial-gradient(circle at center, #263b34 0%, #0d1b18 58%, #050c0b 100%); opacity: 1; overflow: hidden; transition: opacity 500ms ease; }
+.multiplayer-discussion-intro::before, .multiplayer-discussion-intro::after { content: ""; position: absolute; left: 50%; width: min(72vw, 430px); height: 1px; background: linear-gradient(90deg, transparent, #d7aa5f, transparent); transform: translateX(-50%); box-shadow: 0 0 14px #d7aa5f66; }
+.multiplayer-discussion-intro::before { top: 15%; }
+.multiplayer-discussion-intro::after { bottom: 15%; }
+.multiplayer-discussion-intro.is-hidden { display: none; }
+.multiplayer-discussion-intro.is-leaving { opacity: 0; }
+.multiplayer-discussion-intro-panel { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); align-items: center; width: min(100%, 660px); height: min(66dvh, 620px); text-align: center; }
+.multiplayer-discussion-intro-line { opacity: 0; transform: scale(.5); }
+.multiplayer-discussion-intro-position { align-self: end; padding-bottom: clamp(18px, 5vh, 42px); color: #e8dcc8; font-size: clamp(1.55rem, 7vw, 2.7rem); font-weight: 800; letter-spacing: .12em; text-shadow: 0 3px 8px #000b; }
+.multiplayer-discussion-intro-parent { color: #f2c872; font-size: clamp(1.8rem, 8.5vw, 3.4rem); font-weight: 900; line-height: 1.3; overflow-wrap: anywhere; text-shadow: 0 3px 0 #493017, 0 0 22px #d69b4166; }
+.multiplayer-discussion-intro-start { align-self: start; padding-top: clamp(18px, 5vh, 42px); color: #fff8e8; font-size: clamp(2.5rem, 13vw, 5.2rem); font-weight: 950; letter-spacing: .08em; text-shadow: 0 4px 0 #754820, 0 0 28px #e4b55399; }
+.multiplayer-discussion-intro:is(.is-stage-1, .is-stage-2, .is-stage-3) .multiplayer-discussion-intro-position,
+.multiplayer-discussion-intro:is(.is-stage-2, .is-stage-3) .multiplayer-discussion-intro-parent,
+.multiplayer-discussion-intro.is-stage-3 .multiplayer-discussion-intro-start { opacity: 1; transform: scale(1); animation: multiplayer-discussion-intro-hit 520ms cubic-bezier(.16, .88, .25, 1.2) both; }
+@keyframes multiplayer-discussion-intro-hit { 0% { opacity: 0; transform: scale(2.15); filter: blur(5px); } 58% { opacity: 1; transform: scale(.92); filter: blur(0); } 78% { transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); filter: blur(0); } }
+@media (prefers-reduced-motion: reduce) { .multiplayer-discussion-intro { transition-duration: 120ms; } .multiplayer-discussion-intro-line { animation: none !important; } }
 .result-screen { padding-top: clamp(18px, 5vw, 30px); padding-bottom: clamp(18px, 5vw, 30px); }
 .result-screen .result-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; align-items: center; margin: 10px 0; }
 .result-summary-panel { display: grid; gap: 4px; align-content: center; min-width: 0; }
