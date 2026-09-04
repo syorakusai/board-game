@@ -1,11 +1,11 @@
 import { getFirebaseContext } from "./firebase-client.js";
 import { get, onValue, ref, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
-// develop専用。
 // 各「席」の冒頭で全員が自分の将来の親番を同時並行で準備し、
 // 全員の「ひそめる」完了後は既存の multiplayer-phase1.js の番手進行へ接続する。
 
-const SESSION_KEY = "board-game:dev:multiplayer-room-session";
+const isDevelopment = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
+const SESSION_KEY = `board-game:${isDevelopment() ? "dev" : "prod"}:multiplayer-room-session`;
 const ATTACH_INTERVAL_MS = 500;
 const DISCUSSION_INTRO_MIDDLE_MS = 800;
 const DISCUSSION_INTRO_BOTTOM_MS = 1600;
