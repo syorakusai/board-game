@@ -6,6 +6,7 @@ import { get, onValue, ref, serverTimestamp, set, update } from "https://www.gst
 
 const isDevelopment = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
 const SESSION_KEY = `board-game:${isDevelopment() ? "dev" : "prod"}:multiplayer-room-session`;
+const PREPARATION_INTRO_SEEN_KEY = `board-game:${isDevelopment() ? "dev" : "prod"}:preparation-intro-seen`;
 const ATTACH_INTERVAL_MS = 500;
 const DISCUSSION_INTRO_MIDDLE_MS = 800;
 const DISCUSSION_INTRO_BOTTOM_MS = 1600;
@@ -43,6 +44,9 @@ let historyWrapped = false;
 let discussionIntroKey = "";
 let discussionIntroTimers = [];
 const completedDiscussionIntros = new Set();
+let preparationIntroKey = "";
+let preparationIntroTimers = [];
+const completedPreparationIntros = new Set();
 
 const $ = selector => document.querySelector(selector);
 const roomPath = id => `rooms/${id}`;
@@ -132,7 +136,7 @@ function discussionIntroOverlay() {
   if (overlay) return overlay;
   overlay = document.createElement("div");
   overlay.id = "multiplayer-discussion-intro";
-  overlay.className = "multiplayer-discussion-intro is-hidden";
+  overlay.className = "multiplayer-discussion-intro is-discussion-intro is-hidden";
   overlay.setAttribute("aria-hidden", "true");
   overlay.innerHTML = `<div class="multiplayer-discussion-intro-panel" role="status" aria-live="polite">
     <div class="multiplayer-discussion-intro-line multiplayer-discussion-intro-position"></div>
@@ -141,6 +145,90 @@ function discussionIntroOverlay() {
   </div>`;
   document.body.append(overlay);
   return overlay;
+}
+
+function clearPreparationIntroTimers() {
+  preparationIntroTimers.forEach(clearTimeout);
+  preparationIntroTimers = [];
+}
+
+function preparationIntroOverlay() {
+  let overlay = $("#multiplayer-preparation-intro");
+  if (overlay) return overlay;
+  overlay = document.createElement("div");
+  overlay.id = "multiplayer-preparation-intro";
+  overlay.className = "multiplayer-discussion-intro is-preparation-intro is-hidden";
+  overlay.setAttribute("aria-hidden", "true");
+  overlay.innerHTML = `<div class="multiplayer-discussion-intro-panel" role="status" aria-live="polite">
+    <div class="multiplayer-discussion-intro-line multiplayer-discussion-intro-position"></div>
+    <div class="multiplayer-discussion-intro-line multiplayer-discussion-intro-parent">ひそめごとの支度</div>
+    <div class="multiplayer-discussion-intro-line multiplayer-discussion-intro-start">開始</div>
+  </div>`;
+  document.body.append(overlay);
+  return overlay;
+}
+
+function hidePreparationIntro() {
+  clearPreparationIntroTimers();
+  preparationIntroKey = "";
+  const overlay = $("#multiplayer-preparation-intro");
+  overlay?.classList.add("is-hidden");
+  overlay?.setAttribute("aria-hidden", "true");
+}
+
+function isPreparationIntroVisible() {
+  const overlay = $("#multiplayer-preparation-intro");
+  return Boolean(overlay && !overlay.classList.contains("is-hidden"));
+}
+
+function preparationIntroWasSeen(key) {
+  if (completedPreparationIntros.has(key)) return true;
+  try {
+    return localStorage.getItem(PREPARATION_INTRO_SEEN_KEY) === key;
+  } catch {
+    return false;
+  }
+}
+
+function markPreparationIntroSeen(key) {
+  completedPreparationIntros.add(key);
+  try {
+    localStorage.setItem(PREPARATION_INTRO_SEEN_KEY, key);
+  } catch {}
+}
+
+function setPreparationIntroStage(stage) {
+  const overlay = preparationIntroOverlay();
+  overlay.classList.remove("is-hidden", "is-leaving", "is-stage-1", "is-stage-2", "is-stage-3");
+  overlay.classList.add(`is-stage-${stage}`);
+  overlay.setAttribute("aria-hidden", "false");
+}
+
+function syncPreparationIntro(room = latestRoom, status = user?.uid ? preparationStatus(user.uid) : "draw") {
+  if (!room || !user || !isPreparationPhase(room) || status !== "draw") {
+    hidePreparationIntro();
+    return;
+  }
+  const { cycleNumber } = turnInfo(room);
+  const key = `${roomId}:${room.feastId || "feast"}:${cycleNumber}`;
+  if (preparationIntroKey === key && isPreparationIntroVisible()) return;
+  if (preparationIntroWasSeen(key)) {
+    hidePreparationIntro();
+    return;
+  }
+  clearPreparationIntroTimers();
+  preparationIntroKey = key;
+  const overlay = preparationIntroOverlay();
+  overlay.querySelector(".multiplayer-discussion-intro-position").textContent = seatLabel(cycleNumber);
+  markPreparationIntroSeen(key);
+  setPreparationIntroStage(1);
+  preparationIntroTimers.push(setTimeout(() => setPreparationIntroStage(2), DISCUSSION_INTRO_MIDDLE_MS));
+  preparationIntroTimers.push(setTimeout(() => setPreparationIntroStage(3), DISCUSSION_INTRO_BOTTOM_MS));
+  preparationIntroTimers.push(setTimeout(() => overlay.classList.add("is-leaving"), DISCUSSION_INTRO_FADE_MS));
+  preparationIntroTimers.push(setTimeout(() => {
+    hidePreparationIntro();
+    if (isPreparationPhase(latestRoom)) renderPreparation(latestRoom);
+  }, DISCUSSION_INTRO_DURATION_MS));
 }
 
 function hideDiscussionIntro() {
@@ -434,7 +522,7 @@ function renderPreparationDraw(room) {
   const drawText = $("#draw-card");
   const status = $("#draw-status");
   const error = $("#round-card-message");
-  const enabled = allPlayersConnected(room) && !drawPending;
+  const enabled = allPlayersConnected(room) && !drawPending && !isPreparationIntroVisible();
   if (button) {
     button.hidden = false;
     button.disabled = !enabled;
@@ -443,9 +531,10 @@ function renderPreparationDraw(room) {
   if (deck) {
     deck.classList.remove("is-passive");
     deck.setAttribute("aria-disabled", String(!enabled));
-    deck.tabIndex = 0;
-    deck.onclick = drawPreparedCard;
+    deck.tabIndex = enabled ? 0 : -1;
+    deck.onclick = enabled ? drawPreparedCard : null;
     deck.onkeydown = event => {
+      if (!enabled) return;
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         drawPreparedCard();
@@ -459,7 +548,7 @@ function renderPreparationDraw(room) {
     error.hidden = true;
   }
   const name = room.players?.[user?.uid]?.name || "客人";
-  setRoundMessage(`${name}さん、伏せ札の山から1枚引いてください。`);
+  setRoundMessage(`${name}さん、自分の伏せ札を一枚引いてください。`);
 }
 
 function renderPreparationHiding(room, preparation) {
@@ -501,7 +590,7 @@ function renderPreparationHiding(room, preparation) {
     redraw.disabled = !allPlayersConnected(room) || submitPending || redrawPending;
     redraw.onclick = redrawPreparedCard;
   }
-  setRoundMessage("公式ワード3つを確認し、親ワードをひそめてください。");
+  setRoundMessage("公式ワード3つを確認し、あなたの親ワードをひそめてください。");
 }
 
 function renderPreparationComplete(room, preparation) {
@@ -535,6 +624,7 @@ function renderPreparationComplete(room, preparation) {
 function renderPreparation(room = latestRoom) {
   if (!room || !user || !isPreparationPhase(room)) return;
   const status = preparationStatus(user.uid);
+  syncPreparationIntro(room, status);
   if (status === "complete" && ownPreparation?.status === "complete") renderPreparationComplete(room, ownPreparation);
   else if (status === "hiding" && ownPreparation?.cardId) renderPreparationHiding(room, ownPreparation);
   else renderPreparationDraw(room);
@@ -860,6 +950,7 @@ function subscribeHistory(id) {
 function handleRoom(room) {
   latestRoom = room;
   if (!room || room.status !== "started" || room.endedBy) {
+    hidePreparationIntro();
     syncDiscussionIntro(room);
     return;
   }
@@ -875,6 +966,7 @@ function handleRoom(room) {
     void maybeActivatePreparedTurn(room);
     return;
   }
+  hidePreparationIntro();
   requestAnimationFrame(() => patchActivePhase(room));
   if (room.round?.phase === "draw") void maybeActivatePreparedTurn(room);
 }
@@ -902,6 +994,8 @@ function detachRoom() {
   activationKey = "";
   editingKey = "";
   completedDiscussionIntros.clear();
+  completedPreparationIntros.clear();
+  hidePreparationIntro();
   hideDiscussionIntro();
   window.multiplayerPhase1?.clearRoundChrome?.();
 }
