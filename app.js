@@ -1,4 +1,4 @@
-import { CARD_SET_STORAGE_KEY, PLAYER_COUNT_STORAGE_KEY, PLAYER_STORAGE_KEY, WORD_SET_STORAGE_KEY, esc, numberedWordsMarkup, readWordSetSelections, savedCardSet, savedPlayerCount, savedPlayers, shuffle, state } from "./game-state.js";
+import { CARD_SET_STORAGE_KEY, DISCUSSION_TIME_STORAGE_KEY, PLAYER_COUNT_STORAGE_KEY, PLAYER_STORAGE_KEY, WORD_SET_STORAGE_KEY, esc, numberedWordsMarkup, readDiscussionTimeSelections, readWordSetSelections, savedCardSet, savedPlayerCount, savedPlayers, shuffle, state } from "./game-state.js";
 import { createRouletteController } from "./roulette.js";
 import { validateCardSetData } from "./card-data.js";
 import { createRoundCandidates, isOfficialWord } from "./round-candidates.js";
@@ -89,7 +89,10 @@ function updatePlayerCountNext(){playerCountNext.disabled=!state.catalogReady||!
 function readSavedPlayerCount(){try{const n=Number(localStorage.getItem(PLAYER_COUNT_STORAGE_KEY));return Number.isInteger(n)&&n>=2&&n<=6?n:0;}catch{return 0;}}
 function setDiscussionMinutes(minutes){state.discussionMinutes=minutes;const select=document.querySelector("#discussion-time-select");select.value=String(minutes);refreshSetSelect(select);}
 function defaultDiscussionMinutes(playerCount){return playerCount>=5?3:2;}
-function restorePlayerCountSelection(){const n=readSavedPlayerCount();state.playerCount=n;const button=[...document.querySelectorAll(".count-button")].find(x=>x.textContent===`${n}人`);document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===button));setDiscussionMinutes(defaultDiscussionMinutes(n));updatePlayerCountNext();}
+function savedDiscussionMinutes(playerCount){const minutes=Number(readDiscussionTimeSelections()[playerCount]);return [1,2,3,5].includes(minutes)?minutes:0;}
+function discussionMinutesForPlayerCount(playerCount){return savedDiscussionMinutes(playerCount)||defaultDiscussionMinutes(playerCount);}
+function saveDiscussionTimeSelection(){if(!state.playerCount)return;try{const saved=readDiscussionTimeSelections();saved[state.playerCount]=state.discussionMinutes;localStorage.setItem(DISCUSSION_TIME_STORAGE_KEY,JSON.stringify(saved));}catch{}}
+function restorePlayerCountSelection(){const n=readSavedPlayerCount();state.playerCount=n;const button=[...document.querySelectorAll(".count-button")].find(x=>x.textContent===`${n}人`);document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===button));setDiscussionMinutes(discussionMinutesForPlayerCount(n));updatePlayerCountNext();}
 function renderPlayerNames(){
   const n=state.playerCount;
   document.querySelector("#name-description").textContent="客人の名前を入力してください。";
@@ -106,7 +109,7 @@ function renderPlayerNames(){
 }
 function selectPlayerCount(n,button){
   state.playerCount=n;
-  setDiscussionMinutes(defaultDiscussionMinutes(n));
+  setDiscussionMinutes(discussionMinutesForPlayerCount(n));
   document.querySelectorAll(".count-button").forEach(x=>x.classList.toggle("is-selected",x===button));
   updatePlayerCountNext();
   try{localStorage.setItem(PLAYER_COUNT_STORAGE_KEY,String(n));}catch{}
@@ -125,7 +128,7 @@ document.querySelector("#player-count-back").onclick=()=>show("title");
 ["#card-set-select","#word-set-select","#discussion-time-select"].forEach(selector=>enhanceSetSelect(document.querySelector(selector)));
 document.querySelector("#card-set-select").onchange=e=>{state.cardSet=e.target.value;state.wordSet=readWordSetSelections()[state.cardSet]||"standard-1";try{localStorage.setItem(CARD_SET_STORAGE_KEY,state.cardSet);}catch{}renderWordSetOptions();saveWordSetSelection();updatePlayerCountNext();};
 document.querySelector("#word-set-select").onchange=e=>{state.wordSet=e.target.value;saveWordSetSelection();updatePlayerCountNext();};
-document.querySelector("#discussion-time-select").onchange=e=>{state.discussionMinutes=Number(e.target.value);};
+document.querySelector("#discussion-time-select").onchange=e=>{state.discussionMinutes=Number(e.target.value);saveDiscussionTimeSelection();};
 window.startSingleDeviceGame=()=>{restorePlayerCountSelection();show("player-count");};
 document.querySelector("#title-start").onclick=()=>{if(window.multiplayerPhase1?.isEnabled()){window.multiplayerPhase1.openFeastSetup();return;}window.startSingleDeviceGame();};
 document.querySelector("#title-start").addEventListener("click",()=>{state.history=[];});

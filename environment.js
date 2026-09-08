@@ -1,7 +1,7 @@
 (() => {
   const development = /\/board-game\/dev(?:\/|$)/.test(location.pathname);
   const prefix = development ? "board-game:dev:" : "board-game:prod:";
-  const keys = new Set(["word-card-players", "word-card-player-count", "word-card-set", "word-card-word-sets"]);
+  const keys = new Set(["word-card-players", "word-card-player-count", "word-card-set", "word-card-word-sets", "word-card-discussion-times"]);
   const get = localStorage.getItem.bind(localStorage);
   const set = localStorage.setItem.bind(localStorage);
   const remove = localStorage.removeItem.bind(localStorage);

@@ -8,6 +8,9 @@ const ROOM_PREFIX = "rooms";
 const isDevelopment = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
 const multiplayerStoragePrefix = isDevelopment() ? "board-game:dev:" : "board-game:prod:";
 const NAME_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-name`;
+const HOST_CARD_SET_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-card-set`;
+const HOST_WORD_SET_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-word-sets`;
+const HOST_DISCUSSION_TIME_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-discussion-time`;
 const ROOM_SESSION_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-room-session`;
 const ROOM_AUTO_RESUME_SUPPRESSED_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-auto-resume-suppressed`;
 const RESUME_DEBUG_LOG_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-resume-debug-log`;
@@ -104,6 +107,13 @@ const escape = value => String(value).replace(/[&<>"']/g, character => ({ "&":"&
 const normalizedName = name => name.trim().replace(/\s+/g, " ").toLocaleLowerCase("ja-JP");
 const savedName = () => localStorage.getItem(NAME_STORAGE_KEY) || "";
 const saveName = name => localStorage.setItem(NAME_STORAGE_KEY, name);
+const savedHostCardSet = () => { try { return localStorage.getItem(HOST_CARD_SET_STORAGE_KEY) || ""; } catch { return ""; } };
+const readHostWordSetSelections = () => { try { const value=JSON.parse(localStorage.getItem(HOST_WORD_SET_STORAGE_KEY)||"{}"); return value&&typeof value==="object"&&!Array.isArray(value)?value:{}; } catch { return {}; } };
+const savedHostDiscussionMinutes = () => { try { const minutes=Number(localStorage.getItem(HOST_DISCUSSION_TIME_STORAGE_KEY)); return [1,2,3,5].includes(minutes)?minutes:2; } catch { return 2; } };
+const saveHostCardSetSelection = () => { try { localStorage.setItem(HOST_CARD_SET_STORAGE_KEY,$("#host-card-set").value); } catch {} };
+const saveHostWordSetSelection = () => { try { const saved=readHostWordSetSelections(); saved[$("#host-card-set").value]=$("#host-word-set").value; localStorage.setItem(HOST_WORD_SET_STORAGE_KEY,JSON.stringify(saved)); } catch {} };
+const saveHostDiscussionTimeSelection = () => { try { localStorage.setItem(HOST_DISCUSSION_TIME_STORAGE_KEY,$("#host-discussion-time").value); } catch {} };
+const saveHostSettings = () => { saveHostCardSetSelection(); saveHostWordSetSelection(); saveHostDiscussionTimeSelection(); };
 const enabled = () => /\/board-game(?:\/dev)?(?:\/|$)/.test(location.pathname);
 const storedRoomSession=()=>{try{const s=JSON.parse(localStorage.getItem(ROOM_SESSION_STORAGE_KEY)||"null");return s&&typeof s==="object"?s:null;}catch{return null;}};
 const saveRoomSession=room=>{if(!roomId||!currentUser?.uid||!room?.feastId)return;localStorage.setItem(ROOM_SESSION_STORAGE_KEY,JSON.stringify({roomId,uid:currentUser.uid,name:room.players?.[currentUser.uid]?.name||savedName(),role:room.hostUid===currentUser.uid?"host":"guest",feastId:room.feastId}));};
@@ -263,7 +273,7 @@ function setOptions(select, items, selected) {
     option.textContent = item.name;
     return option;
   }));
-  select.value = selected || items[0]?.id || "";
+  select.value = items.some(item => item.id === selected) ? selected : items[0]?.id || "";
   refreshSetSelect(select);
 }
 
@@ -274,17 +284,17 @@ function ensureMultiplayerName() {
 async function prepareCreateForm() {
   ["#host-card-set", "#host-word-set", "#host-discussion-time"].forEach(selector => enhanceSetSelect($(selector)));
   ensureMultiplayerName();
-  if (!$("#host-discussion-time").value) $("#host-discussion-time").value = "2";
+  $("#host-discussion-time").value = String(savedHostDiscussionMinutes());
   refreshSetSelect($("#host-discussion-time"));
   try {
     const sets = await ensureCatalog();
-    setOptions($("#host-card-set"), sets, $("#host-card-set").value || sets[0]?.id);
+    setOptions($("#host-card-set"), sets, savedHostCardSet());
     refreshHostWordSets();
   } catch (error) { $("#create-room-error").textContent = `設定を読み込めませんでした。${error.message || ""}`; }
 }
 function refreshHostWordSets() {
   const selected = catalog.find(set => set.id === $("#host-card-set").value);
-  setOptions($("#host-word-set"), selected?.wordSets || [], $("#host-word-set").value || selected?.wordSets?.[0]?.id);
+  setOptions($("#host-word-set"), selected?.wordSets || [], readHostWordSetSelections()[selected?.id]);
 }
 
 function makeRoomId() {
@@ -1489,6 +1499,7 @@ async function createRoom() {
   const cardSet = catalog.find(set => set.id === $("#host-card-set").value);
   const wordSet = cardSet?.wordSets?.find(set => set.id === $("#host-word-set").value);
   if (!cardSet || !wordSet) { error.textContent = "カードセットとワードセットを選択してください。"; return; }
+  saveHostSettings();
   const context = await getFirebaseContext();
   currentUser = context.user;
   window.__firebaseDatabase = context.database;
@@ -1818,7 +1829,9 @@ function initialize() {
   $("#resume-stored-room-choice").onclick=resumeStoredRoomFromChoice;
   $("#create-room-back").onclick=()=>{clearInviteUrl();show("title");};
   $("#join-room-back").onclick=()=>{clearInviteUrl();show("title");};
-  $("#host-card-set").onchange=refreshHostWordSets;
+  $("#host-card-set").onchange=()=>{saveHostCardSetSelection();refreshHostWordSets();saveHostWordSetSelection();};
+  $("#host-word-set").onchange=saveHostWordSetSelection;
+  $("#host-discussion-time").onchange=saveHostDiscussionTimeSelection;
   $("#create-room-button").onclick = createRoom;
   $("#join-room-button").onclick = joinRoom;
   $("#start-multiplayer-game").onclick = startRoom;

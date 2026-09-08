@@ -2,11 +2,13 @@ export const PLAYER_STORAGE_KEY = "word-card-players";
 export const PLAYER_COUNT_STORAGE_KEY = "word-card-player-count";
 export const CARD_SET_STORAGE_KEY = "word-card-set";
 export const WORD_SET_STORAGE_KEY = "word-card-word-sets";
+export const DISCUSSION_TIME_STORAGE_KEY = "word-card-discussion-times";
 
 export const savedPlayers = (() => { try { const v=JSON.parse(localStorage.getItem(PLAYER_STORAGE_KEY)||"[]"); return Array.isArray(v)?v.map(String):[]; } catch { return []; } })();
 export const savedPlayerCount = (() => { try { const v=Number(localStorage.getItem(PLAYER_COUNT_STORAGE_KEY)); return Number.isInteger(v)&&v>=2&&v<=6?v:0; } catch { return 0; } })();
 export const savedCardSet = (() => { try { return localStorage.getItem(CARD_SET_STORAGE_KEY)||""; } catch { return ""; } })();
 export function readWordSetSelections(){try{const v=JSON.parse(localStorage.getItem(WORD_SET_STORAGE_KEY)||"{}");return v&&typeof v==="object"&&!Array.isArray(v)?v:{};}catch{return {};}}
+export function readDiscussionTimeSelections(){try{const v=JSON.parse(localStorage.getItem(DISCUSSION_TIME_STORAGE_KEY)||"{}");return v&&typeof v==="object"&&!Array.isArray(v)?v:{};}catch{return {};}}
 
 const savedWordSets = readWordSetSelections();
 export const state = { playerCount:0, discussionMinutes:2, cardSet:savedCardSet, defaultCardSet:"", wordSet:savedWordSets[savedCardSet]||"", setCatalog:{}, cardSetData:null, wordSets:[], catalogReady:false, players:[], order:[], parentIndex:0, card:null, official:[], words:[], parentWord:"", parentCandidateId:"", answers:{}, answerIndex:0, answerLocked:false, selectedAnswer:"", timer:null, usedCards:new Set(), preparedCard:null, cardPreparation:null, gameSession:0, round:0, handoffNext:"", history:[], currentScreen:"title", howtoReturnScreen:"title" };
