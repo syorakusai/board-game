@@ -472,7 +472,7 @@ Googleスプレッドシートから `data/yokai.json` を更新する作業だ�
 
 ## Cloudflare Pages移行準備
 
-developブランチはCloudflare PagesのPreview Deploymentとして使用する予定です。
+developブランチは、Cloudflare PagesのPreview Deploymentとして使用する予定です。
 
 現在の正式公開環境はGitHub Pagesです。Cloudflare Pagesは未登録・未移行です。
 
