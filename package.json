@@ -4,6 +4,7 @@
   "scripts": {
     "check:data": "node tests/check-card-data.mjs",
     "check:candidates": "node tests/check-round-candidates.mjs",
-    "check:rules": "node tests/check-game-rules.mjs"
+    "check:rules": "node tests/check-game-rules.mjs",
+    "check:cloudflare": "node tests/check-cloudflare.mjs"
   }
 }

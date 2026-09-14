@@ -1,5 +1,7 @@
 (() => {
-  const development = /\/board-game\/dev(?:\/|$)/.test(location.pathname);
+  const development = globalThis.HISOMEGOTO_DEPLOY_ENV !== undefined
+    ? globalThis.HISOMEGOTO_DEPLOY_ENV !== "prod"
+    : /\/board-game\/dev(?:\/|$)/.test(location.pathname);
   const prefix = development ? "board-game:dev:" : "board-game:prod:";
   const keys = new Set(["word-card-players", "word-card-player-count", "word-card-set", "word-card-word-sets"]);
   const get = localStorage.getItem.bind(localStorage);

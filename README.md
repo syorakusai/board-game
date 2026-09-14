@@ -467,3 +467,13 @@ Googleスプレッドシートから `data/yokai.json` を更新する作業だ�
 
 - GitHub: https://github.com/syorakusai/board-game
 - GitHub Pages: https://syorakusai.github.io/board-game/
+
+## Cloudflare Pages移行準備
+
+現在の正式公開環境はGitHub Pagesです。Cloudflare Pagesは未登録・未移行です。
+
+移行準備として `scripts/build-cloudflare.mjs` を用意しています。Production branchは `main`、Framework presetはNone、Build commandは `node scripts/build-cloudflare.mjs`、Build output directoryは `dist`、Root directoryはリポジトリルートを予定しています。`CF_PAGES_BRANCH` が厳密に `main` の場合だけPROD、それ以外（未指定を含む）はDEVです。現在チェックアウトされているブランチだけを使用します。
+
+公開するのは実行ファイル・素材・カード・データと選択済みの `firebase-config.js` のみです。manifestは成果物内でルート化します。生成した環境情報をブラウザーとService Workerが優先し、既存GitHub Pagesでは従来のパス判定へフォールバックします。`npm run check:cloudflare` で環境分離・公開対象・参照先を検証できます。
+
+GitHub PagesのWorkflowとビルド処理、Firebase清掃処理は維持しています。Cloudflareで本番・DEVを公開確認した後、別作業で正式移行します。URLは未確定です。

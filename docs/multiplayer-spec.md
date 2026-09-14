@@ -396,3 +396,7 @@ Firebase Rulesの正本は、ルートの [`firebase-rules.json`](../firebase-ru
 - パレットはアイコン付近の小さなポップアップで、外側クリック・選択・Escapeで閉じる。受信した絵文字は送信者の名前パネル下側の吹き出しへ約3秒表示する。同一人物は新しい値へ差し替え、異なる参加者は同時表示する。吹き出しは選択時と同じ深緑を背景に、金色の縁と影で周囲から判別できる見た目とする。
 - `roomReactions/{roomId}/{uid}` は最新値だけを持ち、`emoji`、Firebaseサーバー時刻の`sentAt`、送信ごとに変化する`nonce`を保存する。履歴は残さない。初回listener値・リロード・通信復帰・保存宴復帰では過去値を演出せず、期限切れも表示しない。
 - 接続中の参加者だけが送信でき、`endedBy`後は送信しない。クライアントとRulesの両方で前回送信から1秒未満の更新を拒否する。退出・別宴移動・`clearRoomSession()`ではlistenerと表示timerを解除する。
+
+### Cloudflare Pages移行準備（未公開）
+
+Cloudflare成果物は `CF_PAGES_BRANCH === "main"` の場合だけPROD、それ以外はDEVです。ブラウザーは生成済みの明示環境を優先し、環境情報がないGitHub Pagesでは既存パス判定を使用します。通信対戦の有効化も明示環境を認識し、保存キーは引き続きPROD/DEVで分離します。Firebase・Service Worker・manifestもビルド時に同じ環境へ揃えます。通信対戦の進行仕様は変更しません。正式公開は引き続きGitHub Pagesです。

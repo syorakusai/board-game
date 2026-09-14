@@ -1,10 +1,11 @@
+import { isDevelopment } from "./runtime-environment.js";
 import { getFirebaseContext } from "./firebase-client.js";
 import { get, onValue, ref, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
 // 各「席」の冒頭で全員が自分の将来の親番を同時並行で準備し、
 // 全員の「ひそめる」完了後は既存の multiplayer-phase1.js の番手進行へ接続する。
 
-const isDevelopment = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
+
 const SESSION_KEY = `board-game:${isDevelopment() ? "dev" : "prod"}:multiplayer-room-session`;
 const PREPARATION_INTRO_SEEN_KEY = `board-game:${isDevelopment() ? "dev" : "prod"}:preparation-intro-seen`;
 const ATTACH_INTERVAL_MS = 500;

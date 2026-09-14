@@ -1,6 +1,7 @@
 importScripts("app-version.js");
 const scopeUrl = new URL(self.registration.scope);
-const development = /\/board-game\/dev\/$/.test(scopeUrl.pathname);
+const explicitEnvironment = self.HISOMEGOTO_DEPLOY_ENV !== undefined;
+const development = explicitEnvironment ? self.HISOMEGOTO_DEPLOY_ENV !== "prod" : /\/board-game\/dev\/$/.test(scopeUrl.pathname);
 const CACHE_PREFIX = `kizoku-no-hisomegoto-${development ? "dev" : "prod"}-`;
 const CACHE_NAME = `${CACHE_PREFIX}${self.APP_VERSION || "dev"}`;
 const APP_SHELL = [
@@ -9,6 +10,8 @@ const APP_SHELL = [
   "styles.css",
   "app.js",
   "environment.js",
+  "runtime-environment.js",
+  "set-picker.js",
   "app-version.js",
   "card-data.js",
   "game-rules.js",
@@ -35,7 +38,7 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const request = event.request;
   const url = new URL(request.url);
-  if (!development && url.pathname.startsWith(new URL("dev/", scopeUrl).pathname)) return;
+  if (!explicitEnvironment && !development && url.pathname.startsWith(new URL("dev/", scopeUrl).pathname)) return;
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).then(response => {
       const copy = response.clone();
