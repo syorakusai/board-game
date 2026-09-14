@@ -1,3 +1,4 @@
+import { isDevelopment, isDeploymentEnabled } from "./runtime-environment.js";
 import { getFirebaseContext } from "./firebase-client.js";
 import { get, onDisconnect, onValue, push, ref, remove, runTransaction, serverTimestamp, set, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm";
@@ -5,7 +6,7 @@ import { scoreRound } from "./game-rules.js";
 import { enhanceSetSelect, refreshSetSelect } from "./set-picker.js";
 
 const ROOM_PREFIX = "rooms";
-const isDevelopment = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
+
 const multiplayerStoragePrefix = isDevelopment() ? "board-game:dev:" : "board-game:prod:";
 const NAME_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-name`;
 const HOST_CARD_SET_STORAGE_KEY = `${multiplayerStoragePrefix}multiplayer-card-set`;
@@ -114,7 +115,7 @@ const saveHostCardSetSelection = () => { try { localStorage.setItem(HOST_CARD_SE
 const saveHostWordSetSelection = () => { try { const saved=readHostWordSetSelections(); saved[$("#host-card-set").value]=$("#host-word-set").value; localStorage.setItem(HOST_WORD_SET_STORAGE_KEY,JSON.stringify(saved)); } catch {} };
 const saveHostDiscussionTimeSelection = () => { try { localStorage.setItem(HOST_DISCUSSION_TIME_STORAGE_KEY,$("#host-discussion-time").value); } catch {} };
 const saveHostSettings = () => { saveHostCardSetSelection(); saveHostWordSetSelection(); saveHostDiscussionTimeSelection(); };
-const enabled = () => /\/board-game(?:\/dev)?(?:\/|$)/.test(location.pathname);
+const enabled = isDeploymentEnabled;
 const storedRoomSession=()=>{try{const s=JSON.parse(localStorage.getItem(ROOM_SESSION_STORAGE_KEY)||"null");return s&&typeof s==="object"?s:null;}catch{return null;}};
 const saveRoomSession=room=>{if(!roomId||!currentUser?.uid||!room?.feastId)return;localStorage.setItem(ROOM_SESSION_STORAGE_KEY,JSON.stringify({roomId,uid:currentUser.uid,name:room.players?.[currentUser.uid]?.name||savedName(),role:room.hostUid===currentUser.uid?"host":"guest",feastId:room.feastId}));};
 const forgetRoomSession=()=>localStorage.removeItem(ROOM_SESSION_STORAGE_KEY);

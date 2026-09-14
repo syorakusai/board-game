@@ -1,10 +1,11 @@
+import { isDevelopment } from "./runtime-environment.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import { get, getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
 const FIREBASE_TEST_ROOT = "firebase-test";
-const isDevelopment = () => /\/board-game\/dev(?:\/|$)/.test(location.pathname);
+
 const FIREBASE_STATUS_ID = "firebase-connection-status";
 
 function showStatus(message, state = "pending") {

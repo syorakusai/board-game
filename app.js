@@ -1,3 +1,4 @@
+import { isDevelopment } from "./runtime-environment.js";
 import { CARD_SET_STORAGE_KEY, DISCUSSION_TIME_STORAGE_KEY, PLAYER_COUNT_STORAGE_KEY, PLAYER_STORAGE_KEY, WORD_SET_STORAGE_KEY, esc, numberedWordsMarkup, readDiscussionTimeSelections, readWordSetSelections, savedCardSet, savedPlayerCount, savedPlayers, shuffle, state } from "./game-state.js";
 import { createRouletteController } from "./roulette.js";
 import { validateCardSetData } from "./card-data.js";
@@ -5,7 +6,7 @@ import { createRoundCandidates, isOfficialWord } from "./round-candidates.js";
 import { evaluateRound, nextParentIndex, orderedChildren, scoreRound } from "./game-rules.js";
 import { enhanceSetSelect, refreshSetSelect } from "./set-picker.js";
 
-const multiplayerReady = /\/board-game\/dev(?:\/|$)/.test(location.pathname) ? import("./multiplayer-phase1.js").catch(() => {}) : Promise.resolve();
+const multiplayerReady = isDevelopment() ? import("./multiplayer-phase1.js").catch(() => {}) : Promise.resolve();
 
 const rouletteController=createRouletteController();
 window.__rouletteController=rouletteController;
@@ -13,7 +14,7 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
 }
 const screens=document.querySelectorAll("[data-screen]");
-document.title="貴族のひそめごと";
+document.title=isDevelopment() ? "貴族のひそめごと DEV" : "貴族のひそめごと";
 document.querySelector('[data-screen="title"] .eyebrow')?.remove();
 document.querySelector('[data-screen="title"] .title-main-image')?.setAttribute("alt","貴族のひそめごとのメインイラスト");
 const fixedScreenTitles={"player-count":"宴の支度","player-names":"客人の名乗り",ready:"宴の席次"};
