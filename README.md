@@ -472,6 +472,8 @@ Googleスプレッドシートから `data/yokai.json` を更新する作業だ�
 
 ## Cloudflare Pages移行準備
 
+developブランチはCloudflare PagesのPreview Deploymentとして使用する予定です。
+
 現在の正式公開環境はGitHub Pagesです。Cloudflare Pagesは未登録・未移行です。
 
 移行準備として `scripts/build-cloudflare.mjs` を用意しています。Production branchは `main`、Framework presetはNone、Build commandは `node scripts/build-cloudflare.mjs`、Build output directoryは `dist`、Root directoryはリポジトリルートを予定しています。`CF_PAGES_BRANCH` が厳密に `main` の場合だけPROD、それ以外（未指定を含む）はDEVです。現在チェックアウトされているブランチだけを使用します。
